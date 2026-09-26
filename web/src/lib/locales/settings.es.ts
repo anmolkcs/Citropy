@@ -582,6 +582,9 @@ export const settingsEs: Record<string, string> = {
   "Copy path": "Copiar ruta",
   "What's in {version}": "Novedades de {version}",
   "Could not load what this release includes.": "No se pudo cargar lo que incluye esta versión.",
+  "Older release": "Versión anterior",
+  "Newer release": "Versión más reciente",
+  "Could not load older releases.": "No se pudieron cargar las versiones anteriores.",
   "Resume after usage limits": "Reanudar tras los límites de uso",
   "When a chat stops because a usage limit is reached, continue it automatically once the limit resets. You can also turn this on for a single chat.": "Cuando un chat se detiene porque se alcanzó un límite de uso, continúalo automáticamente cuando el límite se restablezca. También puedes activarlo para un solo chat."
 };

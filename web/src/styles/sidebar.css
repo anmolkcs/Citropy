@@ -251,8 +251,13 @@
   margin-top: 14px;
   font-size: var(--text-xs);
 }
-.app-update-notes > strong {
-  display: block;
+.app-update-notes-heading {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.app-update-notes-heading strong {
+  flex: 1;
   color: var(--text);
   font-weight: 500;
 }

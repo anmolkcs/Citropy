@@ -20,8 +20,13 @@ export interface AppUpdateState {
   message?: string;
   checkedAt?: number;
   retry?: "check" | "download" | "install";
-  notes?: { version: string; sections: ReleaseNoteSection[] };
+  notes?: ReleaseNotes;
   notesError?: string;
+}
+
+export interface ReleaseNotes {
+  version: string;
+  sections: ReleaseNoteSection[];
 }
 
 export interface ReleaseNoteSection {

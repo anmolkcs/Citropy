@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("citropyDesktop", {
   },
   updateState: () => ipcRenderer.invoke("updates:state"),
   updateCommand: (action) => ipcRenderer.invoke("updates:command", action),
+  releaseHistory: () => ipcRenderer.invoke("updates:history"),
   onUpdateState: (callback) => {
     const listener = (_, state) => callback(state);
     ipcRenderer.on("updates:state", listener);

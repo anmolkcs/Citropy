@@ -30,6 +30,7 @@ declare global {
         request: "check" | "download" | "install",
       ): Promise<import("../../shared/app-update.ts").AppUpdateState>;
       onUpdateState(callback: (state: import("../../shared/app-update.ts").AppUpdateState) => void): () => void;
+      releaseHistory(): Promise<import("../../shared/app-update.ts").ReleaseNotes[]>;
       windowState(): Promise<DesktopWindowState>;
       titlebarHeight(height: number): void;
       windowCommand(

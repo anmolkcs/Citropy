@@ -4,11 +4,13 @@ import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
   Download,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
-import type { AppUpdateState } from "../../../shared/app-update.ts";
+import type { AppUpdateState, ReleaseNotes } from "../../../shared/app-update.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 const size = (bytes?: number) =>
@@ -25,6 +27,9 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   });
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [history, setHistory] = useState<ReleaseNotes[]>();
+  const [historyError, setHistoryError] = useState(false);
+  const [browsed, setBrowsed] = useState<number>();
   const id = useId();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const alive = useRef(true);
@@ -92,13 +97,35 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
             ? "Your update is ready"
             : label;
   const notesVersion = state.version && state.status !== "current" ? state.version : state.currentVersion;
-  const notes = state.notes?.version === notesVersion ? state.notes : undefined;
+  const latestNotes = state.notes?.version === notesVersion ? state.notes : undefined;
+  const notes = browsed === undefined ? latestNotes : history?.[browsed];
+  const position = history && notes ? history.findIndex((release) => release.version === notes.version) : -1;
+  const browse = async (step: 1 | -1) => {
+    let releases = history;
+    if (!releases) {
+      try {
+        releases = await window.citropyDesktop!.releaseHistory();
+      } catch {
+        if (alive.current) setHistoryError(true);
+        return;
+      }
+      if (!alive.current) return;
+      setHistory(releases);
+      setHistoryError(false);
+    }
+    const from = releases.findIndex((release) => release.version === notes?.version);
+    const next = from + step;
+    if (from >= 0 && next >= 0 && next < releases.length) setBrowsed(next);
+  };
   const show = () => {
     clearTimeout(timer.current);
     setOpen(true);
   };
   const hide = () => {
-    timer.current = setTimeout(() => setOpen(false), 160);
+    timer.current = setTimeout(() => {
+      setOpen(false);
+      setBrowsed(undefined);
+    }, 160);
   };
   const run = async () => {
     show();
@@ -145,6 +172,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
         if (event.key === "Escape") {
           clearTimeout(timer.current);
           setOpen(false);
+          setBrowsed(undefined);
         }
       }}
     >
@@ -162,7 +190,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
         ) : face}
       </button>
       <AnimatePresence>{open && (
-        <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="tooltip">
+        <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={t(title)}>
           <div className="app-update-heading">
             {state.status === "current" ? <Check size={16} /> : <Icon size={16} />}
             <strong>{t(title)}</strong>
@@ -213,7 +241,12 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
           )}
           {notes ? (
             <div className="app-update-notes">
-              <strong>{t("What's in {version}", { version: notes.version })}</strong>
+              <div className="app-update-notes-heading">
+                <strong>{t("What's in {version}", { version: notes.version })}</strong>
+                <button type="button" className="icon-btn" aria-label={t("Older release")} title={t("Older release")} disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
+                <button type="button" className="icon-btn" aria-label={t("Newer release")} title={t("Newer release")} disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
+              </div>
+              {historyError && <p className="app-update-notes-error">{t("Could not load older releases.")}</p>}
               {notes.sections.map((section) => (
                 <section key={section.title}>
                   {section.title && <span>{section.title}</span>}

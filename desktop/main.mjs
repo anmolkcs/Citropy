@@ -5,7 +5,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { release } from "node:os";
 import v8 from "node:v8";
 import { createAppUpdater } from "./updates.mjs";
-import { fetchReleaseNotes } from "./release-notes.mjs";
+import { fetchReleaseHistory, fetchReleaseNotes } from "./release-notes.mjs";
 import { spawnAppImageRelaunch } from "./appimage-relaunch.mjs";
 import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.mjs";
 import { packagedBackend } from "./backend.mjs";
@@ -980,6 +980,10 @@ app
     ipcMain.handle("updates:command", (event, request) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
       return updates.command(request);
+    });
+    ipcMain.handle("updates:history", (event) => {
+      if (!trusted(event)) throw new Error("Unavailable outside Citropy");
+      return fetchReleaseHistory(updateRepository);
     });
     const windowState = () => ({
       maximized: window.isMaximized(),

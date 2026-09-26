@@ -4,6 +4,9 @@ Each release publishes its section below as the release notes, which the app sho
 
 ## 0.4.12
 
+### Added
+- Arrows next to "What's in" in the update popover page through the notes of earlier releases.
+
 ### Fixed
 - Closed four security flaws in how the code editor cleans up HTML before showing it.
 
