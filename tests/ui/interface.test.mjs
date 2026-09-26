@@ -171,19 +171,22 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     const newer = page.getByRole("button", { name: "Newer release", exact: true });
     await older.waitFor();
     await page.waitForTimeout(250);
+    assert.equal(await newer.isVisible(), false);
     const start = (await older.boundingBox()).y;
     for (const version of ["0.1.2", "0.1.1"]) {
       await older.click();
       await page.getByText(`What's in ${version}`, { exact: true }).waitFor();
       await page.waitForTimeout(250);
-      assert.ok(Math.abs((await older.boundingBox()).y - start) < 1);
+      assert.ok(Math.abs((await newer.boundingBox()).y - start) < 1);
     }
-    assert.equal(await older.isDisabled(), true);
+    assert.equal(await older.isVisible(), false);
     await newer.click();
     await newer.click();
     await page.getByText("What's in 0.1.3", { exact: true }).waitFor();
     await page.waitForTimeout(400);
     assert.equal(await page.locator(".app-update-popover").count(), 1);
+    assert.equal(await newer.isVisible(), false);
+    assert.equal(await older.evaluate((node) => node === document.activeElement), true);
   });
 
   check("the video player plays, seeks, and mutes from the keyboard", async (t) => {

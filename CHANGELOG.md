@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.4.13
+
+### Fixed
+- The release notes arrows hide at the newest and oldest release instead of showing a button that does nothing.
+
 ## 0.4.12
 
 ### Added

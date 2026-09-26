@@ -266,6 +266,9 @@
   align-items: center;
   gap: 2px;
 }
+:is(.app-update-notes-heading, .app-update-notes-footer) .icon-btn:disabled {
+  visibility: hidden;
+}
 .app-update-notes-footer {
   display: flex;
   justify-content: flex-end;

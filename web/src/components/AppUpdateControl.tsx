@@ -37,6 +37,8 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   const [historyError, setHistoryError] = useState(false);
   const [browsed, setBrowsed] = useState<number>();
   const [direction, setDirection] = useState(1);
+  const olderArrow = useRef<HTMLButtonElement>(null);
+  const newerArrow = useRef<HTMLButtonElement>(null);
   const id = useId();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const alive = useRef(true);
@@ -125,6 +127,8 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
     if (from < 0 || next < 0 || next >= releases.length) return;
     setDirection(step);
     setBrowsed(next);
+    const last = step === 1 ? next === releases.length - 1 : next === 0;
+    if (last) requestAnimationFrame(() => (step === 1 ? newerArrow : olderArrow).current?.focus({ preventScroll: true }));
   };
   const show = () => {
     clearTimeout(timer.current);
@@ -156,8 +160,8 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   };
   const releaseArrows = (
     <>
-      <button type="button" className="icon-btn" aria-label={t("Older release")} title={t("Older release")} disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
-      <button type="button" className="icon-btn" aria-label={t("Newer release")} title={t("Newer release")} disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
+      <button ref={olderArrow} type="button" className="icon-btn" aria-label={t("Older release")} title={t("Older release")} disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
+      <button ref={newerArrow} type="button" className="icon-btn" aria-label={t("Newer release")} title={t("Newer release")} disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
     </>
   );
   const Icon =
