@@ -52,7 +52,7 @@ The package includes the application license, bundled font licenses, and `dist/T
 
 ## GitHub release
 
-Every push and pull request runs type checking, tests, a dependency audit, installer script checks, AppImage packaging, and the packaged smoke check on Linux, plus a macOS package build, smoke check, and a run of the installer against a locally served release, and the same for Windows with `scripts/install.ps1`. The audit includes development dependencies because the renderer bundles some of them into the app. Tests and platform builds run in parallel. The shared test workflow keeps ordinary checks and release checks on the same suite.
+Every push and pull request runs the **Checks** workflow: type checking, the test suite, a dependency audit, and installer script checks on Linux, plus the portable regressions and backend checks on Linux, macOS, and Windows. The audit includes development dependencies because the renderer bundles some of them into the app. Apps are packaged only by the **Release** workflow, which runs the same checks alongside the builds.
 
 Before releasing, add a `## <version>` section to `CHANGELOG.md` that lists what changed, written for people using the app. The workflow publishes that section as the release notes, and the app shows them before a user updates.
 

@@ -1,25 +1,24 @@
-name: Check and package
+name: Checks
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  check:
-    uses: ./.github/workflows/tests.yml
-
-  linux:
+  tests:
+    name: Tests
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
@@ -28,36 +27,57 @@ jobs:
         with:
           node-version: '22.18.0'
           cache: npm
-      - name: Install desktop test dependencies
+      - name: Install test dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libfuse2
       - run: npm ci
-      - run: npx playwright install-deps chromium
-      - run: npm run desktop:package
-      - run: npm run desktop:smoke
-      - name: Checksum release files
-        working-directory: release
-        run: sha256sum *.AppImage latest-linux.yml > SHA256SUMS
-      - uses: actions/upload-artifact@v7
-        with:
-          name: linux-x64
-          compression-level: 0
-          if-no-files-found: error
-          path: |
-            release/*.AppImage
-            release/latest-linux.yml
-            release/SHA256SUMS
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: package-screenshots
-          if-no-files-found: ignore
-          path: release/smoke-*.png
+      - run: npm run setup:desktop
+      - run: npm run typecheck
+      - run: npm audit --audit-level=high
+      - name: Check the installer scripts
+        run: |
+          sh -n scripts/install.sh
+          sh -n desktop/apply-appimage-update.sh
+          shellcheck -s sh scripts/install.sh desktop/apply-appimage-update.sh
+          pwsh -NoProfile -Command '$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("scripts/install.ps1", [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
+      - run: npm test
 
-  mac:
-    runs-on: macos-26
-    timeout-minutes: 60
+  portable:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-26, windows-latest]
+        node: ['22.18.0', '24', '26']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Check request, filesystem, and proxy regressions
+        run: >-
+          node --experimental-strip-types --test --test-reporter=tap --test-concurrency=1
+          tests/audit-static.test.mjs tests/audit-files.test.mjs
+          tests/audit-remote-proxy.test.mjs
+          tests/audit-diff.test.mjs tests/audit-terminal-daemon.test.mjs
+          tests/audit-http.test.mjs tests/audit-diff-paths.test.mjs
+          tests/audit-containment-race.test.mjs tests/audit-tree-aba.test.mjs
+          tests/audit-zero-hunk.test.mjs tests/audit-git-paths.test.mjs
+          tests/audit-git-filename-diffs.test.mjs tests/workspace-branches.test.mjs
+
+  backend:
+    name: Backend / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-26, windows-latest]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -67,137 +87,8 @@ jobs:
           node-version: '22.18.0'
           cache: npm
       - run: npm ci
-      - run: node --test tests/computer-mac.test.mjs
-      - name: Package the macOS app
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          CSC_FOR_PULL_REQUEST: 'true'
-        run: npm run desktop:package -- --mac
-      - run: node desktop/smoke-mac.mjs
-      - name: Test the installer
-        run: |
-          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).version)")
-          mkdir -p "macdist/v$VERSION"
-          cp release/*.zip "macdist/v$VERSION/"
-          (cd "macdist/v$VERSION" && shasum -a 256 *.zip > SHA256SUMS)
-          cd macdist
-          python3 -m http.server 8791 --bind 127.0.0.1 >/dev/null 2>&1 &
-          for attempt in $(seq 1 40); do
-            curl -fsS --connect-timeout 2 --max-time 5 -o /dev/null "http://127.0.0.1:8791/" && break
-            sleep 0.5
-          done
-          curl -fsS --connect-timeout 2 --max-time 5 -o /dev/null "http://127.0.0.1:8791/" || { echo "The local release server did not answer on port 8791." >&2; exit 1; }
-          cd ..
-          HOME="$RUNNER_TEMP/install-home" CITROPY_VERSION="$VERSION" CITROPY_BASE_URL="http://127.0.0.1:8791" sh scripts/install.sh
-          APP="$RUNNER_TEMP/install-home/Applications/Citropy.app"
-          test -x "$APP/Contents/MacOS/Citropy"
-          codesign --verify --deep --strict "$APP"
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: mac-package
-          compression-level: 0
-          if-no-files-found: ignore
-          path: |
-            release/*.zip
-            release/latest-mac.yml
-
-  windows:
-    runs-on: windows-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22.18.0'
-          cache: npm
-      - run: npm ci
-      - name: Package the Windows app
-        run: npm run desktop:package -- --win
-      - run: node desktop/smoke-win.mjs
-      - name: Test the installer
-        shell: pwsh
-        run: |
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          $dir = "windist/v$version"
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          Copy-Item "release/*.exe" $dir
-          $lines = Get-ChildItem "$dir/*.exe" | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
-          Set-Content -Path "$dir/SHA256SUMS" -Value $lines
-          $server = Start-Process python -ArgumentList "-m","http.server","8794","--directory","windist" -PassThru
-          $ready = $false
-          for ($attempt = 0; $attempt -lt 40 -and -not $ready; $attempt++) {
-            if ($server.HasExited) { throw "The local release server exited with code $($server.ExitCode)." }
-            try { Invoke-WebRequest -Uri "http://127.0.0.1:8794/" -UseBasicParsing -TimeoutSec 2 | Out-Null; $ready = $true } catch { Start-Sleep -Milliseconds 500 }
-          }
-          if (-not $ready) { throw "The local release server did not answer on port 8794." }
-          $installed = Join-Path $env:LOCALAPPDATA "Programs\citropy\Citropy.exe"
-          $installDir = Split-Path $installed
-          try {
-            $env:CITROPY_VERSION = $version
-            $env:CITROPY_BASE_URL = "http://127.0.0.1:8794"
-            $env:CITROPY_RELAUNCH = "1"
-            ./scripts/install.ps1
-            if (-not (Test-Path $installed)) { throw "PowerShell 7 install failed: $installed is missing." }
-            Start-Sleep -Seconds 5
-            if (-not (Get-Process -Name Citropy -ErrorAction SilentlyContinue)) { throw "CITROPY_RELAUNCH did not start Citropy." }
-            Get-Process -Name Citropy -ErrorAction SilentlyContinue | Stop-Process -Force
-            Remove-Item Env:\CITROPY_RELAUNCH
-            ./scripts/install.ps1 -Uninstall
-            if (Test-Path $installDir) { throw "The uninstaller left $installDir behind." }
-            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1
-            if (-not (Test-Path $installed)) { throw "PowerShell 5.1 install failed." }
-            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Uninstall
-            if (Test-Path $installDir) { throw "The PowerShell 5.1 uninstall left $installDir behind." }
-            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Version 99.99.99
-            $missingRelease = $LASTEXITCODE
-            Write-Output "Installer exit code for a missing release: $missingRelease"
-            if ($missingRelease -eq 0) { throw "The installer accepted a missing release." }
-          }
-          finally {
-            Get-Process -Name Citropy -ErrorAction SilentlyContinue | Stop-Process -Force
-            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-          }
-          exit 0
-      - name: Test the installer through the invoker scope
-        shell: powershell
-        run: |
-          $ErrorActionPreference = "Stop"
-          $server = Start-Process python -ArgumentList "-m","http.server","8794","--directory","windist" -PassThru
-          $ready = $false
-          for ($attempt = 0; $attempt -lt 40 -and -not $ready; $attempt++) {
-            if ($server.HasExited) { throw "The local release server exited with code $($server.ExitCode)." }
-            try { Invoke-WebRequest -Uri "http://127.0.0.1:8794/" -UseBasicParsing -TimeoutSec 2 | Out-Null; $ready = $true } catch { Start-Sleep -Milliseconds 500 }
-          }
-          if (-not $ready) { throw "The local release server did not answer on port 8794." }
-          try {
-            $env:CITROPY_VERSION = (Get-Content package.json -Raw | ConvertFrom-Json).version
-            $env:CITROPY_BASE_URL = "http://127.0.0.1:8794"
-            Invoke-Expression (Get-Content -Raw scripts/install.ps1)
-            Write-Output "CITROPY_SESSION_ALIVE"
-            if (Get-Variable -Name Version -ErrorAction SilentlyContinue) { throw "The installer leaked its Version variable into the calling session." }
-            if (Get-Command Invoke-CitropyInstall -ErrorAction SilentlyContinue) { throw "The installer leaked its function into the calling session." }
-            $installed = Join-Path $env:LOCALAPPDATA "Programs\citropy\Citropy.exe"
-            if (-not (Test-Path $installed)) { throw "The invoker-scope install failed: $installed is missing." }
-          }
-          finally {
-            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-          }
-          exit 0
-      - name: Check the update metadata
-        shell: pwsh
-        run: |
-          if (-not (Test-Path release/latest.yml)) { throw "latest.yml is missing." }
-          if (-not (Get-ChildItem release/*.exe.blockmap)) { throw "The installer blockmap is missing." }
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: windows-package
-          compression-level: 0
-          if-no-files-found: ignore
-          path: |
-            release/*.exe
-            release/*.exe.blockmap
-            release/latest.yml
+      - name: Check the real backend HTTP boundary
+        run: node --experimental-strip-types --test --test-reporter=tap tests/audit-http-server.test.mjs
+      - name: Check macOS computer use
+        if: runner.os == 'macOS'
+        run: node --test tests/computer-mac.test.mjs

@@ -37,7 +37,7 @@ jobs:
 
   check:
     needs: validate
-    uses: ./.github/workflows/tests.yml
+    uses: ./.github/workflows/checks.yml
 
   linux:
     needs: validate
