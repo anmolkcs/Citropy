@@ -6,6 +6,10 @@ Each release publishes its section below as the release notes, which the app sho
 
 ### Fixed
 - The release notes arrows hide at the newest and oldest release instead of showing a button that does nothing.
+- "Ran 1 command" and similar summaries, and the Latest button, now highlight when you hover them.
+
+### Changed
+- The Latest button has slightly rounded corners instead of a pill shape.
 
 ## 0.4.12
 

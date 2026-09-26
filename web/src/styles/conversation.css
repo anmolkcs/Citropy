@@ -463,7 +463,9 @@
   color: var(--text-3);
   font-size: var(--text-sm);
   text-align: left;
-  transition: color var(--dur-instant) var(--ease-out);
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    color var(--dur-instant) var(--ease-out);
 }
 .group-summary .group-chevron { flex: none; transition: transform var(--dur-fast) var(--ease-out); }
 .group-body[data-open] > .group-summary .group-chevron { transform: rotate(90deg); }
@@ -482,7 +484,7 @@
 .tool-stack-mark + .tool-stack-mark { margin-left: -6px; }
 .tool-stack-mark .file-type-icon { color: var(--text-2); }
 @media (hover: hover) and (pointer: fine) {
-  .group-summary:hover { color: var(--text); }
+  .group-summary:hover { background: var(--raised); color: var(--text); }
 }
 .work-tree-row::after {
   top: 0;
@@ -1001,7 +1003,7 @@
   height: 28px;
   margin: 0 auto;
   padding: 0 11px;
-  border-radius: var(--r-full);
+  border-radius: var(--r-md);
   border: 0;
   background: var(--surface);
   backdrop-filter: blur(18px);
@@ -1012,10 +1014,16 @@
   box-shadow: var(--shadow-md);
   width: fit-content;
   z-index: 4;
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    color var(--dur-instant) var(--ease-out);
 }
 
-.jump:hover {
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .jump:hover {
+    background: var(--raised-2);
+    color: var(--text);
+  }
 }
 
 .turn-heading {
