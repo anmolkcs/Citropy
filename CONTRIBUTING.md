@@ -6,7 +6,7 @@ Bug reports and feature requests go through the [issue forms](https://github.com
 
 1. Install Node.js 22.18 or later, then run `npm ci`.
 2. Start the desktop app with `npm run desktop:dev`, or the web interface with `npm run dev`.
-3. Before opening a pull request, run `npm run typecheck` and `npm test`.
+3. Before opening a pull request, run `npm run typecheck`, `npm test`, and `npm run test:ui`.
 
 `docs/release.md` covers development data, ports, and packaging. `DESIGN.md` covers the interface rules.
 

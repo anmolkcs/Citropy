@@ -14,7 +14,7 @@ test.after(() => { eventJournal.close(); rmSync(directory, { recursive: true, fo
 test("shell registry tracks independent owners, bounded output and background lifetime", async (t) => {
   const events = [];
   const unsubscribe = bus.subscribe(event => events.push(event));
-  const input = { id: "shell", projectId: "project", threadId: "task", command: "npm run dev", cwd: "/example", background: false, stopMode: "task" };
+  const input = { id: "shell", projectId: "project", threadId: "task", command: "npm run dev", cwd: "/example", background: false };
   t.after(() => { bus.emit({ t: "project.remove", id: "project" }); unsubscribe(); });
   let taskStops = 0;
   let shellStops = 0;
@@ -42,14 +42,13 @@ test("shell registry tracks independent owners, bounded output and background li
   shellOutput("shell", "x".repeat(50000));
   assert.equal(shellList()[0].output.length, 32000);
   endShell("shell", "finished", true);
-  startShell({ ...input, background: true, stopMode: "shell" }, () => { shellStops++; });
+  startShell({ ...input, background: true }, () => { shellStops++; });
   assert.equal(shellList()[0].status, "running");
   assert.equal(shellList()[0].startedAt, original.startedAt);
   startShell({ ...input, command: "npm run dev --host" }, () => { taskStops++; });
   endShell("shell", "finished", true);
   endThreadShells("task", "failed", true);
   assert.equal(shellList()[0].status, "running");
-  assert.equal(shellList()[0].stopMode, "shell");
   await stopShell("shell");
   await stopShell("shell");
   assert.equal(shellStops, 1);
@@ -66,7 +65,7 @@ test("shell registry tracks independent owners, bounded output and background li
 });
 
 test("failed stop can be retried and old finished shells are evicted", async (t) => {
-  const input = { id: "retry", projectId: "cleanup", threadId: "task", command: "job", cwd: "/example", background: true, stopMode: "shell" };
+  const input = { id: "retry", projectId: "cleanup", threadId: "task", command: "job", cwd: "/example", background: true };
   t.after(() => bus.emit({ t: "project.remove", id: "cleanup" }));
   let attempts = 0;
   startShell(input, () => { if (++attempts === 1) throw new Error("Connection lost"); });

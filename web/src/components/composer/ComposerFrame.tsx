@@ -47,7 +47,7 @@ export function ComposerFrame() {
     const tabList = shell.querySelector<HTMLElement>(":scope > .composer-tabs")!;
     const draw = () => {
       const fillet = parseFloat(getComputedStyle(tabList).paddingLeft);
-      const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-question-tab")].map((tab) => {
+      const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-wide-tab")].map((tab) => {
         const style = getComputedStyle(tab);
         const transform = new DOMMatrixReadOnly(style.transform);
         const offset = offsetWithin(tab, shell);
@@ -77,7 +77,7 @@ export function ComposerFrame() {
     resize.observe(shell);
     resize.observe(tabList);
     const mutation = new MutationObserver((records) => {
-      if (records.some((record) => record.type === "childList" || (record.target as Element).matches(".composer-tab, .composer-question-tab"))) draw();
+      if (records.some((record) => record.type === "childList" || (record.target as Element).matches(".composer-tab, .composer-wide-tab"))) draw();
     });
     mutation.observe(tabList, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     return () => {

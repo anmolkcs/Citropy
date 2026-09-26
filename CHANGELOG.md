@@ -7,9 +7,11 @@ Each release publishes its section below as the release notes, which the app sho
 ### Added
 - Arrows next to "What's in" in the update popover page through the notes of earlier releases.
 - A copy button on code blocks in the chat.
+- A Plan tab on the message box shows the agent's checklist while steps remain.
 
 ### Changed
-- Questions from the agent rise out of the message box as a wide tab, joined to it like the Git and shell tabs.
+- Questions and permission requests from the agent rise out of the message box as a wide tab, joined to it like the Git and shell tabs.
+- Stopping a shell the agent started now stops only that command. The agent keeps working instead of stopping too.
 - A new video player with play, a seek bar, time, mute, and full screen. Controls hide while the video plays, and Space, K, M, F, and the arrow keys work.
 
 ### Fixed

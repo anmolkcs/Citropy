@@ -27,7 +27,7 @@ npm run typecheck
 
 Use the relevant files under `tests/` in place of these examples. Keep performance regressions deterministic by checking unnecessary work or resource cleanup rather than asserting wall-clock timings. Unit tests can advance mocked timers; browser and process integration tests still need to wait for the actual result.
 
-The suite covers only behavior that differs between operating systems: paths, shells and terminals, program lookup, installers, and updates. `npm test` runs it in about ten seconds. Each release job also launches the packaged app on its own operating system.
+The suite covers only behavior that differs between operating systems: paths, shells and terminals, program lookup, installers, and updates. `npm test` runs it in about ten seconds. `npm run test:ui` drives the real interface in Chromium for the flows that broke before: typing in the composer, the composer tabs, code copying, the image viewer, release notes, and the video player. Run `npx playwright install chromium` once before it. Each release job also launches the packaged app on its own operating system.
 
 ## Local release check
 

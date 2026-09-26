@@ -19,6 +19,7 @@
     "serve": "node --experimental-strip-types server/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:ui": "node --experimental-strip-types --test tests/ui/*.test.mjs",
     "desktop": "npm run build && node desktop/start.mjs",
     "setup:desktop": "node node_modules/electron/install.js",
     "desktop:dev": "node desktop/start.mjs --dev",

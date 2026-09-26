@@ -56,7 +56,7 @@ function attach(session: TerminalSession, recovered = false): void {
   if (session.panel) openPanel(session.panel.projectId, "terminal", session.panel.threadId, session.id);
   const panel = session.panel ?? panelList().find(panel => panel.id === session.id);
   if (panel) {
-    startShell({ id: `terminal:${session.id}`, projectId: panel.projectId, threadId: panel.threadId, panelId: panel.id, command: session.command || "", cwd: session.cwd, background: true, stopMode: "shell" }, async () => { await close(session.id); closePanel(session.id); });
+    startShell({ id: `terminal:${session.id}`, projectId: panel.projectId, threadId: panel.threadId, panelId: panel.id, command: session.command || "", cwd: session.cwd, background: true }, async () => { await close(session.id); closePanel(session.id); });
     shellActivity(`terminal:${session.id}`, session.busy, session.process);
     shellOutput(`terminal:${session.id}`, session.output);
     if (!session.running) endShell(`terminal:${session.id}`, session.code === 0 ? "finished" : "failed");

@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { ArrowRight, ChevronLeft, MessageCircleQuestion } from "lucide-react";
 import type { QuestionRequest } from "../../../shared/questions.ts";
 import { useApp, type AppState } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { api } from "../lib/api.ts";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 import "../styles/questions.css";
 
 const emptyDraft: AppState["questionDrafts"][string] = { index: 0, choices: {}, text: {} };
@@ -17,8 +17,6 @@ export function QuestionPanel() {
 
 function QuestionForm({ request }: { request: QuestionRequest }) {
   const t = useI18n();
-  const reducedMotion = useReducedMotion();
-  const hidden = reducedMotion ? "none" : "translateY(100%)";
   const connected = useApp(state => state.connected);
   const draft = useApp(state => state.questionDrafts[request.id] ?? emptyDraft);
   const [submitting, setSubmitting] = useState(false);
@@ -63,14 +61,7 @@ function QuestionForm({ request }: { request: QuestionRequest }) {
     }
   };
 
-  return <motion.section
-    className="question-panel composer-question-tab"
-    aria-label={t("Your input")}
-    initial={{ transform: hidden }}
-    animate={{ transform: "none" }}
-    exit={{ transform: hidden, pointerEvents: "none", transition: { duration: reducedMotion ? 0 : 0.2, ease: [0.32, 0, 0.67, 0] } }}
-    transition={{ duration: reducedMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
-  >
+  return <ComposerWideTab className="question-panel" aria-label={t("Your input")}>
     <form className="question-form" onSubmit={event => { event.preventDefault(); if (!ready) return; if (last) void submit(); else navigate(draft.index + 1); }}>
       <header className="question-heading">
         <MessageCircleQuestion size={16} aria-hidden="true" />
@@ -103,5 +94,5 @@ function QuestionForm({ request }: { request: QuestionRequest }) {
         </div>
       </footer>
     </form>
-  </motion.section>;
+  </ComposerWideTab>;
 }

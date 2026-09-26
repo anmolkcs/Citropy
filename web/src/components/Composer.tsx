@@ -40,6 +40,7 @@ import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
 import { GitActions } from "./GitActions.tsx";
 import { ComposerFrame } from "./composer/ComposerFrame.tsx";
+import { PlanTab } from "./composer/PlanTab.tsx";
 
 export function Composer({
   onUsage,
@@ -250,13 +251,14 @@ export function Composer({
         <ComposerFrame />
         <div className="composer-tabs">
           <QuestionPanel />
+          <PermissionPanel />
           <UsageLimitTab threadId={thread.id} />
+          <PlanTab threadId={thread.id} />
           <QueueList thread={thread} provider={provider} onEdit={restore} />
           {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
           <RunningShells onOpen={onShell} />
         </div>
         <div className="composer-dock">
-          <PermissionPanel />
           {thread.finished && !running && (
             <div className="composer-finished" role="status">
               <CheckCircle2 size={14} aria-hidden="true" />

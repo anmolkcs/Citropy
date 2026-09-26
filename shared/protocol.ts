@@ -78,7 +78,6 @@ export interface ShellProcess {
   cwd: string;
   status: "running" | "stopping" | "finished" | "failed" | "stopped";
   background: boolean;
-  stopMode: "shell" | "task";
   output: string;
   startedAt: number;
   endedAt?: number;

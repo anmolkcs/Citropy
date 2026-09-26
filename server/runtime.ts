@@ -24,6 +24,7 @@ import type { AgentEvent, SessionConfig } from "./providers/types.ts";
 import type { AgentSession } from "./providers/types.ts";
 import { startShell, shellOutput, endShell, endThreadShells, shellList } from "./shells.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
+import { stopCommandProcess } from "./shell-process.ts";
 import { ThreadTranscript } from "./thread-transcript.ts";
 import type {
   Message,
@@ -583,11 +584,8 @@ export class ThreadRuntime {
     startShell({
       id: this.#shellId(callId), projectId: this.#thread.projectId, threadId: this.id,
       command, cwd: typeof input.cwd === "string" ? input.cwd : this.#cwd,
-      background: Boolean(taskId), stopMode: native ? "shell" : "task",
-    }, native ? () => native.call(this.#session, taskId) : async () => {
-      disposeRuntime(this.id);
-      await waitForStoppedProcesses();
-    });
+      background: Boolean(taskId),
+    }, native ? () => native.call(this.#session, taskId) : () => stopCommandProcess(command));
   }
 
   #consume(event: AgentEvent): void {

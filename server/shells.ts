@@ -38,12 +38,12 @@ export function startShell(input: Omit<ShellProcess, "status" | "startedAt" | "o
   const existing = entries.get(input.id);
   if (existing) {
     if (existing.shell.background && !input.background) {
-      input = { ...input, background: true, stopMode: existing.shell.stopMode };
+      input = { ...input, background: true };
       stop = existing.stop;
     }
     const command = (input.command || existing.shell.command).slice(0, 8000);
     const promoted = input.background && !existing.shell.background;
-    if (existing.shell.command === command && existing.shell.background === input.background && existing.shell.cwd === input.cwd && existing.shell.stopMode === input.stopMode) return;
+    if (existing.shell.command === command && existing.shell.background === input.background && existing.shell.cwd === input.cwd) return;
     Object.assign(existing.shell, input, { command });
     if (promoted && existing.shell.status !== "stopping") {
       existing.shell.status = "running";

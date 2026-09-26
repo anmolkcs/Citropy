@@ -84,7 +84,7 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
           if (selected.threadId) useApp.setState({ searchMessageId: null, searchShellId: selected.id });
           onClose();
         }}><ExternalLink size={13} />{t("Show command")}</button>
-        {<button type="button" className="btn btn-sm" disabled={!connected || Boolean(pending) || selected.status === "stopping"} onClick={() => void stop(selected)}><Square size={12} />{t(selected.status === "stopping" || pending === selected.id ? "Stopping…" : selected.stopMode === "shell" ? "Stop shell" : "Stop task")}</button>}
+        {<button type="button" className="btn btn-sm" disabled={!connected || Boolean(pending) || selected.status === "stopping"} onClick={() => void stop(selected)}><Square size={12} />{t(selected.status === "stopping" || pending === selected.id ? "Stopping…" : "Stop shell")}</button>}
       </div>
       {error?.id === selected.id && <p className="shell-error" role="alert">{error.message}</p>}
     </div>}

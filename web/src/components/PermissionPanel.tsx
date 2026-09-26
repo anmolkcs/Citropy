@@ -1,10 +1,12 @@
 import { useId, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import type { PermissionRequest } from "../../../shared/protocol.ts";
 import { answerPermission } from "../lib/actions.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { useApp } from "../lib/store.ts";
 import { Ban, Check, CheckCheck, ChevronDown, shapeIcon } from "./icons.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 
 function lines(value: unknown): string[] {
   return typeof value === "string" ? value.split("\n") : [];
@@ -79,7 +81,7 @@ function Body({ request }: { request: PermissionRequest }) {
 
 export function PermissionPanel() {
   const request = useApp((state) => state.permissions[0]);
-  return request ? <PermissionRow key={request.id} request={request} /> : null;
+  return <AnimatePresence>{request && <PermissionRow key={request.id} request={request} />}</AnimatePresence>;
 }
 
 function PermissionRow({ request }: { request: PermissionRequest }) {
@@ -99,7 +101,7 @@ function PermissionRow({ request }: { request: PermissionRequest }) {
     answerPermission(request.id, decision);
 
   return (
-    <section className="permission-panel" aria-label={t("Review this action")}>
+    <ComposerWideTab className="permission-panel" aria-label={t("Review this action")}>
       <div className="permission-card">
         <div className="permission-row">
           <button
@@ -163,6 +165,6 @@ function PermissionRow({ request }: { request: PermissionRequest }) {
           )}
         </div>
       </div>
-    </section>
+    </ComposerWideTab>
   );
 }
