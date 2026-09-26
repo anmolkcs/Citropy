@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.4.12
+
+### Fixed
+- Closed four security flaws in how the code editor cleans up HTML before showing it.
+
 ## 0.4.11
 
 ### Fixed
