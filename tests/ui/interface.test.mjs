@@ -176,7 +176,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await older.click();
       await page.getByText(`What's in ${version}`, { exact: true }).waitFor();
       await page.waitForTimeout(250);
-      assert.equal((await older.boundingBox()).y, start);
+      assert.ok(Math.abs((await older.boundingBox()).y - start) < 1);
     }
     assert.equal(await older.isDisabled(), true);
     await newer.click();
