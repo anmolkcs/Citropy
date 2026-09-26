@@ -241,8 +241,18 @@
   font-size: var(--text-xs);
 }
 .app-update-popover:has(.app-update-notes) {
+  display: flex;
+  flex-direction: column;
   max-height: min(460px, calc(100vh - 80px));
-  overflow-y: auto;
+}
+.app-update-popover:has(.app-update-notes) > * {
+  flex: none;
+}
+.app-update-popover > .app-update-notes {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
 .navigation-strip .app-update-popover:has(.app-update-notes) {
   width: 340px;
@@ -256,8 +266,26 @@
   align-items: center;
   gap: 2px;
 }
-.app-update-notes-heading strong {
+.app-update-notes-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 8px;
+}
+.app-update-notes-title,
+.app-update-notes-body {
+  position: relative;
+}
+.app-update-notes-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.app-update-notes-title {
   flex: 1;
+  min-width: 0;
+}
+.app-update-notes-title strong {
+  display: block;
   color: var(--text);
   font-weight: 500;
 }

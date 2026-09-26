@@ -13,6 +13,12 @@ import {
 import type { AppUpdateState, ReleaseNotes } from "../../../shared/app-update.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
+const notesMotion = {
+  enter: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({ opacity: 0, transform: reducedMotion ? "none" : `translateX(${-8 * step}px)` }),
+  shown: { opacity: 1, transform: "none" },
+  leave: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({ opacity: 0, transform: reducedMotion ? "none" : `translateX(${8 * step}px)` }),
+};
+
 const size = (bytes?: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "";
 
@@ -30,6 +36,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   const [history, setHistory] = useState<ReleaseNotes[]>();
   const [historyError, setHistoryError] = useState(false);
   const [browsed, setBrowsed] = useState<number>();
+  const [direction, setDirection] = useState(1);
   const id = useId();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const alive = useRef(true);
@@ -115,7 +122,9 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
     }
     const from = releases.findIndex((release) => release.version === notes?.version);
     const next = from + step;
-    if (from >= 0 && next >= 0 && next < releases.length) setBrowsed(next);
+    if (from < 0 || next < 0 || next >= releases.length) return;
+    setDirection(step);
+    setBrowsed(next);
   };
   const show = () => {
     clearTimeout(timer.current);
@@ -145,6 +154,12 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
         }));
     }
   };
+  const releaseArrows = (
+    <>
+      <button type="button" className="icon-btn" aria-label={t("Older release")} title={t("Older release")} disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
+      <button type="button" className="icon-btn" aria-label={t("Newer release")} title={t("Newer release")} disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
+    </>
+  );
   const Icon =
     state.status === "error"
       ? TriangleAlert
@@ -166,7 +181,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
       onPointerLeave={hide}
       onFocus={show}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) hide();
+        if (!event.currentTarget.contains(event.relatedTarget) && !event.currentTarget.matches(":hover")) hide();
       }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -242,17 +257,29 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
           {notes ? (
             <div className="app-update-notes">
               <div className="app-update-notes-heading">
-                <strong>{t("What's in {version}", { version: notes.version })}</strong>
-                <button type="button" className="icon-btn" aria-label={t("Older release")} title={t("Older release")} disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
-                <button type="button" className="icon-btn" aria-label={t("Newer release")} title={t("Newer release")} disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
+                <span className="app-update-notes-title">
+                  <AnimatePresence initial={false} mode="popLayout" custom={{ step: direction, reducedMotion }}>
+                    <motion.strong key={notes.version} custom={{ step: direction, reducedMotion }} variants={notesMotion} initial="enter" animate="shown" exit="leave" transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}>
+                      {t("What's in {version}", { version: notes.version })}
+                    </motion.strong>
+                  </AnimatePresence>
+                </span>
+                {variant === "settings" && releaseArrows}
               </div>
               {historyError && <p className="app-update-notes-error">{t("Could not load older releases.")}</p>}
-              {notes.sections.map((section) => (
-                <section key={section.title}>
-                  {section.title && <span>{section.title}</span>}
-                  <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
-                </section>
-              ))}
+              <div className="app-update-notes-body">
+                <AnimatePresence initial={false} mode="popLayout" custom={{ step: direction, reducedMotion }}>
+                  <motion.div key={notes.version} custom={{ step: direction, reducedMotion }} variants={notesMotion} initial="enter" animate="shown" exit="leave" transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}>
+                    {notes.sections.map((section) => (
+                      <section key={section.title}>
+                        {section.title && <span>{section.title}</span>}
+                        <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                      </section>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              {variant !== "settings" && <div className="app-update-notes-footer">{releaseArrows}</div>}
             </div>
           ) : state.notesError && (
             <p className="app-update-notes-error">{t("Could not load what this release includes.")}</p>
