@@ -397,6 +397,9 @@
 }
 .composer-tabs { --tab-fillet: 6px; position: absolute; right: calc(18px - var(--tab-fillet)); bottom: 100%; display: flex; align-items: flex-end; gap: calc(2 * var(--tab-fillet)); padding: 0 var(--tab-fillet); overflow: clip; }
 .composer-tabs:empty { display: none; }
+.composer-tabs:has(> .composer-question-tab) { left: calc(18px - var(--tab-fillet)); }
+.composer-question-tab { flex: 1; min-width: 0; padding: 0; border-radius: 14px 14px 0 0; }
+.composer-question-tab .question-form { width: 100%; border-radius: 0; box-shadow: none; background: transparent; }
 .composer-tabs > .git-actions { display: contents; }
 .composer-tab {
   display: inline-flex;

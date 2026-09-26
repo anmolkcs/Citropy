@@ -249,13 +249,13 @@ export function Composer({
       >
         <ComposerFrame />
         <div className="composer-tabs">
+          <QuestionPanel />
           <UsageLimitTab threadId={thread.id} />
           <QueueList thread={thread} provider={provider} onEdit={restore} />
           {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
           <RunningShells onOpen={onShell} />
         </div>
         <div className="composer-dock">
-          <QuestionPanel />
           <PermissionPanel />
           {thread.finished && !running && (
             <div className="composer-finished" role="status">

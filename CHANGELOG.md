@@ -9,6 +9,7 @@ Each release publishes its section below as the release notes, which the app sho
 - A copy button on code blocks in the chat.
 
 ### Changed
+- Questions from the agent rise out of the message box as a wide tab, joined to it like the Git and shell tabs.
 - A new video player with play, a seek bar, time, mute, and full screen. Controls hide while the video plays, and Space, K, M, F, and the arrow keys work.
 
 ### Fixed
