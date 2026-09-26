@@ -207,11 +207,14 @@ test("duplicate clicks, no release, verification failures, and blocked restarts 
 });
 
 test("development builds cannot download and current versions cannot downgrade", async (t) => {
-  const disabled = fixture({ unavailable: "Development build" });
+  const notes = [{ title: "Fixed", items: ["A fix"] }];
+  const disabled = fixture({ unavailable: "Development build", releaseNotes: async () => notes });
   t.after(() => disabled.control.dispose());
   await disabled.control.command("download");
   assert.equal(disabled.control.state().status, "unsupported");
   assert.deepEqual(disabled.calls, []);
+  await tick();
+  assert.deepEqual(disabled.control.state().notes, { version: "0.1.0", sections: notes });
   const { control, updater } = fixture();
   t.after(() => control.dispose());
   updater.checkForUpdates = async () => {

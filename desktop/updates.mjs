@@ -224,7 +224,7 @@ export function createAppUpdater({
         },
         4 * 60 * 60 * 1000,
       );
-  if (!unavailable) loadNotes(version);
+  loadNotes(version);
   startup?.unref();
   interval?.unref();
   return {

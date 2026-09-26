@@ -33,6 +33,7 @@ export function Titlebar({
     activeThreadId ? state.threads[activeThreadId] : undefined,
   );
   const inspectorOpen = useApp((state) => state.inspectorOpen);
+  const development = useApp((state) => state.development);
   const globalMode = useApp((state) => state.sidebarMode === "global");
 
   const project = projects.find((entry) => entry.id === activeProjectId);
@@ -65,6 +66,7 @@ export function Titlebar({
       <div className="topbar-left">
         <div className="brand">
           <span>Citropy</span>
+          {development && <small className="brand-tag">dev</small>}
         </div>
         <div className="topbar-navigation">
           <NotificationCenter key={environment} onOpen={onNotification} />
