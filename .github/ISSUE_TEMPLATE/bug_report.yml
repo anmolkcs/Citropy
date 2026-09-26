@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in Citropy doesn't work as expected.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Citropy version
+      description: Shown in Settings under Application.
+      placeholder: 0.4.11
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      description: The agent the conversation used, if the bug happened in one.
+      options:
+        - Not in a conversation
+        - Claude Code
+        - Codex
+        - OpenCode
+        - Cursor
+        - Pi
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a conversation
+        2. ...
+    validations:
+      required: true

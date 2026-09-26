@@ -4,6 +4,7 @@
   <p><b>Claude Code, Codex, OpenCode, Cursor, and Pi in one desktop app.</b></p>
   <p>
     <a href="https://github.com/tinuxongit/Citropy/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tinuxongit/Citropy?label=release"></a>
+    <a href="https://github.com/tinuxongit/Citropy/actions/workflows/checks.yml"><img alt="Checks" src="https://github.com/tinuxongit/Citropy/actions/workflows/checks.yml/badge.svg?branch=main"></a>
     <img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-1793D1.svg">
     <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   </p>
