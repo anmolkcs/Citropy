@@ -35,6 +35,19 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
       data-live={(streaming && live) || revealing || undefined}
       aria-busy={revealing || undefined}
       onClick={event => {
+        const copy = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.code-copy") : null;
+        if (copy && root.current?.contains(copy)) {
+          const code = copy.closest("figure")?.querySelector("pre code")?.textContent ?? "";
+          void navigator.clipboard.writeText(code).then(() => {
+            copy.dataset.copied = "";
+            copy.setAttribute("aria-label", t("Copied"));
+            setTimeout(() => {
+              delete copy.dataset.copied;
+              copy.setAttribute("aria-label", t("Copy code"));
+            }, 1500);
+          });
+          return;
+        }
         const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.markdown-image") : null;
         const selected = button?.querySelector("img");
         if (!selected || !root.current?.contains(button)) return;

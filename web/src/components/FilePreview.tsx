@@ -3,6 +3,7 @@ import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useState } from "react";
 import { X, Download, Code, Eye } from "lucide-react";
 import { FileIcon } from "./FileIcon.tsx";
+import { VideoPlayer } from "./VideoPlayer.tsx";
 import { SourceView } from "./SourceView.tsx";
 import { useApp } from "../lib/store.ts";
 import { api, assetQuery } from "../lib/api.ts";
@@ -115,7 +116,7 @@ export function FilePreview({
             </div>
           ) : file.mime.startsWith("video/") ? (
             <div className="media-preview">
-              <video src={url} controls preload="metadata" />
+              <VideoPlayer src={url} name={file.name} />
             </div>
           ) : file.mime.startsWith("audio/") ? (
             <div className="media-preview">

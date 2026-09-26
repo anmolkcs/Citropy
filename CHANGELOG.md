@@ -6,8 +6,13 @@ Each release publishes its section below as the release notes, which the app sho
 
 ### Added
 - Arrows next to "What's in" in the update popover page through the notes of earlier releases.
+- A copy button on code blocks in the chat.
+
+### Changed
+- A new video player with play, a seek bar, time, mute, and full screen. Controls hide while the video plays, and Space, K, M, F, and the arrow keys work.
 
 ### Fixed
+- Clicking anywhere outside the image closes the image viewer.
 - Closed four security flaws in how the code editor cleans up HTML before showing it.
 
 ## 0.4.11

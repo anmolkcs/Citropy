@@ -73,6 +73,7 @@ export const chatEs: Record<string, string> = {
   "Next image": "Imagen siguiente",
   "Image {current} of {total}": "Imagen {current} de {total}",
   "Image unavailable": "Imagen no disponible",
+  "Copy code": "Copiar código",
   "Image zoom": "Zoom de imagen",
   "Zoom out": "Alejar",
   "Zoom in": "Acercar",

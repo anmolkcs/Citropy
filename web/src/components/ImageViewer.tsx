@@ -36,6 +36,15 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
+    const dialog = viewport.current?.closest("dialog");
+    if (!dialog) return;
+    const closeOutside = (event: MouseEvent) => {
+      if (event.target instanceof Element && !event.target.closest("img, button, a, .image-zoom")) onClose();
+    };
+    dialog.addEventListener("click", closeOutside);
+    return () => dialog.removeEventListener("click", closeOutside);
+  }, [onClose]);
+  useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof Element)) return;
       const dialog = viewport.current?.closest("dialog");
@@ -80,8 +89,8 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
     </div>}
   >
     {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label={t("Previous image")} title={t("Previous image")} aria-disabled={index === 0} onClick={() => { if (index > 0) onIndexChange(index - 1); }}><ChevronLeft size={24} /></button>}
-    <div className="image-viewport scroll" ref={viewport} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      {error ? <p className="image-viewer-error" role="alert">{t("Unable to load this image.")}</p> : <div className="image-surface" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="image-viewport scroll" ref={viewport}>
+      {error ? <p className="image-viewer-error" role="alert">{t("Unable to load this image.")}</p> : <div className="image-surface">
         <img
           key={src}
           src={src}

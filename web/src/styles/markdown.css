@@ -196,13 +196,54 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
 }
 
 .code-block figcaption {
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 4px 3px 12px;
   background: var(--panel);
   color: var(--text-4);
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.code-copy {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.code-copy svg {
+  grid-area: 1 / 1;
+  width: 14px;
+  height: 14px;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.code-copy-done,
+.code-copy[data-copied] .code-copy-idle {
+  opacity: 0;
+  transform: scale(0.9);
+}
+.code-copy[data-copied] .code-copy-done {
+  opacity: 1;
+  transform: none;
+  color: var(--ok);
+}
+@media (hover: hover) and (pointer: fine) {
+  .code-copy:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .code-copy svg { transition: opacity var(--dur-fast) var(--ease-out); }
+  .code-copy-done,
+  .code-copy[data-copied] .code-copy-idle { transform: none; }
 }
 
 .code-block pre {
