@@ -6,6 +6,7 @@ import { api, reportError } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
 import type { ComputerCapabilities, ComputerFrame, ComputerAction } from "../../../shared/computer.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import { clock } from "../lib/format.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
@@ -121,7 +122,7 @@ export function ComputerPane({ active }: { active: boolean }) {
       ) : (
         <>
           <div className="computer-controls">
-            <select aria-label={t("Shared screen")} value={screenId} onChange={(event) => setDisplay(event.target.value)}>{state.displays.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.width} × {item.height}</option>)}</select>
+            <Select aria-label={t("Shared screen")} value={screenId} onChange={setDisplay} options={state.displays.map((item) => ({ value: item.id, label: `${item.name} · ${item.width} × ${item.height}` }))} />
             <button className="icon-btn" title={t("Refresh screenshot")} aria-label={t("Refresh computer screenshot")} onClick={() => setRefresh((value) => value + 1)}><RefreshCw size={16} /></button>
             <button className="icon-btn" data-active={live} title={live ? t("Pause preview updates") : t("Resume preview updates")} aria-label={t("Live preview")} aria-pressed={live} onClick={() => setLive(!live)}>{live ? <Pause size={15} /> : <Play size={15} />}</button>
             <button className="icon-btn" title={expanded ? t("Reduce preview") : t("Enlarge preview")} aria-label={t("Enlarge computer preview")} aria-pressed={expanded} onClick={() => { setInteractive(false); setExpanded(!expanded); }}><Maximize2 size={16} /></button>

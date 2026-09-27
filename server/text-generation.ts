@@ -58,7 +58,7 @@ function run(binary: string, args: string[], cwd: string, prompt: string, signal
   });
 }
 
-function generateCursorText(cwd: string, model: string, prompt: string, signal: AbortSignal, launch: ProviderLaunch): Promise<string> {
+function generateCursorText(cwd: string, model: string, effort: string | undefined, prompt: string, signal: AbortSignal, launch: ProviderLaunch): Promise<string> {
   return new Promise((resolve, reject) => {
     let output = "";
     let session: ReturnType<typeof providers.cursor.start> | undefined;
@@ -76,7 +76,7 @@ function generateCursorText(cwd: string, model: string, prompt: string, signal: 
     signal.addEventListener("abort", abort, { once: true });
     if (signal.aborted) return abort();
     try {
-      session = providers.cursor.start({ ...launch, cwd, model, threadId: "writing", permissionMode: "plan", emit: event => {
+      session = providers.cursor.start({ ...launch, cwd, model, effort, threadId: "writing", permissionMode: "plan", emit: event => {
         if (event.type === "block.start" && event.block === "text") textBlocks.add(event.blockId);
         if (event.type === "block.delta" && textBlocks.has(event.blockId)) {
           output += event.text;
@@ -111,6 +111,7 @@ export async function generateText(selection: WritingModel, instruction: string,
     let result: unknown;
     if (selection.provider === "claude") {
       const raw = await run(launch.binary ?? provider.binary, ["-p", "--output-format", "json", "--json-schema", JSON.stringify(schema), "--model", selection.model,
+        ...(selection.effort ? ["--effort", selection.effort] : []),
         "--tools", "", "--disable-slash-commands", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
         "--permission-mode", "dontAsk", "--settings", '{"disableAllHooks":true}', "--no-session-persistence"], cwd, prompt, controller.signal, launch.environment);
       const envelope = JSON.parse(raw);
@@ -122,19 +123,21 @@ export async function generateText(selection: WritingModel, instruction: string,
       await writeFile(schemaPath, JSON.stringify(schema), { mode: 0o600 });
       await run(launch.binary ?? provider.binary, ["exec", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--skip-git-repo-check",
         "--sandbox", "read-only", "--model", selection.model, "--config", 'approval_policy="never"',
+        ...(selection.effort ? ["--config", `model_reasoning_effort=${JSON.stringify(selection.effort)}`] : []),
         "--config", "features.shell_tool=false", "--config", "features.apply_patch_freeform=false", "--config", 'web_search="disabled"',
         "--config", "project_doc_max_bytes=0",
         "--output-schema", schemaPath, "--output-last-message", output, "--color", "never", "-"], cwd, prompt, controller.signal, launch.environment);
       result = JSON.parse(await readFile(output, "utf8"));
     } else if (selection.provider === "pi") {
       const raw = await run(launch.binary ?? provider.binary, ["--print", "--mode", "text", "--model", selection.model,
+        ...(selection.effort ? ["--thinking", selection.effort] : []),
         "--no-tools", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-session", "--no-approve"], cwd, prompt, controller.signal, launch.environment);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     } else if (selection.provider === "cursor") {
-      const raw = await generateCursorText(cwd, selection.model, prompt, controller.signal, launch);
+      const raw = await generateCursorText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     } else {
-      const raw = await generateOpenCodeText(cwd, selection.model, prompt, controller.signal, launch);
+      const raw = await generateOpenCodeText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     }
     if (!result || typeof result !== "object" || !("title" in result) || !("body" in result) ||

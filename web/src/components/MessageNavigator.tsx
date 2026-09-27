@@ -14,7 +14,7 @@ export const MessageNavigator = memo(function MessageNavigator({
   onSelect: (messageId: string) => void;
 }) {
   const t = useI18n();
-  const messages = useMemo(() => rows.filter((row) => row.first), [rows]);
+  const messages = useMemo(() => rows.filter((row): row is TimelineRow & { messageId: string } => row.first && row.messageId !== undefined), [rows]);
   const [preview, setPreview] = useState<string>();
   const activeIndex = Math.max(
     0,

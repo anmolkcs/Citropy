@@ -1,5 +1,6 @@
 import { useGitHub } from "../../lib/use-github.ts";
 import { useI18n } from "../../lib/i18n.ts";
+import { Select } from "../Select.tsx";
 import { github } from "../../lib/actions.ts";
 import {
   GitHubDialog,
@@ -193,11 +194,15 @@ export function GitHubItemDialog({
         </>
       )}
       {action === "review" && (
-        <label className="git-field">{" "}{t("Review decision")}{" "}<select name="event">
-            <option value="COMMENT">{t("Comment")}</option>
-            <option value="APPROVE">{t("Approve")}</option>
-            <option value="REQUEST_CHANGES">{t("Request changes")}</option>
-          </select>
+        <label className="git-field">{" "}{t("Review decision")}{" "}<Select
+            name="event"
+            defaultValue="COMMENT"
+            options={[
+              { value: "COMMENT", label: t("Comment") },
+              { value: "APPROVE", label: t("Approve") },
+              { value: "REQUEST_CHANGES", label: t("Request changes") },
+            ]}
+          />
         </label>
       )}
       {["new", "edit", "comment", "review"].includes(action) && (
@@ -247,7 +252,7 @@ export function GitHubItemDialog({
         </label>
       )}
       {action === "merge" && (
-        <label className="git-field">{" "}{t("Merge method")}{" "}<select
+        <label className="git-field">{" "}{t("Merge method")}{" "}<Select
             name="method"
             defaultValue={
               repository.allow_squash_merge
@@ -256,17 +261,12 @@ export function GitHubItemDialog({
                   ? "merge"
                   : "rebase"
             }
-          >
-            {repository.allow_squash_merge && (
-              <option value="squash">{t("Squash and merge")}</option>
-            )}
-            {repository.allow_merge_commit && (
-              <option value="merge">{t("Create a merge commit")}</option>
-            )}
-            {repository.allow_rebase_merge && (
-              <option value="rebase">{t("Rebase and merge")}</option>
-            )}
-          </select>
+            options={[
+              ...repository.allow_squash_merge ? [{ value: "squash", label: t("Squash and merge") }] : [],
+              ...repository.allow_merge_commit ? [{ value: "merge", label: t("Create a merge commit") }] : [],
+              ...repository.allow_rebase_merge ? [{ value: "rebase", label: t("Rebase and merge") }] : [],
+            ]}
+          />
           <small>{" "}{t("Commit")}{" "}{item?.head?.sha.slice(0, 12)}{" "}{t("into")}{" "}{item?.base?.ref}
           </small>
         </label>

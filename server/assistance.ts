@@ -43,8 +43,10 @@ export function configureAssistance(input: Record<string, unknown>, available: P
     const provider = value && available.find((entry) => entry.id === value.provider && entry.enabled);
     const instance = value.providerInstanceId ? provider?.instances?.find(entry => entry.id === value.providerInstanceId) : undefined;
     const models = instance ? instance.models : provider?.models ?? [];
-    if (!provider || (value.providerInstanceId ? !instance?.available : !provider.available) || !models.some((model) => model.id === value.model)) throw new Error("Select an available writing model.");
-    next[key] = { provider: provider.id, model: value.model, ...(value.providerInstanceId ? { providerInstanceId: value.providerInstanceId } : {}) };
+    const model = models.find((entry) => entry.id === value.model);
+    if (!provider || (value.providerInstanceId ? !instance?.available : !provider.available) || !model) throw new Error("Select an available writing model.");
+    if (value.effort !== undefined && !model.efforts?.includes(value.effort)) throw new Error("Select an effort this writing model supports.");
+    next[key] = { provider: provider.id, model: value.model, ...(value.providerInstanceId ? { providerInstanceId: value.providerInstanceId } : {}), ...(value.effort ? { effort: value.effort } : {}) };
   }
   store.configureAssistance(next);
   return next;

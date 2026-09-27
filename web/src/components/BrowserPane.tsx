@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,13 +7,17 @@ import {
   ArrowUpRight,
   Monitor,
   AlertCircle,
+  Check,
+  Link,
+  X,
 } from "lucide-react";
 import { send } from "../lib/socket.ts";
+import { reportError } from "../lib/api.ts";
+import { addressOrSearch } from "../lib/web-search.ts";
 import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
 
 export function BrowserPane({
   panel,
@@ -26,10 +30,12 @@ export function BrowserPane({
   const state = useApp((store) => store.browsers[panel.id]);
   const connected = useApp((store) => store.connected);
   const uiScale = useApp((store) => store.uiScale);
+  const searchEngine = useApp((store) => store.searchEngine);
   const native = Boolean(window.citropyDesktop);
   const [address, setAddress] = useState("");
   const [dialogText, setDialogText] = useState("");
   const [cover, setCover] = useState<string>();
+  const [copied, setCopied] = useState(false);
   const screen = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const act = (action: BrowserAction) => {
@@ -145,7 +151,7 @@ export function BrowserPane({
           <button
             className="icon-btn"
             type="button"
-            disabled={!native || !connected || !state?.canGoBack}
+            disabled={!native || !connected || !(state?.canGoBack || state?.mobile)}
             title={t("Back")}
             aria-label={t("Browser back")}
             onClick={() => act({ action: "back" })}
@@ -162,22 +168,35 @@ export function BrowserPane({
           >
             <ArrowRight size={14} />
           </button>
-          <button
-            className="icon-btn"
-            type="button"
-            disabled={!native || !connected || !state}
-            title={t("Reload")}
-            aria-label={t("Reload browser")}
-            onClick={() => act({ action: "reload" })}
-          >
-            {state?.loading ? <PixelLoader size={13} /> : <RotateCw size={13} />}
-          </button>
+          {state?.loading ? (
+            <button
+              className="icon-btn"
+              type="button"
+              disabled={!native || !connected}
+              title={t("Stop loading")}
+              aria-label={t("Stop loading")}
+              onClick={() => act({ action: "stop" })}
+            >
+              <X size={14} />
+            </button>
+          ) : (
+            <button
+              className="icon-btn"
+              type="button"
+              disabled={!native || !connected || !state}
+              title={t("Reload")}
+              aria-label={t("Reload browser")}
+              onClick={() => act({ action: "reload" })}
+            >
+              <RotateCw size={13} />
+            </button>
+          )}
         </div>
         <form
           className="browser-address"
           onSubmit={(event) => {
             event.preventDefault();
-            if (address.trim()) act({ action: "navigate", url: address });
+            if (address.trim()) act({ action: "navigate", url: addressOrSearch(address, searchEngine) });
           }}
         >
           <input
@@ -186,16 +205,35 @@ export function BrowserPane({
             disabled={!native || !connected || !state}
             onChange={(event) => setAddress(event.target.value)}
             aria-label={t("Browser address")}
-            placeholder={t("Enter a web address")}
+            placeholder={t("Search or enter a web address")}
             spellCheck={false}
           />
-          <button
-            type="submit"
-            disabled={!native || !address.trim() || !connected || !state}
-            aria-label={t("Go to address")}
-          >
-            <ArrowUpRight size={14} />
-          </button>
+          {state && state.url !== "about:blank" && (
+            <button
+              type="button"
+              aria-label={t(copied ? "Copied" : "Copy link")}
+              title={t(copied ? "Copied" : "Copy link")}
+              onClick={() =>
+                void navigator.clipboard.writeText(state.url).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }, reportError)
+              }
+            >
+              {copied ? <Check size={14} /> : <Link size={14} />}
+            </button>
+          )}
+          {state && state.url !== "about:blank" && (
+            <a
+              href={state.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t("Open in your browser")}
+              title={t("Open in your browser")}
+            >
+              <ArrowUpRight size={14} />
+            </a>
+          )}
         </form>
       </div>
       {native && state && (
@@ -240,14 +278,6 @@ export function BrowserPane({
         </form>
       )}
       <div className="browser-screen" ref={screen} aria-label={t("Browser page")}>
-        {native && cover && (
-          <img
-            className="browser-cover"
-            src={cover}
-            alt=""
-            aria-hidden="true"
-          />
-        )}
         {!native ? (
           <div className="browser-start">
             <Monitor size={34} />
@@ -261,20 +291,33 @@ export function BrowserPane({
             >{" "}{t("Open Citropy desktop")}{" "}<ArrowUpRight size={14} />
             </button>
           </div>
+        ) : !state ? (
+          <div className="browser-start">
+            <Globe2 size={34} />
+            <h3>{t("Opening browser…")}</h3>
+            <p>{t("Preparing a browser for this workspace.")}</p>
+          </div>
         ) : (
-          (!state || state.url === "about:blank") && (
-            <div className="browser-start">
-              <Globe2 size={34} />
-              <h3>
-                {state ? t("Browse alongside your work") : t("Opening browser…")}
-              </h3>
-              <p>
-                {state
-                  ? t("Enter an address above, or ask your provider to open a page.")
-                  : t("Preparing a browser for this workspace.")}
-              </p>
-            </div>
-          )
+          <div
+            className="browser-frame"
+            style={{ "--page-width": state.width, "--page-height": state.height } as CSSProperties}
+          >
+            {cover && (
+              <img
+                className="browser-cover"
+                src={cover}
+                alt=""
+                aria-hidden="true"
+              />
+            )}
+            {state.url === "about:blank" && (
+              <div className="browser-start">
+                <Globe2 size={34} />
+                <h3>{t("Browse alongside your work")}</h3>
+                <p>{t("Enter an address above, or ask your provider to open a page.")}</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
       <div className="browser-footer">

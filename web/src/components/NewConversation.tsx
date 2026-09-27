@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
+import { ModelPicker } from "./ModelPicker.tsx";
+import type { TuningSettings } from "./composer/ComposerOptions.tsx";
 import { Folder, GitBranch, GitFork } from "lucide-react";
 import { Modal } from "./Modal.tsx";
-import { ProviderIcon } from "./ProviderIcon.tsx";
 import { api } from "../lib/api.ts";
 import { loadThread, refreshGit, rememberThreadSettings } from "../lib/actions.ts";
 import { selectThread, useApp } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import type { WorkspaceOptions } from "../../../shared/features.ts";
-import type { ProviderId, ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
+import type { ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 export function NewConversation() {
@@ -34,6 +36,7 @@ export function NewConversation() {
   const [branch, setBranch] = useState("");
   const [base, setBase] = useState("HEAD");
   const [model, setModel] = useState(preferred?.model ?? "");
+  const [tuning, setTuning] = useState<TuningSettings>({ effort: preferred?.effort });
   const [providerInstanceId, setProviderInstanceId] = useState(defaults?.provider === providerId && provider?.instances?.some(entry => entry.id === defaults.providerInstanceId && entry.available) ? defaults.providerInstanceId! : provider?.available ? "" : provider?.instances?.find(entry => entry.available)?.id ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,7 +68,7 @@ export function NewConversation() {
           provider: provider.id,
           providerInstanceId: providerInstanceId || undefined,
           model: currentModel?.id,
-          effort: currentModel?.id === selectedModel(models, preferred?.model)?.id ? preferred?.effort : undefined,
+          ...tuning,
           workspace: { kind, path, branch, base },
         }),
       });
@@ -94,7 +97,7 @@ export function NewConversation() {
       busy={busy}
       onClose={close}
       onSubmit={create}
-      initialFocus="#conversation-provider"
+      initialFocus=".new-conversation-model"
       footer={
         <>
           <button
@@ -124,37 +127,22 @@ export function NewConversation() {
         </>
       }
     >
-      <div className="feature-form-grid">
-        <label className="feature-field">
-          <span><ProviderIcon provider={provider.id} />{t("Provider")}</span>
-          <select
-            id="conversation-provider"
-            value={provider.id}
-            disabled={busy}
-            onChange={(event) => {
-              const id = event.target.value as ProviderId;
-              setProviderId(id);
-              const next = providers.find(entry => entry.id === id);
-              setProviderInstanceId(defaults?.provider === id && next?.instances?.some(entry => entry.id === defaults.providerInstanceId && entry.available) ? defaults.providerInstanceId! : next?.available ? "" : next?.instances?.find(entry => entry.available)?.id ?? "");
-              setModel(preferences.provider === id ? preferences.model ?? "" : defaults?.provider === id ? defaults.model ?? "" : "");
-            }}
-          >
-            {providers.filter((entry) => entry.enabled && (entry.available || entry.instances?.some(instance => instance.available))).map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-          </select>
-        </label>
-        <label className="feature-field">
-          {t("Account")}
-          <select value={providerInstanceId} disabled={busy} onChange={(event) => { setProviderInstanceId(event.target.value); setModel(""); }}>
-            {provider.available && <option value="">{t("Default")}</option>}
-            {provider.instances?.map(entry => <option key={entry.id} value={entry.id} disabled={!entry.available}>{entry.name}</option>)}
-          </select>
-        </label>
-        <label className="feature-field">
-          {t("Model")}
-          <select value={currentModel?.id ?? ""} disabled={busy} onChange={(event) => setModel(event.target.value)}>
-            {models.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-          </select>
-        </label>
+      <div className="feature-field new-conversation-field">
+        <span>{t("Model")}</span>
+        <ModelPicker
+          label={t("Model")}
+          className="model-picker-trigger new-conversation-model"
+          value={{ provider: provider.id, providerInstanceId: providerInstanceId || undefined, model: currentModel?.id ?? "" }}
+          disabled={busy}
+          onChange={(choice) => {
+            if (!choice) return;
+            setProviderId(choice.provider);
+            setProviderInstanceId(choice.providerInstanceId ?? "");
+            setModel(choice.model);
+            setTuning({});
+          }}
+          tune={{ settings: tuning, onChange: (patch) => setTuning((current) => ({ ...current, ...patch })) }}
+        />
       </div>
       <div
         className="workspace-choices"
@@ -217,15 +205,14 @@ export function NewConversation() {
               </label>
               <label className="feature-field">
                 {t("Start from")}
-                <select
+                <Select
                   value={base}
-                  onChange={(event) => setBase(event.target.value)}
-                >
-                  <option value="HEAD">{t("Current commit")}</option>
-                  {options?.branches.map((name) => (
-                    <option key={name}>{name}</option>
-                  ))}
-                </select>
+                  onChange={setBase}
+                  options={[
+                    { value: "HEAD", label: t("Current commit") },
+                    ...(options?.branches ?? []).map((name) => ({ value: name, label: name })),
+                  ]}
+                />
               </label>
             </div>
           )}
@@ -234,19 +221,16 @@ export function NewConversation() {
       {kind === "existing" && (
         <label className="feature-field">
           {t("Worktree")}
-          <select
+          <Select
             value={path}
-            onChange={(event) => setPath(event.target.value)}
-          >
-            <option value="">{t("Select a worktree")}</option>
-            {options?.worktrees
-              .filter((entry) => !entry.locked)
-              .map((entry) => (
-                <option key={entry.path} value={entry.path}>
-                  {entry.branch} · {entry.path}
-                </option>
-              ))}
-          </select>
+            onChange={setPath}
+            options={[
+              { value: "", label: t("Select a worktree") },
+              ...(options?.worktrees ?? [])
+                .filter((entry) => !entry.locked)
+                .map((entry) => ({ value: entry.path, label: `${entry.branch} · ${entry.path}` })),
+            ]}
+          />
         </label>
       )}
       {error && (

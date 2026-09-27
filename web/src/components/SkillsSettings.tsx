@@ -7,6 +7,7 @@ import { ProviderIcon } from "./ProviderIcon.tsx";
 import { Prose } from "./parts/Prose.tsx";
 import type { SkillInfo } from "../../../shared/features.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 
 export function SkillsSettings() {
   const t = useI18n();
@@ -98,17 +99,18 @@ export function SkillsSettings() {
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <select
+        <Select
           aria-label={t("Filter skills by provider")}
           value={provider}
-          onChange={(event) => setProvider(event.target.value)}
-        >
-          <option value="">{t("All providers")}</option>
-          <option value="claude">Claude Code</option>
-          <option value="codex">Codex</option>
-          <option value="opencode">OpenCode</option>
-          <option value="pi">Pi</option>
-        </select>
+          onChange={setProvider}
+          options={[
+            { value: "", label: t("All providers") },
+            { value: "claude", label: "Claude Code" },
+            { value: "codex", label: "Codex" },
+            { value: "opencode", label: "OpenCode" },
+            { value: "pi", label: "Pi" },
+          ]}
+        />
         <button
           className="icon-btn"
           aria-label={t("Refresh skills")}
@@ -118,21 +120,18 @@ export function SkillsSettings() {
           <RefreshCw size={17} />
         </button>
       </div>
-      <label className="feature-field">{" "}{t("Include project skills")}{" "}<select
+      <label className="feature-field">{" "}{t("Include project skills")}{" "}<Select
           disabled={Boolean(busy)}
           value={projectId}
-          onChange={(event) => {
-            setProjectId(event.target.value);
+          onChange={(value) => {
+            setProjectId(value);
             setExpanded("");
           }}
-        >
-          <option value="">{t("Personal and plugin skills only")}</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: t("Personal and plugin skills only") },
+            ...projects.map((project) => ({ value: project.id, label: project.name })),
+          ]}
+        />
       </label>
       <p className="feature-note">
         {filtered.filter((skill) => skill.enabled).length}{" "}{t("enabled ·")}{" "}

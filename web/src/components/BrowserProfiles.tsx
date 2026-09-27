@@ -10,11 +10,16 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
+import { saveProjectDefaults } from "../lib/actions.ts";
+import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import type {
   BrowserProfile,
   ImportBrowser,
 } from "../../../shared/features.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
+import { setSearchEngine } from "../lib/preferences.ts";
+import { SEARCH_ENGINES, type SearchEngine } from "../lib/web-search.ts";
 
 interface Profiles {
   selected: string;
@@ -24,6 +29,8 @@ interface Profiles {
 export function BrowserProfiles() {
   const t = useI18n();
   const projects = useApp((state) => state.projects);
+  const projectDefaults = useApp((state) => state.projectDefaults);
+  const searchEngine = useApp((state) => state.searchEngine);
   const [projectId, setProjectId] = useState(
     useApp.getState().activeProjectId ?? projects[0]?.id ?? "",
   );
@@ -100,21 +107,62 @@ export function BrowserProfiles() {
     )
       await action("clear", { profileId, kind });
   };
+  const configureAccess = async (browserAccess: boolean) => {
+    setBusy(true);
+    setError("");
+    try {
+      await saveProjectDefaults({ ...projectDefaults, browserAccess });
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="feature-stack">
+      <div className="settings-group">
+        <label className="setting-row">
+          <span>
+            <strong>{t("Search engine")}</strong>
+            <small>{t("Used when you type words instead of a web address in the browser bar.")}</small>
+          </span>
+          <Select
+            value={searchEngine}
+            onChange={(value) => setSearchEngine(value as SearchEngine)}
+            options={Object.entries(SEARCH_ENGINES).map(([id, engine]) => ({
+              value: id,
+              label: engine.label,
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d={engine.icon} />
+                </svg>
+              ),
+            }))}
+          />
+        </label>
+        <label className="setting-row">
+          <span>
+            <strong>{t("Provider browser access")}</strong>
+            <small>{t("Allow conversations to use the shared browser tools. Folders can override this in Projects.")}</small>
+          </span>
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={Boolean(resolveProjectSettings(projectDefaults).browserAccess)}
+            disabled={busy}
+            onChange={(event) => void configureAccess(event.target.checked)}
+          />
+        </label>
+      </div>
       <label className="feature-field">
         {t("Workspace")}
-        <select
+        <Select
           disabled={busy}
           value={projectId}
-          onChange={(event) => setProjectId(event.target.value)}
-        >
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+          onChange={setProjectId}
+          options={projects.map((project) => ({ value: project.id, label: project.name }))}
+        />
       </label>
       <section className="settings-group">
         <div className="feature-section-heading">
@@ -206,34 +254,30 @@ export function BrowserProfiles() {
         <h2 className="settings-group-heading">{t("Import signed-in sessions")}</h2>
         <p className="feature-note">{" "}{t("Copy cookies from a browser on this computer. Close that browser first. Your system may ask to unlock its keyring. Some sites may require you to sign in again.")}{" "}</p>
         <div className="feature-form-grid">
-          <label className="feature-field">{" "}{t("Import from")}{" "}<select
+          <label className="feature-field">{" "}{t("Import from")}{" "}<Select
               disabled={busy}
               value={sourceId}
-              onChange={(event) => setSourceId(event.target.value)}
-            >
-              <option value="">
-                {sources.length
-                  ? t("Select a browser")
-                  : t("No supported browser profiles found")}
-              </option>
-              {sources.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSourceId}
+              options={[
+                {
+                  value: "",
+                  label: sources.length
+                    ? t("Select a browser")
+                    : t("No supported browser profiles found"),
+                },
+                ...sources.map((source) => ({ value: source.id, label: source.name })),
+              ]}
+            />
           </label>
-          <label className="feature-field">{" "}{t("Citropy profile")}{" "}<select
+          <label className="feature-field">{" "}{t("Citropy profile")}{" "}<Select
               disabled={busy}
               value={profileId}
-              onChange={(event) => setProfileId(event.target.value)}
-            >
-              {data?.profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.id === "workspace" ? t("Workspace") : profile.name}
-                </option>
-              ))}
-            </select>
+              onChange={setProfileId}
+              options={(data?.profiles ?? []).map((profile) => ({
+                value: profile.id,
+                label: profile.id === "workspace" ? t("Workspace") : profile.name,
+              }))}
+            />
           </label>
         </div>
         <button

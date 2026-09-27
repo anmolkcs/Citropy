@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "./icons.ts";
 import { MessageBlock } from "./MessageBlock.tsx";
 import { MessageNavigator } from "./MessageNavigator.tsx";
-import { Working } from "./Working.tsx";
 import { scaled, useApp } from "../lib/store.ts";
 import { loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
@@ -51,8 +50,6 @@ export function Conversation() {
   const ids = useApp((state) => (threadId ? state.order[threadId] : undefined));
   const selectRows = useMemo(() => createTimelineSelector(threadId), [threadId]);
   const rows = useApp(selectRows);
-  const continuesReply = useApp((state) => state.messages[rows.at(-1)?.messageId ?? ""]?.role === "assistant");
-  const lastMessage = useApp((state) => state.messages[ids?.at(-1) ?? ""]);
   const status = useApp((state) =>
     threadId ? state.threads[threadId]?.status : undefined,
   );
@@ -63,16 +60,6 @@ export function Conversation() {
     threadId ? state.threads[threadId]?.error : undefined,
   );
   const usageLimited = useApp((state) => Boolean(threadId && state.threads[threadId]?.usageLimit));
-  const activeTool = useApp((state) =>
-    threadId ? state.threads[threadId]?.activeTool : undefined,
-  );
-  const compacting = useApp((state) => Boolean(threadId && state.threads[threadId]?.compacting));
-  const startedAt = useApp((state) => {
-    if (!threadId) return 0;
-    return state.threads[threadId]?.runStartedAt ??
-      state.messages[(state.order[threadId] ?? []).findLast((id) => state.messages[id]?.role === "user") ?? ""]?.ts ??
-      state.threads[threadId]?.updatedAt ?? 0;
-  });
   const connected = useApp((state) => state.connected);
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const followRequest = useApp((state) => state.followRequest);
@@ -162,7 +149,7 @@ export function Conversation() {
       const nextRows = selectRows(useApp.getState());
       const entering = renderedRows().filter(element => {
         const row = nextRows[Number(element.dataset.index)];
-        return row && !previousKeys.has(row.key) && activity.messageIds.includes(row.messageId);
+        return row && !previousKeys.has(row.key) && row.messageId !== undefined && activity.messageIds.includes(row.messageId);
       });
       activityAnimations.current = slideRows(entering, "open");
     };
@@ -302,9 +289,6 @@ export function Conversation() {
     return () => cancelAnimationFrame(frame);
   }, [searchMessageId, searchShellId, threadId, loaded, ids, rows, timeline, stopFollowing, cancelActivityTransition, t]);
 
-  const busy =
-    compacting || status === "thinking" || status === "working" || status === "queued";
-  const activityRunning = rows.some(row => row.row?.kind === "activity" && row.row.active);
   const visibleItem = virtualItems.find((item) => item.end > (timeline.scrollOffset ?? 0) + 30);
   const jumpToMessage = useCallback((messageId: string) => {
     useApp.setState({ searchMessageId: messageId });
@@ -349,7 +333,7 @@ export function Conversation() {
                     first={row.first}
                     separator={row.separator}
                     transitionActivity={transitionActivity}
-                    last={row.last && !(busy && continuesReply && item.index === rows.length - 1)}
+                    last={row.last}
                     streaming={
                       Boolean(running) && row.messageId === ids?.at(-1)
                     }
@@ -361,14 +345,6 @@ export function Conversation() {
           {status === "error" && error && threadId && (usageLimited
             ? <UsageLimitLine threadId={threadId} />
             : <div className="thread-error" role="alert">{error}</div>)}
-          {busy && !activityRunning && <MessageBlock
-            messageId={lastMessage?.role === "assistant" ? lastMessage.id : undefined}
-            first={!continuesReply}
-            last
-            streaming={false}
-          >
-            <Working status={status} tool={activeTool} compacting={compacting} startedAt={startedAt} />
-          </MessageBlock>}
           <div className="canvas-tail" />
         </div>
       </div>

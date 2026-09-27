@@ -1,8 +1,9 @@
 import { useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlarmClockOff, Check, Hourglass, RotateCcw } from "lucide-react";
+import { Check, Hourglass } from "lucide-react";
 import { organizeConversation } from "./ConversationMenu.tsx";
 import { reportError } from "../lib/api.ts";
+import { isFakeUsageLimit, patchFakeUsageLimit } from "../lib/dev-triggers.ts";
 import { environmentId } from "../lib/environment.ts";
 import { clock, formatDate } from "../lib/format.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -107,27 +108,39 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
         <p>{status}</p>
         {thread.error && <p className="usage-limit-message">{thread.error}</p>}
         <div className="usage-limit-actions">
-          <button
-            type="button"
-            className="usage-limit-action"
-            aria-pressed={limit.resume}
-            disabled={!connected}
-            onClick={() => send({ t: "thread.resumeAfterLimit", id: threadId, enabled: !limit.resume })}
-          >
-            {limit.resume ? <Check size={14} aria-hidden="true" /> : <RotateCcw size={14} aria-hidden="true" />}
-            {t(limit.resume ? "Resuming at reset" : "Resume at reset")}
-          </button>
-          {time && (
-            <button
-              type="button"
-              className="usage-limit-action"
-              aria-pressed={snoozed}
+          <label className="usage-limit-action">
+            <span>
+              <strong>{t("Resume at reset")}</strong>
+              <small>{t("Continue this chat when usage is back.")}</small>
+            </span>
+            <input
+              className="setting-switch"
+              type="checkbox"
+              role="switch"
+              checked={limit.resume}
               disabled={!connected}
-              onClick={() => void organizeConversation(threadId, { snoozedUntil: snoozed ? null : limit.resetsAt }, environmentId()).catch(reportError)}
-            >
-              {snoozed ? <Check size={14} aria-hidden="true" /> : <AlarmClockOff size={14} aria-hidden="true" />}
-              {t(snoozed ? "Snoozed until reset" : "Snooze until reset")}
-            </button>
+              onChange={(event) => isFakeUsageLimit(threadId)
+                ? patchFakeUsageLimit(threadId, { resume: event.target.checked })
+                : send({ t: "thread.resumeAfterLimit", id: threadId, enabled: event.target.checked })}
+            />
+          </label>
+          {time && (
+            <label className="usage-limit-action">
+              <span>
+                <strong>{t("Snooze until reset")}</strong>
+                <small>{t("Move this chat to Snoozed in the sidebar until then.")}</small>
+              </span>
+              <input
+                className="setting-switch"
+                type="checkbox"
+                role="switch"
+                checked={snoozed}
+                disabled={!connected}
+                onChange={(event) => isFakeUsageLimit(threadId)
+                  ? patchFakeUsageLimit(threadId, { snoozedUntil: event.target.checked ? limit.resetsAt : undefined })
+                  : void organizeConversation(threadId, { snoozedUntil: event.target.checked ? limit.resetsAt : null }, environmentId()).catch(reportError)}
+              />
+            </label>
           )}
         </div>
       </motion.section>}</AnimatePresence>

@@ -346,17 +346,15 @@ export class ThreadRuntime {
     try {
       if (this.#stopping) await this.#stopping.promise;
       this.#checkSession(prepared.generation);
+      if (workspaceGitBusy(this.#cwd))
+        throw new Error("Wait for the Git action to finish before sending a message.");
+      await beginCheckpoint(this.#thread, prepared.messageId);
+      this.#checkSession(prepared.generation);
     }
     catch (error) {
       if (queued) this.#requeue(queued.item, queued.index);
       throw error;
     }
-    if (workspaceGitBusy(this.#cwd)) {
-      if (queued) this.#requeue(queued.item, queued.index);
-      throw new Error("Wait for the Git action to finish before sending a message.");
-    }
-    await beginCheckpoint(this.#thread, prepared.messageId);
-    this.#checkSession(prepared.generation);
     this.#addUserMessage(prepared);
     if (this.#thread.canRedo) store.patchThread(this.id, { canRedo: false });
     this.#outputAtTurnStart = this.#thread.usage.output;

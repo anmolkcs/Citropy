@@ -481,6 +481,7 @@ export type ClientEvent = (
   | { t: "logging.configure"; enabled: boolean }
   | { t: "limits.configure"; resumeAfterLimits: boolean }
   | { t: "thread.resumeAfterLimit"; id: string; enabled: boolean }
+  | { t: "thread.discardPlan"; id: string }
   | { t: "client.error"; message: string }
   | { t: "server.restart" }
   | { t: "thread.finish"; id: string; finished: boolean }

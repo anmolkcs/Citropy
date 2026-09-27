@@ -103,7 +103,8 @@ export function Inspector({ visible }: { visible: boolean }) {
     if (expanded) panel.animate([{ transform: "translateX(-40px)", opacity: 0.6 }, { transform: "none", opacity: 1 }], timing);
     else panel.animate([{ transform: `translateX(${before.left - after.left}px)` }, { transform: "none" }], timing);
   };
-  const [tabWidth, setTabWidth] = useState(0);
+  const [tabCapacity, setTabCapacity] = useState<number | null>(null);
+  const [overflowCapacity, setOverflowCapacity] = useState(1);
   const tabs = panels.filter((panel) => panel.projectId === projectId);
   const tabActions = usePanelTabActions(tabs, tabStrip, visible);
   const activeId =
@@ -112,9 +113,8 @@ export function Inspector({ visible }: { visible: boolean }) {
       : tabs[0]?.id;
   const tabGap = scaled(4);
   const tabSpan = scaled(48) + tabGap;
-  const tabLimit = tabWidth > 0 && tabs.length * tabSpan - tabGap > tabWidth
-    ? Math.max(1, Math.floor((tabWidth - scaled(32)) / tabSpan))
-    : tabs.length;
+  const overflowButton = scaled(32);
+  const tabLimit = tabCapacity !== null && tabs.length > tabCapacity ? overflowCapacity : tabs.length;
   const visibleTabs = tabs.slice(0, tabLimit);
   const selectedTab = tabs.find(panel => panel.id === activeId);
   if (selectedTab && !visibleTabs.includes(selectedTab)) visibleTabs[visibleTabs.length - 1] = selectedTab;
@@ -132,14 +132,18 @@ export function Inspector({ visible }: { visible: boolean }) {
   useLayoutEffect(() => {
     if (!visible || !tabStrip.current) return;
     const element = tabStrip.current;
+    const measure = (width: number) => {
+      setTabCapacity(width > 0 ? Math.floor((width + tabGap) / tabSpan) : null);
+      setOverflowCapacity(Math.max(1, Math.floor((width - overflowButton) / tabSpan)));
+    };
     const style = getComputedStyle(element);
-    setTabWidth(element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+    measure(element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) flushSync(() => setTabWidth(Math.floor(entry.contentRect.width)));
+      if (entry) flushSync(() => measure(Math.floor(entry.contentRect.width)));
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [visible]);
+  }, [visible, tabGap, tabSpan, overflowButton]);
 
   useLayoutEffect(() => {
     if (visible && activeId && focusTab.current) {

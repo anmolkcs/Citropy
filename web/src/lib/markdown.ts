@@ -67,7 +67,7 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
       link(token) {
         const link = token as Tokens.Link;
         const href = escapeHtml(link.href ?? "");
-        const safe = /^(https?:|mailto:)/i.test(href) ? href : "#";
+        if (!/^(https?:|mailto:)/i.test(href)) return this.parser.parseInline(link.tokens);
         let icon = "";
         try {
           const url = new URL(link.href);
@@ -80,12 +80,40 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
         linkedImage = true;
         const body = this.parser.parseInline(link.tokens);
         linkedImage = previous;
-        return `<a href="${safe}" target="_blank" rel="noreferrer noopener">${icon}${body}</a>`;
+        return `<a href="${href}" target="_blank" rel="noreferrer noopener">${icon}${body}</a>`;
       },
     },
   });
 
   return marked;
+}
+
+export interface FinishedBlocks {
+  source: string;
+  html: string[];
+}
+
+export async function renderStreamingMarkdown(text: string, mode: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, { images = true, language = "en" }: { images?: boolean; language?: Language }, previous: FinishedBlocks): Promise<{ finished: FinishedBlocks; blocks: string[] }> {
+  const base = text.startsWith(previous.source) ? previous : { source: "", html: [] };
+  const marked = createParser(mode, signal, assets, images, language, true);
+  const rest = text.slice(base.source.length);
+  const tokens = marked.lexer(rest);
+  await Promise.all(marked.walkTokens(tokens, marked.defaults.walkTokens!));
+  let open = tokens.length - 1;
+  while (open >= 0 && tokens[open]!.type === "space") open--;
+  const html = [...base.html];
+  let consumed = 0;
+  let done = 0;
+  for (const token of tokens.slice(0, Math.max(0, open))) {
+    if (!rest.startsWith(token.raw, consumed)) break;
+    consumed += token.raw.length;
+    html.push(marked.parser([token]) as string);
+    done++;
+  }
+  return {
+    finished: { source: base.source + rest.slice(0, consumed), html },
+    blocks: [...html, marked.parser(tokens.slice(done)) as string],
+  };
 }
 
 export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, language = "en", live = false }: { images?: boolean; language?: Language; live?: boolean } = {}): Promise<string> {

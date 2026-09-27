@@ -4,15 +4,16 @@ import { useEffect, useState, type ReactNode, type Ref } from "react";
 import { ArrowRightLeft, Check, ChevronDown, LockKeyhole, Star } from "lucide-react";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
-import { selectedModel } from "../../../shared/model-options.ts";
+import { effectiveEffort, selectedModel } from "../../../shared/model-options.ts";
 import { toggleFavoriteModel, useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { modelLabel, modelSource } from "../lib/format.ts";
+import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
 import { send } from "../lib/socket.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ModelTuning, type TuningSettings, type TuningTab } from "./composer/ComposerOptions.tsx";
 
-export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef, detail, tuning, menuClearOf }: {
+export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef, detail, tuning: customTuning, tune, menuClearOf }: {
   value: WritingModel | null;
   fallback?: WritingModel;
   label: string;
@@ -29,6 +30,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   buttonRef?: Ref<HTMLButtonElement>;
   detail?: ReactNode;
   tuning?: (target: WritingModel | undefined) => ReactNode;
+  tune?: { settings: TuningSettings; onChange: (patch: TuningSettings) => void; only?: TuningTab[] };
   menuClearOf?: string;
 }) {
   const t = useI18n();
@@ -47,6 +49,8 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const currentInstanceId = choice?.providerInstanceId ?? instanceId;
   const choiceModels = currentInstanceId ? provider?.instances?.find(instance => instance.id === currentInstanceId)?.models ?? [] : provider?.models ?? [];
   const model = selectedModel(choiceModels, choice?.model);
+  const tunedEffort = tune && value ? effectiveEffort(model, tune.settings.effort) : undefined;
+  const tuning = customTuning ?? (tune && (() => <ModelTuning key={`${choice?.provider}:${model?.id}`} settings={tune.settings} model={value ? model : undefined} onChange={tune.onChange} only={tune.only} />));
   const automatic = automaticLabel ?? (allowConversation ? t("Use the conversation model") : undefined);
   const name = !choice && automatic ? automatic : modelLabel(choiceModels, choice?.model);
   const favoritesView = browsing === "favorites";
@@ -156,7 +160,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     >
       {choice && <ProviderIcon provider={choice.provider} />}
       <AnimatedText className="truncate" text={name} />
-      {detail}
+      {detail ?? (tunedEffort && <span className="model-picker-effort">{effortLabel(tunedEffort)}</span>)}
       <ChevronDown size={12} />
     </button>}
   />;

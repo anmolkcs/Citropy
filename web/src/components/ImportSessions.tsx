@@ -5,6 +5,7 @@ import { api } from "../lib/api.ts";
 import { environmentName } from "../lib/environment.ts";
 import { selectProject, selectThread, useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import { Modal } from "./Modal.tsx";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { providerLabels } from "../lib/format.ts";
@@ -48,9 +49,8 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
     icon={<Import size={20} />} onClose={onClose} busy={Boolean(busy)} className="session-import-dialog"
     footer={<button type="button" className="btn" disabled={Boolean(busy)} onClick={onClose}>{t("Close")}</button>}>
     <div className="feature-field feature-inline session-import-controls">
-      <select aria-label={t("Provider")} value={provider} disabled={Boolean(busy)} onChange={event => setProvider(event.target.value as ImportProvider)}>
-        {importProviders.map(id => <option value={id} key={id}>{providerLabels[id]}</option>)}
-      </select>
+      <Select aria-label={t("Provider")} value={provider} disabled={Boolean(busy)} onChange={value => setProvider(value as ImportProvider)}
+        options={importProviders.map(id => ({ value: id, label: providerLabels[id] }))} />
       <input aria-label={t("Find a conversation")} placeholder={t("Find a conversation")} value={query} onChange={event => setQuery(event.target.value)} />
       <button type="button" className="icon-btn" aria-label={t("Refresh")} disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /></button>
     </div>

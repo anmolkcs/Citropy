@@ -39,7 +39,7 @@ export interface BrowserState {
 
 export type BrowserAction =
   | { action: "navigate"; url: string }
-  | { action: "back" | "forward" | "reload" | "snapshot" }
+  | { action: "back" | "forward" | "reload" | "stop" | "snapshot" }
   | {
       action: "click";
       x?: number;

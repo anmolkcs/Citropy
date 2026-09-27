@@ -1,5 +1,5 @@
 import { Attachments } from "./Attachments.tsx";
-import { memo, useState, type ReactNode } from "react";
+import { memo, useState } from "react";
 import { PartView } from "./PartView.tsx";
 import { WorkGroup } from "./WorkGroup.tsx";
 import { WorkDetails } from "./WorkDetails.tsx";
@@ -16,10 +16,8 @@ import {
   modelSource,
 } from "../lib/format.ts";
 
-interface Props extends Omit<TimelineRow, "key" | "messageId"> {
-  messageId?: string;
+interface Props extends Omit<TimelineRow, "key"> {
   streaming: boolean;
-  children?: ReactNode;
   transitionActivity?: (id: string, update: () => void) => void;
 }
 
@@ -30,12 +28,10 @@ export const MessageBlock = memo(function MessageBlock({
   first,
   last,
   separator,
-  children,
   transitionActivity,
 }: Props) {
   const t = useI18n();
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
-  const [fresh] = useState(() => Boolean(shell && Date.now() - shell.ts < 2000));
   const partKind = useApp((state) => row?.kind === "part" ? state.parts[row.id]?.kind : undefined);
   const threadId = useApp((state) => state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined);
   const provider = useApp((state) => shell?.provider ?? state.threads[threadId ?? ""]?.provider);
@@ -45,6 +41,7 @@ export const MessageBlock = memo(function MessageBlock({
     const thread = state.threads[threadId ?? ""];
     return shell ? shell.ts : thread?.runStartedAt ?? thread?.updatedAt ?? 0;
   });
+  const [fresh] = useState(() => first && Date.now() - timestamp < 2000);
   const providers = useApp((state) => state.providers);
   const account = useApp((state) =>
     state.showGitHubIdentity && messageId && state.messages[messageId]?.role === "user"
@@ -109,11 +106,10 @@ export const MessageBlock = memo(function MessageBlock({
     <article
       id={first && messageId ? `message-${messageId}` : undefined}
       className="turn turn-agent"
-      data-fresh={fresh && first || undefined}
+      data-fresh={fresh || undefined}
       data-continuation={!first || undefined}
       data-last={last}
       data-activity={activity || undefined}
-      data-working={Boolean(children) || undefined}
     >
       {first && (
         <div className="message-avatar agent-avatar" aria-label={modelName}>
@@ -142,7 +138,6 @@ export const MessageBlock = memo(function MessageBlock({
             )}
           </div>
         )}
-        {children}
       </div>
     </article>
   );

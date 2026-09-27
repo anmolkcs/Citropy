@@ -3,6 +3,7 @@ import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type Sche
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { loadSpanish, type Language } from "./translations.ts";
 import { applyCustomColor } from "./custom-theme.ts";
+import type { SearchEngine } from "./web-search.ts";
 
 export function toggleFavoriteModel(model: WritingModel): void {
   const current = useApp.getState().favoriteModels;
@@ -63,6 +64,11 @@ export function setSidebarMode(mode: SidebarMode): void {
   if (mode !== "workspaces" && mode !== "global") return;
   useApp.setState({ sidebarMode: mode });
   environmentStorage.setItem("citropy.sidebarMode", mode);
+}
+
+export function setSearchEngine(engine: SearchEngine): void {
+  useApp.setState({ searchEngine: engine });
+  environmentStorage.setItem("citropy.searchEngine", engine);
 }
 
 export function setNavigationStyle(style: NavigationStyle): void {
@@ -130,6 +136,11 @@ export function setUiScale(value: number): void {
 export function setTextStreaming(value: boolean): void {
   useApp.setState({ textStreaming: value });
   environmentStorage.setItem("citropy.textStreaming", value ? "1" : "0");
+}
+
+export function setOpaquePopups(value: boolean): void {
+  useApp.setState({ opaquePopups: value });
+  environmentStorage.setItem("citropy.opaquePopups", value ? "1" : "0");
 }
 
 export function setShowFailedTools(value: boolean): void {

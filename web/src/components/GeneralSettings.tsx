@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { ExperimentalTag } from "./ExperimentalTag.tsx";
 import { reportError } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import {
   setLanguage,
   setShowGitHubIdentity,
@@ -29,10 +30,8 @@ export function GeneralSettings() {
             <strong>{t("Language")} <ExperimentalTag /></strong>
             <small>{t("Choose the language used in Citropy.")}</small>
           </span>
-          <select value={language} onChange={(event) => void setLanguage(event.target.value as "en" | "es").catch(reportError)}>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-          </select>
+          <Select value={language} onChange={(value) => void setLanguage(value as "en" | "es").catch(reportError)}
+            options={[{ value: "en", label: "English" }, { value: "es", label: "Español" }]} />
         </label>
       </div>
       <h2 className="settings-group-heading settings-group-spaced">{" "}{t("Chat identity")}{" "}</h2>

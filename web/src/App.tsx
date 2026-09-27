@@ -84,6 +84,7 @@ export function App() {
   const panelWidths = useApp((state) => state.panelWidths);
   const uiScale = useApp((state) => state.uiScale);
   const uiTransparency = useApp((state) => state.uiTransparency);
+  const opaquePopups = useApp((state) => state.opaquePopups);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const githubStatus = useGitHub("status", {
@@ -250,6 +251,7 @@ export function App() {
           ]),
         ),
         "--ui-alpha": 1 - uiTransparency / 100,
+        "--popup-floor": opaquePopups ? 1 : 0.95,
       } as CSSProperties}
     >
       <StageBackdrop />

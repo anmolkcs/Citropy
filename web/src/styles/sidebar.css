@@ -944,3 +944,18 @@
 .rail[data-sidebar-mode="global"] .thread-card[data-active="true"] .thread-row-title,
 .rail[data-sidebar-mode="global"] .thread-card:hover .thread-row-title { color: var(--text); }
 .rail .global-project-empty { width: calc(100% - 10px); height: 30px; margin-left: 10px; font-size: var(--text-sm); }
+.rail .thread-category[data-category="pinned"] + .thread-category .global-project-heading,
+.rail .thread-category[data-category="snoozed"] .global-project-heading,
+.rail .thread-category:not([data-category="snoozed"]) + .thread-category[data-category="finished"] .global-project-heading { margin-top: 13px; }
+.rail .thread-category[data-category="pinned"] + .thread-category .global-project-heading::before,
+.rail .thread-category[data-category="snoozed"] .global-project-heading::before,
+.rail .thread-category:not([data-category="snoozed"]) + .thread-category[data-category="finished"] .global-project-heading::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--line-strong), transparent);
+  pointer-events: none;
+}

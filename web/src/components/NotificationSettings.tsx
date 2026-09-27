@@ -1,4 +1,5 @@
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import { send } from "../lib/socket.ts";
 import { setUiAlertSounds, useApp } from "../lib/store.ts";
 import { previewUiSound } from "../lib/ui-sound.ts";
@@ -80,11 +81,12 @@ export function NotificationSettings() {
                 onClick={() => void previewUiSound("done")}
               >{t("Preview")}</button>
             )}
-            <select value={alertSound} disabled={!connected} onChange={(event) => chooseAlertSound(event.target.value as AlertSound)}>
-              <option value="chime">{t("Citropy chime")}</option>
-              <option value="system">{t("System sound")}</option>
-              <option value="off">{t("Off")}</option>
-            </select>
+            <Select value={alertSound} disabled={!connected} onChange={(value) => chooseAlertSound(value as AlertSound)}
+              options={[
+                { value: "chime", label: t("Citropy chime") },
+                { value: "system", label: t("System sound") },
+                { value: "off", label: t("Off") },
+              ]} />
           </span>
         </label>
       </div>

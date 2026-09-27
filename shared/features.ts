@@ -53,8 +53,21 @@ export interface ProviderUsage {
   updatedAt: number;
 }
 
+export interface UsageDay {
+  day: string;
+  provider: ProviderId;
+  model?: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  costUsd: number;
+  turns: number;
+}
+
 export interface UsageReport {
   totals: Usage;
+  history: UsageDay[];
   providers: ProviderUsage[];
   conversations: Array<{
     id: string;

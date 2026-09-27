@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { constants } from "node:fs";
 import { stat, realpath, open, mkdir, writeFile, readFile } from "node:fs/promises";
 import { join, dirname, relative } from "node:path";
 import { inside, tree } from "./files.ts";
@@ -70,7 +71,7 @@ export async function findWorkspacePaths(root: string, query: string): Promise<A
 }
 
 export async function readBounded(path: string): Promise<{ text: string; truncated: boolean }> {
-  const handle = await open(path, "r");
+  const handle = await open(path, constants.O_RDONLY | constants.O_NONBLOCK);
   try {
     const info = await handle.stat();
     if (!info.isFile()) throw new Error("Choose a file.");

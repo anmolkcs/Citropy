@@ -140,6 +140,21 @@ export function reportedContext(tokens: number, contextMax = 0): boolean {
   return tokens > 0 && (!contextMax || tokens <= contextMax);
 }
 
+export const USAGE_TOTAL_KEYS = ["input", "output", "cacheRead", "cacheWrite", "costUsd", "turns"] as const;
+
+export type UsageTotals = Pick<Usage, (typeof USAGE_TOTAL_KEYS)[number]>;
+
+export const emptyUsageTotals = (): UsageTotals => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, turns: 0 });
+
+export function promptTokens(provider: ProviderId, usage: Pick<Usage, "input" | "cacheRead" | "cacheWrite">): number {
+  return usage.input + (provider === "codex" ? 0 : usage.cacheRead + usage.cacheWrite);
+}
+
+export function localDay(ms: number): string {
+  const date = new Date(ms);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function mergeUsage(options: {
   previous: Usage;
   incoming?: Partial<Usage>;
@@ -159,6 +174,7 @@ export function mergeUsage(options: {
     ...incoming,
     contextMax,
   };
+  for (const key of USAGE_TOTAL_KEYS) next[key] = Math.max(options.previous[key] ?? 0, next[key] ?? 0);
   const incomingReported = incoming.contextTokens !== undefined && reportedContext(incoming.contextTokens, contextMax);
   const previousReported = !incomingReported && reportedContext(options.previous.contextTokens, contextMax) && !options.previous.contextEstimated;
   if (incomingReported) {

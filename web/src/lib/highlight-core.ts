@@ -102,6 +102,17 @@ async function ensure(lang: string): Promise<boolean> {
   return true;
 }
 
+function oneByte(text: string): string {
+  if (!/^[\x00-\xff]*$/.test(text)) return text;
+  let copy = "";
+  for (let start = 0; start < text.length; start += 8192) {
+    const codes: number[] = [];
+    for (let index = start; index < Math.min(text.length, start + 8192); index++) codes.push(text.charCodeAt(index));
+    copy += String.fromCharCode(...codes);
+  }
+  return copy;
+}
+
 export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light"): Promise<string> {
   const resolved = resolveLang(lang);
   if (!resolved || code.length > 120_000) return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
@@ -109,7 +120,7 @@ export async function highlight(code: string, lang: string | undefined, theme: "
     const ok = await ensure(resolved);
     if (!ok) return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
     const shiki = await highlighter();
-    return shiki.codeToHtml(code, {
+    return shiki.codeToHtml(oneByte(code), {
       lang: resolved,
       theme: theme === "light" ? "citropy-light" : "citropy-dark",
     });
@@ -129,7 +140,7 @@ export async function highlightTokens(
     const ok = await ensure(resolved);
     if (!ok) return null;
     const shiki = await highlighter();
-    const result = shiki.codeToTokens(code, {
+    const result = shiki.codeToTokens(oneByte(code), {
       lang: resolved,
       theme: theme === "light" ? "citropy-light" : "citropy-dark",
     });

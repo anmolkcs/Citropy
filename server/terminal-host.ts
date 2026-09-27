@@ -155,7 +155,11 @@ export class TerminalHost {
     if (![...this.#sessions.values()].some(entry => entry.pty)) { clearTimeout(this.#poll); this.#poll = undefined; }
     clearTimeout(session.timer);
     session.pending = "";
-    if (session.pty) { stopProcess(session.pty, true); await waitForStoppedProcesses(); }
+    if (session.pty) {
+      stopProcess(session.pty, true);
+      (session.pty as IPty & { destroy(): void }).destroy();
+      await waitForStoppedProcesses();
+    }
   }
 
   async closeAll(): Promise<void> { await Promise.all([...this.#sessions.keys()].map(id => this.close(id))); }

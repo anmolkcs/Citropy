@@ -1,11 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronDown,
   Monitor,
   Smartphone,
   Tablet,
   SlidersHorizontal,
-  RotateCw,
 } from "lucide-react";
 import { Menu } from "./Menu.tsx";
 import type { BrowserAction, BrowserState } from "../../../shared/workbench.ts";
@@ -24,9 +23,20 @@ interface Props {
   onResize: (action: Extract<BrowserAction, { action: "resize" }>) => void;
 }
 
+function RotatePhone() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="8" y="4" width="8" height="16" rx="2" transform="rotate(45 12 12)" />
+      <path d="M3.31 9.67A9 9 0 0 1 9.67 3.31" />
+      <path d="M7.25 1.91 9.67 3.31 8.27 5.73" />
+      <path d="M20.69 14.33A9 9 0 0 1 14.33 20.69" />
+      <path d="M16.75 22.09 14.33 20.69 15.73 18.27" />
+    </svg>
+  );
+}
+
 export function BrowserViewport({ state, disabled, onResize }: Props) {
   const t = useI18n();
-  const modeHint = useId();
   const [custom, setCustom] = useState(false);
   const [width, setWidth] = useState(String(state.width));
   const [height, setHeight] = useState(String(state.height));
@@ -63,7 +73,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
               disabled={disabled}
               onClick={toggle}
             >
-              <Icon size={14} className={`browser-device-${selected?.id ?? "custom"}`} />
+              <Icon size={14} />
               <span>{selected ? t(selected.label) : t("Custom")}</span>
               <span className="browser-viewport-size">{state.width} × {state.height}</span>
               <ChevronDown size={12} />
@@ -74,7 +84,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
               id,
               label: t(label),
               hint: `${width} × ${height}`,
-              icon: <Icon size={16} className={`browser-device-${id}`} />,
+              icon: <Icon size={16} />,
               selected: selected?.id === id,
               onSelect: () => {
                 setCustom(false);
@@ -85,7 +95,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
               id: "custom",
               label: t("Custom size"),
               hint: t("Set the page width and height"),
-              icon: <SlidersHorizontal size={16} className="browser-device-custom" />,
+              icon: <SlidersHorizontal size={16} />,
               selected: !selected,
               onSelect: () => {
                 setWidth(String(state.width));
@@ -95,6 +105,22 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             },
           ]}
         />
+        <label className="browser-mode" title={t("Mobile sites and touch. Reloads when changed.")}>
+          {t("Mobile mode")}
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={Boolean(state.mobile)}
+            disabled={disabled || Boolean(state.dialog)}
+            onChange={(event) => onResize({
+              action: "resize",
+              width: state.width,
+              height: state.height,
+              mobile: event.target.checked,
+            })}
+          />
+        </label>
         <button
           type="button"
           className="icon-btn"
@@ -108,31 +134,9 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             mobile: state.mobile,
           })}
         >
-          <RotateCw size={13} />
+          <RotatePhone />
         </button>
       </div>
-      <label className="browser-mode">
-        <Smartphone size={15} className="browser-device-phone" />
-        <span>
-          <span>{t("Mobile mode")}</span>
-          <small id={modeHint}>{t("Mobile sites and touch. Reloads when changed.")}</small>
-        </span>
-        <input
-          className="setting-switch"
-          type="checkbox"
-          role="switch"
-          aria-label={t("Mobile mode")}
-          aria-describedby={modeHint}
-          checked={Boolean(state.mobile)}
-          disabled={disabled || Boolean(state.dialog)}
-          onChange={(event) => onResize({
-            action: "resize",
-            width: state.width,
-            height: state.height,
-            mobile: event.target.checked,
-          })}
-        />
-      </label>
       {custom && (
         <form
           className="browser-viewport-custom"

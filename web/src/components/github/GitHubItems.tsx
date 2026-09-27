@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useGitHub } from "../../lib/use-github.ts";
 import { useI18n } from "../../lib/i18n.ts";
+import { Select } from "../Select.tsx";
 import {
   GitHubFeedback,
   GitHubPagination,
@@ -75,18 +76,19 @@ export function GitHubItems({
             {t("Search")}
           </button>
         </form>
-        <select
+        <Select
           aria-label={t("State")}
           value={state}
-          onChange={(event) => {
-            setState(event.target.value as typeof state);
+          onChange={(value) => {
+            setState(value as typeof state);
             setPage(1);
           }}
-        >
-          <option value="open">{t("Open")}</option>
-          <option value="closed">{t("Closed")}</option>
-          <option value="all">{t("All states")}</option>
-        </select>
+          options={[
+            { value: "open", label: t("Open") },
+            { value: "closed", label: t("Closed") },
+            { value: "all", label: t("All states") },
+          ]}
+        />
         <button
           className="icon-btn"
           onClick={refresh}

@@ -40,13 +40,13 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
   onConversation: () => void;
 }) {
   const t = useI18n();
-  const activeThreadId = useApp((state) => state.activeThreadId);
-  const activeProjectId = useApp((state) => state.activeProjectId);
+  const selected = useApp((state) => state.activeThreadId === thread.id);
+  const activeChildId = useApp((state) => tree.childrenByParent.has(thread.id) ? state.activeThreadId : null);
   const slice = environmentSlice(environment);
   const connected = slice?.connected ?? false;
   const provider = slice?.providers.find((entry) => entry.id === thread.provider);
   const current = useEnvironments().activeId === environment;
-  const active = current && thread.id === activeThreadId;
+  const active = current && selected;
   const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
   const searching = Boolean(query.trim());
@@ -69,7 +69,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
       }).catch(reportError);
       return;
     }
-    if (thread.projectId !== activeProjectId) selectProject(thread.projectId);
+    if (thread.projectId !== useApp.getState().activeProjectId) selectProject(thread.projectId);
     selectThread(thread.id);
     loadThread(thread.id);
     useApp.setState({ searchMessageId: match?.messageId ?? null });
@@ -113,7 +113,11 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
           aria-description={new Date(thread.updatedAt).toLocaleString(currentLocale())}
           aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
-          onPointerEnter={(event) => { if (event.pointerType !== "touch") preview.show(event.currentTarget, environment, thread.id); }}
+          onPointerEnter={(event) => {
+            if (event.pointerType === "touch") return;
+            preview.show(event.currentTarget, environment, thread.id);
+            if (environment === environmentId()) loadThread(thread.id);
+          }}
           onPointerLeave={preview.leave}
           onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) preview.show(event.currentTarget, environment, thread.id, true); }}
           onBlur={preview.hide}
@@ -188,7 +192,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
           {t("Pull request")} #{pullRequestNumber(thread.pullRequest)}
         </a>
       )}
-      {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={current ? activeThreadId : null} onConversation={onConversation} />}
+      {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={current ? activeChildId : null} onConversation={onConversation} />}
     </div>
   );
 });

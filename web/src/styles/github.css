@@ -84,21 +84,6 @@
 .section-link:disabled:hover {
   background: transparent;
 }
-.github-view .section-link:has(.lucide-git-pull-request) > svg {
-  color: var(--ok);
-}
-.github-view .section-link:has(.lucide-circle-dot) > svg {
-  color: var(--ok);
-}
-.github-view .section-link:has(.lucide-tag) > svg {
-  color: var(--task-icon);
-}
-.github-view .section-link:has(.lucide-play) > svg {
-  color: var(--file-icon);
-}
-.github-view .section-link:has(.lucide-bell) > svg {
-  color: var(--heat);
-}
 .github-workspace {
   flex: 1;
   min-width: 0;
@@ -153,8 +138,8 @@
   background: var(--raised-2);
   box-shadow: var(--field-focus-ring);
 }
-.github-toolbar select,
-.github-dialog select {
+.github-toolbar .select,
+.github-dialog .select {
   background: var(--raised);
   border: 0;
   border-radius: var(--r-sm);
@@ -274,9 +259,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-.github-repo-metadata .lucide-star {
-  color: var(--heat);
 }
 .github-repo-metadata button {
   margin-left: auto;
@@ -738,7 +720,7 @@
   opacity: 0.6;
 }
 .github-dialog textarea,
-.github-dialog select {
+.github-dialog .select {
   width: 100%;
 }
 .github-dialog textarea {

@@ -203,8 +203,24 @@ const gitPatch = {
   ],
 };
 
+const usageDay = (offset) => {
+  const date = new Date(now - offset * day);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+const usageHistory = Array.from({ length: 120 }, (_, offset) => [
+  ["claude", "claude-opus-5", 2.4],
+  ["codex", "gpt-5.5-codex", 1.3],
+  ["opencode", "kimi-k2.5", 0.5],
+].flatMap(([provider, model, weight], index) => {
+  const wave = (Math.sin(offset * 0.7 + index * 2) + 1.3) * weight * (offset % 7 === 5 || offset % 7 === 6 ? 0.35 : 1);
+  if (wave < 0.4) return [];
+  const input = Math.round(wave * 180000);
+  return [{ day: usageDay(offset), provider, model, input, output: Math.round(input * 0.08), cacheRead: provider === "codex" ? Math.round(input * 0.6) : Math.round(input * 3), cacheWrite: Math.round(input * 0.2), costUsd: provider === "claude" ? Math.round(wave * 180) / 100 : 0, turns: Math.round(wave * 6) + 1 }];
+})).flat();
+
 const usageReport = {
   totals: { input: 1284000, output: 192000, cacheRead: 6420000, cacheWrite: 512000, costUsd: 0 },
+  history: usageHistory,
   providers: [
     {
       provider: "claude",
@@ -496,7 +512,7 @@ async function main() {
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
           await page.getByRole("button", { name: "Usage", exact: true }).click();
-          await page.locator(".limit-card").first().waitFor();
+          await page.locator(".usage-chart").waitFor();
         },
       });
     },

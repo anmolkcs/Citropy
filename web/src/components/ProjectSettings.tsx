@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronDown, Folder, Globe2, Save } from "lucide-react";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
-import { effortLabel } from "../lib/format.ts";
+import { saveProjectDefaults } from "../lib/actions.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import type { Project, ProjectSettings as Preferences } from "../../../shared/protocol.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import { Menu } from "./Menu.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 
@@ -59,24 +60,19 @@ function GlobalDefaultsForm() {
   const defaults = useApp((state) => state.projectDefaults);
   const [draft, setDraft] = useState<Preferences>();
   const settings = draft ?? defaults;
-  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const revision = useRef(0);
   const [error, setError] = useState("");
   const save = async () => {
-    setBusy(true);
+    const requested = revision.current;
     setError("");
     try {
-      const desktop = window.citropyDesktop ?? window.loomDesktop;
-      const result = desktop?.configureProjectDefaults ? await desktop.configureProjectDefaults(settings) : await api<Preferences>("projects/defaults", {
-        method: "PATCH", body: JSON.stringify({ settings }),
-      });
-      useApp.setState({ projectDefaults: result });
+      await saveProjectDefaults(settings);
+      if (revision.current !== requested) return;
       setDraft(undefined);
       setSaved(true);
     } catch (error) {
       setError((error as Error).message);
-    } finally {
-      setBusy(false);
     }
   };
   return <section className="settings-group project-scope" aria-labelledby="global-project-defaults-heading">
@@ -87,25 +83,25 @@ function GlobalDefaultsForm() {
         <p className="feature-note">{t("Shared by Local and SSH folders, unless a folder overrides them.")}</p>
       </div>
     </div>
-    <DefaultsFields settings={settings} disabled={busy} update={(patch) => {
+    <DefaultsFields settings={settings} update={(patch) => {
+      revision.current++;
       setDraft((previous) => ({ ...(previous ?? defaults), ...patch }));
       setSaved(false);
     }} />
     {error && <p className="feature-error" role="alert">{error}</p>}
     <div className="feature-save">
       <span role="status">{saved ? t("Global defaults saved") : ""}</span>
-      <button className="btn" data-variant="primary" disabled={busy} onClick={save}>
-        <Save size={15} />{busy ? t("Saving…") : t("Save global defaults")}
+      <button className="btn" data-variant="primary" onClick={save}>
+        <Save size={15} />{t("Save global defaults")}
       </button>
     </div>
   </section>;
 }
 
-function DefaultsFields({ settings, globalDefaults, update, disabled }: {
+function DefaultsFields({ settings, globalDefaults, update }: {
   settings: Preferences;
   globalDefaults?: Preferences;
   update: (patch: Partial<Preferences>) => void;
-  disabled: boolean;
 }) {
   const t = useI18n();
   const providers = useApp((state) => state.providers);
@@ -121,7 +117,7 @@ function DefaultsFields({ settings, globalDefaults, update, disabled }: {
     { value: "plan", label: t("Plan only") },
     { value: "bypass", label: t("Full access") },
   ];
-  return <fieldset className="project-defaults-fields" disabled={disabled}>
+  return <fieldset className="project-defaults-fields">
     <p className="feature-note">{t("Model, effort, permissions, and workspace apply to new conversations.")}</p>
     {folder && <label className="project-inherit-model">
       <input type="checkbox" checked={inheritedModel} onChange={(event) => update(event.target.checked
@@ -137,50 +133,43 @@ function DefaultsFields({ settings, globalDefaults, update, disabled }: {
           defaultOnly
           value={effective.provider ? { provider: effective.provider, model: effective.model ?? "" } : null}
           automaticLabel={t("Use the last selected model")}
-          disabled={disabled || inheritedModel}
+          disabled={inheritedModel}
           onChange={(choice) => update({ provider: choice?.provider ?? null, model: choice?.model, effort: undefined })}
+          tune={{ settings: { effort: effective.effort }, only: ["effort"], onChange: (patch) => update({ model: model?.id, effort: patch.effort }) }}
         />
       </div>
       <label className="feature-field">
-        {t("Reasoning effort")}
-        <select value={effective.effort ?? ""} disabled={inheritedModel || !model?.efforts?.length}
-          onChange={(event) => update({ model: model?.id, effort: event.target.value || undefined })}>
-          <option value="">{!provider ? t("Use the last selected effort") : model?.defaultEffort
-            ? t("{effort} (model preference)", { effort: effortLabel(model.defaultEffort) })
-            : t("Use the model's preference")}</option>
-          {model?.efforts?.map((entry) => <option key={entry} value={entry}>{effortLabel(entry)}</option>)}
-          {effective.effort && !model?.efforts?.includes(effective.effort) && <option value={effective.effort}>{effortLabel(effective.effort)}</option>}
-        </select>
-      </label>
-      <label className="feature-field">
         {t("Permissions")}
-        <select value={folder ? settings.permissionMode ?? "" : effective.permissionMode}
-          onChange={(event) => update({ permissionMode: event.target.value as Preferences["permissionMode"] || undefined })}>
-          {folder && <option value="">{t("Use global: {value}", { value: permissions.find((entry) => entry.value === global.permissionMode)!.label })}</option>}
-          {permissions.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}
-        </select>
+        <Select value={folder ? settings.permissionMode ?? "" : effective.permissionMode}
+          onChange={(value) => update({ permissionMode: value as Preferences["permissionMode"] || undefined })}
+          options={[
+            ...folder ? [{ value: "", label: t("Use global: {value}", { value: permissions.find((entry) => entry.value === global.permissionMode)!.label }) }] : [],
+            ...permissions.map((entry) => ({ value: entry.value, label: entry.label })),
+          ]} />
       </label>
       <label className="feature-field">
         {t("Workspace")}
-        <select value={folder ? settings.workspace ?? "" : effective.workspace}
-          onChange={(event) => update({ workspace: event.target.value as Preferences["workspace"] || undefined })}>
-          {folder && <option value="">{t("Use global: {value}", { value: global.workspace === "new" ? t("New worktree") : t("Current folder") })}</option>}
-          <option value="current">{t("Current folder")}</option>
-          <option value="new">{t("New worktree")}</option>
-        </select>
+        <Select value={folder ? settings.workspace ?? "" : effective.workspace}
+          onChange={(value) => update({ workspace: value as Preferences["workspace"] || undefined })}
+          options={[
+            ...folder ? [{ value: "", label: t("Use global: {value}", { value: global.workspace === "new" ? t("New worktree") : t("Current folder") }) }] : [],
+            { value: "current", label: t("Current folder") },
+            { value: "new", label: t("New worktree") },
+          ]} />
       </label>
     </div>
     {([
       { key: "autoPull", label: t("Pull before starting"), description: t("Fast-forward a clean checkout when it has no local commits.") },
-      { key: "browserAccess", label: t("Provider browser access"), description: t("Allow conversations to use the shared browser tools.") },
+      ...folder ? [{ key: "browserAccess", label: t("Provider browser access"), description: t("Allow conversations to use the shared browser tools.") }] as const : [],
     ] as const).map(({ key, label, description }) => <label className="feature-setting-row" key={key}>
       <span><strong>{label}</strong><small>{description}</small></span>
-      {folder ? <select className="project-policy-select" value={settings[key] === undefined ? "inherit" : String(settings[key])}
-        onChange={(event) => update({ [key]: event.target.value === "inherit" ? undefined : event.target.value === "true" })}>
-        <option value="inherit">{t("Use global: {value}", { value: global[key] ? t("Enabled") : t("Disabled") })}</option>
-        <option value="true">{t("Enabled")}</option>
-        <option value="false">{t("Disabled")}</option>
-      </select> : <input className="setting-switch" type="checkbox" role="switch" checked={Boolean(effective[key])}
+      {folder ? <Select className="project-policy-select" value={settings[key] === undefined ? "inherit" : String(settings[key])}
+        onChange={(value) => update({ [key]: value === "inherit" ? undefined : value === "true" })}
+        options={[
+          { value: "inherit", label: t("Use global: {value}", { value: global[key] ? t("Enabled") : t("Disabled") }) },
+          { value: "true", label: t("Enabled") },
+          { value: "false", label: t("Disabled") },
+        ]} /> : <input className="setting-switch" type="checkbox" role="switch" checked={Boolean(effective[key])}
         onChange={(event) => update({ [key]: event.target.checked })} />}
     </label>)}
   </fieldset>;
@@ -191,36 +180,36 @@ function ProjectForm({ project }: { project: Project }) {
   const globalDefaults = useApp((state) => state.projectDefaults);
   const [name, setName] = useState(project.name);
   const [settings, setSettings] = useState<Preferences>(project.settings ?? {});
-  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const revision = useRef(0);
   const [error, setError] = useState("");
   const update = (patch: Partial<Preferences>) => {
+    revision.current++;
     setSettings((previous) => ({ ...previous, ...patch }));
     setSaved(false);
   };
   const save = async () => {
-    setBusy(true);
+    const requested = revision.current;
     setError("");
     try {
       const result = await api<Project>(`projects?projectId=${project.id}`, {
         method: "PATCH", body: JSON.stringify({ name, settings }),
       });
+      if (revision.current !== requested) return;
       setSettings(result.settings ?? {});
       setName(result.name);
       setSaved(true);
     } catch (error) {
       setError((error as Error).message);
-    } finally {
-      setBusy(false);
     }
   };
   return <div className="feature-stack">
     <section className="settings-group project-scope" aria-label={t("Folder defaults")}>
       <label className="feature-field project-name-field">
         {t("Project name")}
-        <input value={name} disabled={busy} onChange={(event) => { setName(event.target.value); setSaved(false); }} />
+        <input value={name} onChange={(event) => { revision.current++; setName(event.target.value); setSaved(false); }} />
       </label>
-      <DefaultsFields settings={settings} globalDefaults={globalDefaults} update={update} disabled={busy} />
+      <DefaultsFields settings={settings} globalDefaults={globalDefaults} update={update} />
     </section>
       {error && (
         <p className="feature-error" role="alert">
@@ -232,11 +221,10 @@ function ProjectForm({ project }: { project: Project }) {
         <button
           className="btn"
           data-variant="primary"
-          disabled={busy}
           onClick={save}
         >
           <Save size={15} />
-          {busy ? t("Saving…") : t("Save folder settings")}
+          {t("Save folder settings")}
         </button>
       </div>
   </div>;

@@ -293,7 +293,7 @@ export const toolCategories = remoteId ? ["terminal", "workspace", "subagent"] :
 export const discoveryTools: ToolDefinition[] = [
   {
     name: "tool_help",
-    description: `Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Use subagent for Citropy subagents. Workspace has files, image sharing, and panels; terminal has visible commands.${remoteId ? "" : " Read computer_help before desktop control."}`,
+    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, OpenCode, Cursor, and Pi accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, and panels; terminal has visible commands.${remoteId ? "" : " Read computer_help before desktop control."}`,
     inputSchema: { type: "object", properties: { category: { type: "string", enum: toolCategories } }, required: ["category"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

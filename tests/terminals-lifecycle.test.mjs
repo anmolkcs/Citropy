@@ -10,7 +10,7 @@ test("a terminal that fails to spawn can be opened again without a stale session
   pty.spawn = () => {
     if (failure) throw new Error("spawn failed");
     let exited;
-    return { onData() {}, onExit(callback) { exited = callback; return { dispose() {} }; }, kill() { exited?.({ exitCode: 0 }); }, write: (text) => writes.push(text) };
+    return { onData() {}, onExit(callback) { exited = callback; return { dispose() {} }; }, kill() { exited?.({ exitCode: 0 }); }, destroy() { exited?.({ exitCode: 0 }); }, write: (text) => writes.push(text) };
   };
   try {
     const { TerminalHost } = await import("../server/terminal-host.ts");

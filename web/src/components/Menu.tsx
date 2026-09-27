@@ -43,6 +43,7 @@ interface Props {
   controls?: ReactNode;
   footer?: ReactNode;
   clearOf?: string;
+  span?: string;
   width?: number;
   gutter?: number;
   searchable?: boolean;
@@ -50,6 +51,8 @@ interface Props {
   className?: string;
   emptyMessage?: string;
   anchor?: HTMLElement;
+  inline?: boolean;
+  triggerId?: string;
   onClose?: () => void;
 }
 
@@ -61,6 +64,7 @@ export function Menu({
   controls,
   footer,
   clearOf,
+  span,
   width = 232,
   gutter = 0,
   searchable = false,
@@ -68,6 +72,8 @@ export function Menu({
   className = "",
   emptyMessage,
   anchor,
+  inline = false,
+  triggerId,
   onClose,
 }: Props) {
   const t = useI18n();
@@ -78,7 +84,8 @@ export function Menu({
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const wrap = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const id = useId();
+  const generatedId = useId();
+  const id = triggerId ?? generatedId;
   const visibleItems: (MenuItem & { depth: number })[] = [];
   const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   const contains = (item: MenuItem, words: string[]): boolean => {
@@ -112,12 +119,13 @@ export function Menu({
     element.showPopover();
     const position = () => {
       if (anchor && !anchor.isConnected) { setOpen(false); return; }
-      const bounds = (anchor ?? wrap.current)?.getBoundingClientRect();
+      const spanned = span ? wrap.current?.closest(span)?.getBoundingClientRect() : undefined;
+      const bounds = spanned ?? (anchor ?? (inline ? wrap.current?.firstElementChild : wrap.current))?.getBoundingClientRect();
       if (!bounds) return;
       const scale = uiScale / 100;
       const clearance = clearOf ? wrap.current?.closest(clearOf)?.getBoundingClientRect() : undefined;
       const anchorLeft = (clearance?.left ?? bounds.left) / scale;
-      const menuWidth = Math.min(width, viewportWidth() - 24 - 2 * gutter);
+      const menuWidth = Math.min(spanned ? spanned.width / scale : inline ? Math.max(width, bounds.width / scale) : width, viewportWidth() - 24 - 2 * gutter);
       const preferred = align === "end" ? bounds.right / scale - menuWidth : anchorLeft;
       element.style.width = `${scaled(menuWidth)}px`;
       element.style.maxHeight = "";
@@ -128,6 +136,7 @@ export function Menu({
       const below = Math.max(0, (innerHeight - bounds.bottom) / scale - 18);
       const upwards = height > below && above > below;
       const available = upwards ? above : below;
+      element.dataset.side = upwards ? "top" : "bottom";
       element.style.maxHeight = `${scaled(available)}px`;
       if (parseFloat(getComputedStyle(element).minHeight) > scaled(available)) element.style.minHeight = `${scaled(available)}px`;
       element.style.left = `${scaled(Math.max(12 + gutter, Math.min(preferred, viewportWidth() - menuWidth - 12 - gutter)))}px`;
@@ -164,7 +173,7 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, gutter, align, searchable, uiScale, anchor, clearOf]);
+  }, [open, width, gutter, align, searchable, uiScale, anchor, clearOf, span, inline]);
 
   useEffect(() => {
     if (!open) return;
@@ -195,7 +204,7 @@ export function Menu({
   return (
     <div
       className="menu-wrap"
-      style={anchor ? { display: "contents" } : undefined}
+      style={anchor || inline ? { display: "contents" } : undefined}
       ref={wrap}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
@@ -273,7 +282,7 @@ export function Menu({
                 onChange={(event) => setQuery(event.target.value)}
               />
             )}
-            <div className="menu-list scroll sliding-selection" data-large={visibleItems.length > 40} data-sliding={soleSelection ? true : undefined}>
+            {(items.length > 0 || !controls) && <div className="menu-list scroll sliding-selection" data-large={visibleItems.length > 40} data-sliding={soleSelection ? true : undefined}>
               {soleSelection && <SelectionHighlight value={soleSelection} selector=".menu-option[data-selected]" />}
               {visibleItems.map((item, index) => (
                   <Fragment key={item.id}>
@@ -338,7 +347,7 @@ export function Menu({
                   {terms.length ? t("No matches") : emptyMessage ?? t("No options available")}
                 </div>
               )}
-            </div>
+            </div>}
             {footer}
           </motion.div>
         )}

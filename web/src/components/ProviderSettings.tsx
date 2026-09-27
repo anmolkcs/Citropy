@@ -17,6 +17,7 @@ import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { Modal } from "./Modal.tsx";
@@ -160,10 +161,9 @@ export function ProviderSettings() {
             <strong>{t("Environment")}</strong>
             <small>{t("Switch the active environment to manage its providers.")}</small>
           </span>
-          <select aria-label={t("Provider environment")} value={environments.activeId}
+          <Select aria-label={t("Provider environment")} value={environments.activeId}
             disabled={switching || !window.citropyDesktop?.connectEnvironment}
-            onChange={async event => {
-              const id = event.target.value;
+            onChange={async id => {
               if (id === environments.activeId) return;
               setSwitching(true);
               setEditor(undefined);
@@ -171,11 +171,11 @@ export function ProviderSettings() {
               setInstances([]);
               try { await selectEnvironment(id); } catch (error) { reportError(error); }
               finally { setSwitching(false); }
-            }}>
-            <option value="local">{t("Local")}</option>
-            {environments.connections.map(connection =>
-              <option key={connection.id} value={connection.id}>{connection.name}</option>)}
-          </select>
+            }}
+            options={[
+              { value: "local", label: t("Local") },
+              ...environments.connections.map(connection => ({ value: connection.id, label: connection.name })),
+            ]} />
         </label>
         {switching && <p className="provider-maintenance-note" role="status">{t("Connecting…")}</p>}
         <label className="setting-row">

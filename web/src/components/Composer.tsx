@@ -10,7 +10,7 @@ import { QueueList } from "./QueueList.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Square } from "./icons.ts";
 import { Paperclip, CheckCircle2 } from "lucide-react";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
@@ -26,6 +26,7 @@ import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { RunningShells } from "./RunningShells.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
@@ -118,12 +119,12 @@ export function Composer({
     } catch (error) { reportError(error); }
     finally { if (!scopeSignal.aborted) setTransferring(false); }
   };
-  const restore = (item: QueuedMessage) => {
+  const restore = useCallback((item: QueuedMessage) => {
     setValue((previous) =>
       previous.trim() ? `${item.text}\n\n${previous}` : item.text,
     );
     setAttachments((previous) => [...(item.attachments ?? []), ...previous]);
-  };
+  }, [setValue, setAttachments]);
 
   const running = thread?.running ?? false;
   const provider = providers.find((entry) => entry.id === thread?.provider);
@@ -136,7 +137,7 @@ export function Composer({
     !gitActionBusy(thread?.gitAction) &&
     !uploading &&
     Boolean(provider?.enabled && (thread?.providerInstanceId ? instance?.available : provider.available));
-  const configuredThread = thread ? { ...thread, ...nextTurnSettings(thread) } : undefined;
+  const configuredThread = useMemo(() => thread ? { ...thread, ...nextTurnSettings(thread) } : undefined, [thread]);
   const model = selectedModel(models, configuredThread?.model);
   const commands = useComposerCommands({
     thread: configuredThread,
@@ -165,6 +166,46 @@ export function Composer({
     if (reducedMotion || Math.abs(distance) < 1) return;
     element.animate([{ transform: `translateY(${distance}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.65, 0, 0.35, 1)" });
   }, [starting, reducedMotion]);
+
+  const tabs = useMemo(() => thread && <>
+    <ComposerRequest />
+    <UsageLimitTab threadId={thread.id} />
+    <PlanTab threadId={thread.id} />
+    <QueueList thread={thread} provider={provider} onEdit={restore} />
+    {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
+    <RunningShells onOpen={onShell} />
+  </>, [thread, provider, restore, gitThread, onShell]);
+  const settingsBar = useMemo(() => thread && <>
+    <ModelPicker
+      value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
+      label={t("Model")}
+      buttonRef={modelButton}
+      className="composer-select composer-model"
+      disabled={!connected || sending || transferring}
+      lockedProvider={running || hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
+      instanceId={thread.providerInstanceId}
+      onTransfer={thread.parentThreadId ? undefined : (choice) => void transfer(choice)}
+      transferDisabled={Boolean(!hasMessages || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
+      onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
+      detail={<ModelDetail thread={configuredThread!} model={model} />}
+      menuClearOf=".composer-shell"
+      tuning={(target) => target
+        ? <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />
+        : <ModelTuning settings={configuredThread!} model={model} onChange={(patch) => configureThread(thread.id, patch)} />}
+    />
+
+    {provider?.instances?.length ? <Select className="composer-select composer-account" aria-label={t("Account")} title={t("Account")} value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={value => void configureThread(thread.id, { providerInstanceId: value || null })}
+      options={[
+        ...provider.available ? [{ value: "", label: t("Default") }] : [],
+        ...provider.instances.map(entry => ({ value: entry.id, label: entry.name, disabled: !entry.available })),
+      ]} /> : null}
+
+    <PermissionMenu
+      thread={configuredThread!}
+      disabled={!connected || sending || transferring}
+      buttonRef={permissionButton}
+    />
+  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal, t]);
 
   const submit = async () => {
     const text = value.trim();
@@ -251,12 +292,7 @@ export function Composer({
       >
         <ComposerFrame />
         <div className="composer-tabs">
-          <ComposerRequest />
-          <UsageLimitTab threadId={thread.id} />
-          <PlanTab threadId={thread.id} />
-          <QueueList thread={thread} provider={provider} onEdit={restore} />
-          {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
-          <RunningShells onOpen={onShell} />
+          {tabs}
         </div>
         <div className="composer-dock">
           {thread.finished && !running && (
@@ -320,34 +356,7 @@ export function Composer({
           commands={commands}
         />
         <div className="composer-bar">
-          <ModelPicker
-            value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
-            label={t("Model")}
-            buttonRef={modelButton}
-            className="composer-select composer-model"
-            disabled={!connected || sending || transferring}
-            lockedProvider={running || hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
-            instanceId={thread.providerInstanceId}
-            onTransfer={thread.parentThreadId ? undefined : (choice) => void transfer(choice)}
-            transferDisabled={Boolean(!hasMessages || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
-            onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
-            detail={<ModelDetail thread={configuredThread!} model={model} />}
-            menuClearOf=".composer-shell"
-            tuning={(target) => target
-              ? <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />
-              : <ModelTuning settings={configuredThread!} model={model} onChange={(patch) => configureThread(thread.id, patch)} />}
-          />
-
-          {provider?.instances?.length ? <select className="composer-select composer-account" aria-label={t("Account")} title={t("Account")} value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={event => void configureThread(thread.id, { providerInstanceId: event.target.value || null })}>
-            {provider.available && <option value="">{t("Default")}</option>}
-            {provider.instances.map(entry => <option key={entry.id} value={entry.id} disabled={!entry.available}>{entry.name}</option>)}
-          </select> : null}
-
-          <PermissionMenu
-            thread={configuredThread!}
-            disabled={!connected || sending || transferring}
-            buttonRef={permissionButton}
-          />
+          {settingsBar}
 
           <div className="composer-actions">
             <ContextUsage onCompact={compact} draft={value} />

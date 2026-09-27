@@ -28,13 +28,11 @@ export function ResizeHandle({
   const drag = useRef<{
     x: number;
     width: number;
-    root: HTMLElement;
-    previous: string;
+    targets: [HTMLElement, string][];
     moved: boolean;
     pointerX: number;
   } | null>(null);
   const uiScale = useApp((state) => state.uiScale);
-  const property = `--${panel}-width`;
   const direction = panel === "inspector" ? -1 : 1;
   const minimum = panel === "sidebar" ? 216 : panel === "inspector" ? 260 : 240;
   const [width, setWidth] = useState(minimum);
@@ -63,14 +61,23 @@ export function ResizeHandle({
   };
   const clamp = (value: number) =>
     Math.round(Math.max(minimum, Math.min(maximum(), value)));
+  const liveTargets = (element: HTMLElement, root: HTMLElement): [HTMLElement, string][] => {
+    const found: [HTMLElement | null | undefined, string][] = panel === "sidebar"
+      ? [[element.parentElement, "--rail"], [root.querySelector<HTMLElement>(".topbar-left"), "--rail"], [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"]]
+      : panel === "inspector"
+        ? [[element.parentElement, "--inspector"]]
+        : [[element.parentElement, `--${panel}-width`]];
+    return found.filter((target): target is [HTMLElement, string] => Boolean(target[0]));
+  };
+  const release = (current: NonNullable<typeof drag.current>) => {
+    for (const [element, property] of current.targets) element.style.removeProperty(property);
+  };
   const cancel = () => {
     cancelAnimationFrame(frame.current);
     frame.current = 0;
     const current = drag.current;
     if (!current) return;
-    if (current.previous)
-      current.root.style.setProperty(property, current.previous);
-    else current.root.style.removeProperty(property);
+    release(current);
     drag.current = null;
     delete document.documentElement.dataset.resizing;
   };
@@ -118,8 +125,7 @@ export function ResizeHandle({
         drag.current = {
           x: event.clientX,
           width: element.getBoundingClientRect().width / (uiScale / 100),
-          root,
-          previous: root.style.getPropertyValue(property),
+          targets: liveTargets(element, root),
           moved: false,
           pointerX: event.clientX,
         };
@@ -135,7 +141,7 @@ export function ResizeHandle({
           frame.current = 0;
           if (drag.current !== current) return;
           const next = clamp(current.width + direction * (current.pointerX - current.x) / (uiScale / 100));
-          current.root.style.setProperty(property, `${scaled(next)}px`);
+          for (const [element, property] of current.targets) element.style.setProperty(property, `${scaled(next)}px`);
         });
       }}
       onPointerUp={(event) => {
@@ -155,6 +161,7 @@ export function ResizeHandle({
                 (direction * (event.clientX - current.x)) / (uiScale / 100),
             ),
           );
+        release(current);
       }}
       onPointerCancel={cancel}
       onLostPointerCapture={cancel}

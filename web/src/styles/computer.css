@@ -1,6 +1,3 @@
-.panel-icon-computer {
-  color: var(--web-icon);
-}
 .computer-pane {
   height: 100%;
   padding: 18px;
@@ -23,7 +20,7 @@
 .computer-welcome p { max-width: 340px; line-height: 1.7; font-size: var(--text-base); color: var(--text-3); margin: 0; }
 .computer-welcome small { color: var(--text-4); font-size: var(--text-xs); line-height: 1.6; }
 .computer-controls { display: flex; align-items: center; gap: 5px; margin: 22px 0 10px; }
-.computer-controls select { min-width: 0; flex: 1; padding: 8px; border-radius: var(--r-sm); background: var(--raised); border: 0; font-size: var(--text-xs); }
+.computer-controls .select { min-width: 0; flex: 1; padding: 8px; border-radius: var(--r-sm); background: var(--raised); border: 0; font-size: var(--text-xs); }
 .computer-sharing-status { display: flex; align-items: flex-start; gap: 9px; padding: 12px 0; }
 .computer-sharing-status > span { flex: none; width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: var(--web-icon); }
 .computer-sharing-status[data-paused="true"] > span { background: var(--text-3); }

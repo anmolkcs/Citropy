@@ -9,6 +9,7 @@ import {
   Search,
 } from "lucide-react";
 import { useI18n } from "../../lib/i18n.ts";
+import { Select } from "../Select.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import {
@@ -100,17 +101,18 @@ export function GitHubRepositories({
           />
           <button className="btn">{t("Search")}</button>
         </form>
-        <select
+        <Select
           aria-label={t("Repository scope")}
           value={scope}
-          onChange={(event) => {
-            setScope(event.target.value as typeof scope);
+          onChange={(value) => {
+            setScope(value as typeof scope);
             setPage(1);
           }}
-        >
-          <option value="mine">{t("Your repositories")}</option>
-          <option value="all">{t("All GitHub")}</option>
-        </select>
+          options={[
+            { value: "mine", label: t("Your repositories") },
+            { value: "all", label: t("All GitHub") },
+          ]}
+        />
         <button
           className="icon-btn"
           aria-label={t("Refresh repositories")}
@@ -210,10 +212,14 @@ export function GitHubRepositories({
           </label>
           <label className="git-field">{" "}{t("Description")}{" "}<textarea name="description" rows={3} />
           </label>
-          <label className="git-field">{" "}{t("Visibility")}{" "}<select name="visibility" defaultValue="private">
-              <option value="private">{t("Private")}</option>
-              <option value="public">{t("Public")}</option>
-            </select>
+          <label className="git-field">{" "}{t("Visibility")}{" "}<Select
+              name="visibility"
+              defaultValue="private"
+              options={[
+                { value: "private", label: t("Private") },
+                { value: "public", label: t("Public") },
+              ]}
+            />
           </label>
         </GitHubDialog>
       )}</AnimatePresence>

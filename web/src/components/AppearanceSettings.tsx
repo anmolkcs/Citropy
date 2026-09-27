@@ -3,7 +3,8 @@ import { Check, Cherry, Circle, Citrus, Droplet, Flame, Flower2, ImagePlus, Leaf
 import { reportError } from "../lib/api.ts";
 import { saveBackgroundFile, useBackgroundFile, type BackgroundFileKind } from "../lib/background-files.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { setBackgroundBlur, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setNavigationStyle, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
+import { Select } from "./Select.tsx";
+import { setBackgroundBlur, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setNavigationStyle, setOpaquePopups, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
 import {
   setShowFailedTools,
   setSidebarMode,
@@ -14,8 +15,6 @@ import {
   setTypingAnimation,
   setTypingSpeed,
   setUiScale,
-  toggleInspector,
-  toggleSidebar,
   useApp,
   type SidebarMode,
 } from "../lib/store.ts";
@@ -160,8 +159,7 @@ export function AppearanceSettings() {
   const backgroundFocus = useApp((state) => state.backgroundFocus);
   const backgroundFocusSpread = useApp((state) => state.backgroundFocusSpread);
   const uiTransparency = useApp((state) => state.uiTransparency);
-  const sidebar = useApp((state) => state.sidebarOpen);
-  const inspector = useApp((state) => state.inspectorOpen);
+  const opaquePopups = useApp((state) => state.opaquePopups);
   const sidebarMode = useApp((state) => state.sidebarMode);
   const textStreaming = useApp((state) => state.textStreaming);
   const typingAnimation = useApp((state) => state.typingAnimation);
@@ -202,40 +200,21 @@ export function AppearanceSettings() {
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Conversation sidebar")}</strong>
-            <small>{t("Keep your conversations alongside the chat.")}</small>
-          </span>
-          <input className="setting-switch" type="checkbox" role="switch" checked={sidebar} onChange={toggleSidebar} />
-        </label>
-        <label className="setting-row">
-          <span>
-            <strong>{t("Inspector")}</strong>
-            <small>{t("Show changes, files, and the terminal next to your chat.")}</small>
-          </span>
-          <input className="setting-switch" type="checkbox" role="switch" checked={inspector} onChange={toggleInspector} />
-        </label>
-        <label className="setting-row">
-          <span>
             <strong>{t("Sidebar mode")}</strong>
             <small>{t("Workspaces shows one folder at a time. Global lists every open folder and its conversations.")}</small>
           </span>
-          <select value={sidebarMode} onChange={(event) => setSidebarMode(event.target.value as SidebarMode)}>
-            <option value="workspaces">{t("Workspaces")}</option>
-            <option value="global">{t("Global")}</option>
-          </select>
+          <Select value={sidebarMode} onChange={(value) => setSidebarMode(value as SidebarMode)}
+            options={[{ value: "workspaces", label: t("Workspaces") }, { value: "global", label: t("Global") }]} />
         </label>
         <label className="setting-row">
           <span>
             <strong>{t("Navigation layout")}</strong>
             <small>{t("Side strip keeps source control, GitHub, usage and settings on the left edge. Bottom bar puts them under the conversation list.")}</small>
           </span>
-          <select value={navigationStyle} onChange={(event) => setNavigationStyle(event.target.value as NavigationStyle)}>
-            <option value="strip">{t("Side strip")}</option>
-            <option value="bar">{t("Bottom bar")}</option>
-          </select>
+          <Select value={navigationStyle} onChange={(value) => setNavigationStyle(value as NavigationStyle)}
+            options={[{ value: "strip", label: t("Side strip") }, { value: "bar", label: t("Bottom bar") }]} />
         </label>
       </div>
-      <p className="settings-note">{" "}{t("Layout preferences are saved on this device.")}{" "}</p>
       <h2 className="settings-group-heading settings-group-heading-centered">{t("Theme")}</h2>
       <div className="scheme-switch sliding-selection" role="group" aria-label={t("Mode")}>
         <SelectionHighlight value={scheme} />
@@ -381,6 +360,14 @@ export function AppearanceSettings() {
               <output>{uiTransparency}%</output>
             </span>
           </div>
+          <label className="setting-row">
+            <span>
+              <strong>{t("Opaque pop-ups")}</strong>
+              <small>{t("Make menus, pop-ups, and question and permission cards fully solid instead of slightly see-through.")}</small>
+            </span>
+            <input className="setting-switch" type="checkbox" role="switch"
+              checked={opaquePopups} onChange={event => setOpaquePopups(event.target.checked)} />
+          </label>
         </div>
       )}
       <h2 className="settings-group-heading settings-group-spaced">{t("Conversation display")}</h2>
@@ -441,7 +428,6 @@ export function AppearanceSettings() {
           </div>
         </div>
       </div>
-      <p className="settings-note">{" "}{t("Tool activity stays live. Saved conversations appear immediately. Typing animation respects your system's reduced-motion setting.")}{" "}</p>
     </>
   );
 }

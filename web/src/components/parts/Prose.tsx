@@ -1,6 +1,6 @@
 import { useMarkdown } from "../../lib/use-markdown.ts";
 import { useLayoutEffect, useRef, useState } from "react";
-import { patchHtml } from "../../lib/patch-html.ts";
+import { patchBlocks, patchHtml } from "../../lib/patch-html.ts";
 import { useApp } from "../../lib/store.ts";
 import { useTextReveal } from "../../lib/use-text-reveal.ts";
 import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
@@ -18,13 +18,15 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
   const t = useI18n();
   const streaming = useApp((state) => state.textStreaming);
   const waiting = live && !streaming;
-  const { html, ready } = useMarkdown(waiting ? "" : text, live && streaming, images);
+  const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images);
   const root = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ images: ViewerImage[]; index: number } | null>(null);
   const shown = Boolean(text) && !waiting && (streaming || ready);
   useLayoutEffect(() => {
-    if (root.current) patchHtml(root.current, html);
-  }, [html, shown]);
+    if (!root.current) return;
+    if (blocks) patchBlocks(root.current, blocks);
+    else patchHtml(root.current, html);
+  }, [html, blocks, shown]);
   const revealing = useTextReveal(root, partId, html, live, ready);
   if (!shown) return null;
   return (

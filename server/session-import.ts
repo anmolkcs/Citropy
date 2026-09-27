@@ -5,6 +5,7 @@ import { join, relative, isAbsolute, sep } from "node:path";
 import { createInterface } from "node:readline";
 import * as acp from "@agentclientprotocol/sdk";
 import { store } from "./store.ts";
+import { providerLogRoots } from "./provider-logs.ts";
 import { uid } from "./ids.ts";
 import { workspaceDirectory } from "./remote.ts";
 import { cursorConfig } from "./providers/cursor.ts";
@@ -15,17 +16,6 @@ import type { ImportableSession, ImportProvider } from "../shared/session-import
 
 const candidates = new Map<string, { provider: ImportProvider; path?: string; root?: string; sessionId?: string; cwd?: string; title?: string }>();
 const limit = 32 * 1024 * 1024;
-
-function roots(provider: ImportProvider): string[] {
-  if (provider === "claude") return [join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects")];
-  if (provider === "codex") return ["sessions", "archived_sessions"].map(folder => join(process.env.CODEX_HOME || join(homedir(), ".codex"), folder));
-  if (provider === "pi") return [process.env.PI_CODING_AGENT_SESSION_DIR || join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"), "sessions")];
-  const data = process.env.XDG_DATA_HOME || (process.platform === "darwin"
-    ? join(homedir(), "Library", "Application Support")
-    : process.platform === "win32" ? process.env.APPDATA || join(homedir(), "AppData", "Roaming")
-      : join(homedir(), ".local", "share"));
-  return [join(data, "opencode", "opencode.db")];
-}
 
 async function* records(path: string, root: string, metadata = false): AsyncGenerator<any> {
   const canonical = await realpath(path);
@@ -91,7 +81,7 @@ async function openCodeSession(path: string, sessionId: string) {
 }
 
 async function listOpenCodeSessions(): Promise<ImportableSession[]> {
-  const path = roots("opencode")[0]!;
+  const path = providerLogRoots("opencode")[0]!;
   if (!await stat(path).catch(() => null)) return [];
   const { DatabaseSync } = await import("node:sqlite");
   const db = new DatabaseSync(path, { readOnly: true });
@@ -305,7 +295,7 @@ export async function listImportableSessions(provider: ImportProvider): Promise<
       if (files.length >= 5000) break;
     }
   }
-  for (const root of roots(provider)) await scan(root, root, 0);
+  for (const root of providerLogRoots(provider)) await scan(root, root, 0);
   const output: ImportableSession[] = [];
   const recent = files.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 200);
   for (const file of recent) {

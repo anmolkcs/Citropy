@@ -356,6 +356,12 @@ async function open(input) {
     tab.state.error = description;
     publish(tab);
   });
+  content.once("destroyed", () => {
+    if (quitting || tabs.get(input.id) !== tab) return;
+    tabs.delete(input.id);
+    window.contentView.removeChildView(view);
+    emit({ t: "browser.closed", id: input.id });
+  });
   content.on("render-process-gone", () => {
     tab.state.error = "This page stopped responding. Reload it to continue.";
     publish(tab);
@@ -484,6 +490,22 @@ async function click(tab, input) {
   return node;
 }
 
+async function closeTopLayer(tab) {
+  const { result } = await cdp(tab, "Runtime.evaluate", {
+    expression: "Boolean(document.querySelector('dialog:modal, :popover-open'))",
+    returnByValue: true,
+  });
+  if (!result.value) return false;
+  for (const type of ["rawKeyDown", "keyUp"])
+    await cdp(tab, "Input.dispatchKeyEvent", {
+      type,
+      key: "Escape",
+      code: "Escape",
+      windowsVirtualKeyCode: 27,
+    });
+  return true;
+}
+
 async function performAction(tab, input) {
   const content = tab.view.webContents;
   tab.state.error = undefined;
@@ -500,6 +522,7 @@ async function performAction(tab, input) {
       });
       break;
     case "back":
+      if (tab.state.mobile && (await closeTopLayer(tab))) break;
       if (content.navigationHistory.canGoBack())
         content.navigationHistory.goBack();
       break;
@@ -509,6 +532,9 @@ async function performAction(tab, input) {
       break;
     case "reload":
       content.reload();
+      break;
+    case "stop":
+      content.stop();
       break;
     case "click":
       await click(tab, input);

@@ -121,7 +121,7 @@
   border: 0;
   border-radius: var(--r-lg);
   background: var(--raised);
-  color: var(--file-icon);
+  color: var(--text-2);
   flex: none;
 }
 .dialog-symbol[data-danger="true"] {
@@ -258,7 +258,7 @@
   place-items: center;
   flex: none;
   background: var(--raised);
-  color: var(--file-icon);
+  color: var(--text-2);
 }
 .notification-symbol[data-level="success"],
 .toast[data-level="success"] .toast-symbol {
@@ -429,15 +429,17 @@
 .plan-panel-heading strong { font-weight: 500; }
 .plan-panel-heading span { margin-left: auto; color: var(--text-3); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .plan-panel .todo-list { padding: 0; }
+.plan-discard { width: 100%; margin-top: 12px; }
 .usage-limit-panel > header { display: flex; align-items: center; gap: 8px; }
 .usage-limit-panel > header svg { flex: none; color: var(--warn); }
 .usage-limit-panel h2 { margin: 0; font-size: var(--text-base); font-weight: 600; }
 .usage-limit-panel > p { margin: 8px 0 0; color: var(--text-2); line-height: 1.5; }
 .usage-limit-panel > .usage-limit-message { padding: 8px 10px; border-radius: var(--r-sm); background: var(--raised); color: var(--text-3); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .usage-limit-actions { display: grid; gap: 2px; margin: 10px -6px -6px; }
-.usage-limit-action { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: var(--r-sm); color: var(--text-2); font-weight: 500; text-align: left; transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out); }
-.usage-limit-action:hover:not(:disabled) { background: var(--raised); color: var(--text); }
-.usage-limit-action[aria-pressed="true"] { color: var(--text); }
+.usage-limit-action { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px; border-radius: var(--r-sm); transition: background var(--dur-instant) var(--ease-out); }
+.usage-limit-action:hover:has(:enabled) { background: var(--raised); }
+.usage-limit-action strong { display: block; color: var(--text); font-weight: 500; }
+.usage-limit-action small { display: block; margin-top: 2px; color: var(--text-3); font-size: var(--text-xs); line-height: 1.45; }
 .composer-tab > span { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .tab-panel { position: fixed; inset: auto; margin: 0; padding: 0; overflow: auto; border: 0; border-radius: var(--r-lg); background: var(--overlay); color: var(--text); font-size: var(--text-sm); box-shadow: var(--shadow-lg); transform-origin: bottom right; }
 .shells-list { max-height: 200px; overflow: auto; padding: 6px; overscroll-behavior: contain; }

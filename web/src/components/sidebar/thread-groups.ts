@@ -133,12 +133,13 @@ export function useThreadGroups({ threads, query, globalMode, environments, acti
 
     const cached = searching ? [] : environments.flatMap(({ environment, cachedThreads }) => (cachedThreads ?? []).map((thread): SidebarThread => ({ thread, environment, cached: true })));
     const pinned = [...categories.pinned, ...cached.filter(({ thread }) => !thread.finished && thread.pinned && !thread.archived && !thread.snoozedUntil)].sort(sortItems);
-    const finished = [...threads.filter((item) => (!item.cached && (!item.thread.parentThreadId || searching) && item.thread.finished)), ...cached.filter(({ thread }) => thread.finished)].sort(sortItems);
-    const grouped = new Set([...pinned, ...finished].map((item) => threadKey(item.environment, item.thread.id)));
+    const snoozed = [...categories.snoozed, ...cached.filter(({ thread }) => !thread.archived && thread.snoozedUntil)].sort(sortItems);
+    const finished = [...threads.filter((item) => (!item.cached && (!item.thread.parentThreadId || searching) && item.thread.finished && !item.thread.snoozedUntil)), ...cached.filter(({ thread }) => thread.finished && !thread.snoozedUntil)].sort(sortItems);
+    const grouped = new Set([...pinned, ...snoozed, ...finished].map((item) => threadKey(item.environment, item.thread.id)));
     const byProject = new Map<string, SidebarThread[]>();
     for (const item of [...threads, ...cached]) {
       if ((!item.cached && item.thread.parentThreadId && !searching) || grouped.has(threadKey(item.environment, item.thread.id))) continue;
-      if (item.cached && (item.thread.archived || item.thread.snoozedUntil)) continue;
+      if (item.cached && item.thread.archived) continue;
       const key = `${item.environment}:${item.thread.projectId}`;
       const entry = byProject.get(key);
       if (entry) entry.push(item);
@@ -160,6 +161,7 @@ export function useThreadGroups({ threads, query, globalMode, environments, acti
     return [
       ...(pinned.length ? [category("pinned", pinned)] : []),
       ...folders,
+      ...(snoozed.length ? [category("snoozed", snoozed)] : []),
       ...(finished.length ? [category("finished", finished)] : []),
     ];
   }, [globalMode, threads, environments, stored, searching, categories]);

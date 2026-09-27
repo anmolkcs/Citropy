@@ -95,7 +95,7 @@
   margin-top: 32px;
 }
 
-:is(.setting-row, .sound-row-controls) > select {
+:is(.setting-row, .sound-row-controls) .select {
   flex: 0 1 200px;
   min-width: 130px;
   min-height: 32px;
@@ -107,7 +107,7 @@
   transition: background-color var(--dur-instant) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  :is(.setting-row, .sound-row-controls) > select:hover:not(:disabled) { background-color: var(--raised-2); }
+  :is(.setting-row, .sound-row-controls) .select:hover:not(:disabled) { background-color: var(--raised-2); }
   label.setting-row:not([data-disabled="true"]):hover { background: color-mix(in srgb, var(--panel), var(--text) 3%); }
 }
 
@@ -115,17 +115,6 @@
   flex: 0 1 360px;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-}
-.assistance-model-choice[data-automatic="true"] { grid-template-columns: minmax(0, 1fr); }
-.assistance-model-choice > select {
-  min-width: 0;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: var(--raised);
-  color: var(--text);
 }
 
 .setting-row[data-disabled="true"],

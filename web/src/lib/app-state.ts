@@ -1,4 +1,5 @@
 import type { QuestionRequest } from "../../../shared/questions.ts";
+import { SEARCH_ENGINES, type SearchEngine } from "./web-search.ts";
 import { environmentStorage } from "./environment.ts";
 import { DEFAULT_CUSTOM_COLOR, isHexColor } from "./custom-theme.ts";
 import type { ComputerState } from "../../../shared/computer.ts";
@@ -131,12 +132,14 @@ export interface AppState {
   sidebarOpen: boolean;
   sidebarMode: SidebarMode;
   navigationStyle: NavigationStyle;
+  searchEngine: SearchEngine;
   stageBackground: StageBackground;
   backgroundDim: number;
   backgroundBlur: number;
   backgroundFocus: number;
   backgroundFocusSpread: number;
   uiTransparency: number;
+  opaquePopups: boolean;
   sidebarGroups: Record<string, boolean>;
   theme: Theme;
   scheme: Scheme;
@@ -308,12 +311,14 @@ export const useApp = create<AppState>(() => ({
   ),
   sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "global") === "workspaces" ? "workspaces" : "global",
   navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "strip") === "bar" ? "bar" : "strip",
+  searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
   backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, { on: 14, off: 0 }, 0),
   backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, { on: 70, off: 0 }, 70),
   backgroundFocusSpread: Number.isFinite(storedFocusSpread) ? Math.max(0, Math.min(400, storedFocusSpread)) : 140,
   uiTransparency: readLevel("citropy.uiTransparency", 0, 60, { on: 20, off: 0 }, 20),
+  opaquePopups: readFlag("citropy.opaquePopups", false),
   sidebarGroups: readSidebarGroups(),
   theme: oneOf(THEMES, storedTheme, "neutral"),
   scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),

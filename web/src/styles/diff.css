@@ -137,7 +137,7 @@
 .task-review-dialog .dialog-heading, .task-review-dialog .dialog-footer { flex-shrink: 0; }
 .task-review-dialog .dialog-content { flex: 1; min-height: 0; overflow-y: auto; }
 .review-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.review-toolbar > select { min-width: 130px; height: 34px; padding: 0 10px; color: var(--text); background: var(--raised); border: 0; border-radius: var(--r-sm); }
+.review-toolbar .select { min-width: 130px; height: 34px; padding: 0 10px; color: var(--text); background: var(--raised); border: 0; border-radius: var(--r-sm); }
 .review-file {
   background: var(--panel);
   border-radius: var(--r-sm);

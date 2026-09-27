@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type Ref } from "react";
+import { useEffect, useState, type PointerEvent, type Ref } from "react";
 import { LockKeyhole, UnlockKeyhole } from "lucide-react";
 import {
   Brain,
@@ -14,6 +14,8 @@ import { effortLabel as formatEffort, tokens } from "../../lib/format.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { effectiveEffort } from "../../../../shared/model-options.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
+import { AnimatePresence, motion, useSpring, type MotionStyle } from "motion/react";
+import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
 import type {
   ModelOption,
   PermissionMode,
@@ -94,7 +96,7 @@ export function ModelDetail({
   );
 }
 
-type TuningTab = "effort" | "context" | "speed";
+export type TuningTab = "effort" | "context" | "speed";
 
 export type TuningSettings = Partial<Pick<ThreadMeta, "effort" | "contextWindow" | "fastMode">>;
 
@@ -102,10 +104,12 @@ export function ModelTuning({
   settings,
   model,
   onChange,
+  only,
 }: {
   settings: TuningSettings;
   model: ModelOption | undefined;
   onChange: (patch: TuningSettings) => void;
+  only?: TuningTab[];
 }) {
   const t = useI18n();
   const efforts = model?.efforts ?? [];
@@ -116,7 +120,7 @@ export function ModelTuning({
     ...(efforts.length ? [{ id: "effort" as const, label: t("Effort"), icon: Brain }] : []),
     ...(model?.contextWindows?.length ? [{ id: "context" as const, label: t("Context"), icon: Layers }] : []),
     ...(model?.fastMode ? [{ id: "speed" as const, label: t("Speed"), icon: Zap }] : []),
-  ];
+  ].filter((entry) => !only || only.includes(entry.id));
   const [chosen, setChosen] = useState<TuningTab>();
   const tab = tabs.find((entry) => entry.id === chosen)?.id ?? tabs[0]?.id;
   if (!tab) return null;
@@ -142,28 +146,7 @@ export function ModelTuning({
       )}
       <div className="tuning-panel">
       {tab === "effort" && (
-        <div className="effort-slider">
-          <div className="effort-slider-value">{effort && formatEffort(effort)}</div>
-          <div
-            className="effort-slider-track"
-            style={{ "--fill": efforts.length > 1 ? level / (efforts.length - 1) : 1 } as CSSProperties}
-          >
-            {efforts.map((value, index) => (
-              <span key={value} className="effort-slider-stop" data-passed={index <= level || undefined} />
-            ))}
-            <input
-              type="range"
-              min={0}
-              max={efforts.length - 1}
-              step={1}
-              value={level}
-              aria-label={t("Reasoning effort")}
-              aria-valuetext={effort && formatEffort(effort)}
-              disabled={efforts.length < 2}
-              onChange={(event) => onChange({ effort: efforts[Number(event.target.value)] })}
-            />
-          </div>
-        </div>
+        <EffortSlider efforts={efforts} level={level} onChange={(index) => onChange({ effort: efforts[index] })} />
       )}
       {tab === "context" && (
         <div className="tuning-chips sliding-selection" role="group" aria-label={t("Context window")}>
@@ -199,6 +182,119 @@ export function ModelTuning({
     </div>
   );
 }
+
+type EffortGrip = { position: number; phase: "held" | "released" };
+
+function EffortSlider({
+  efforts,
+  level,
+  onChange,
+}: {
+  efforts: string[];
+  level: number;
+  onChange: (index: number) => void;
+}) {
+  const t = useI18n();
+  const [grip, setGrip] = useState<EffortGrip>();
+  useEffect(() => setGrip((current) => (current?.phase === "released" && current.position === level ? undefined : current)), [level]);
+  const position = grip?.position ?? level;
+  const index = Math.round(position);
+  const last = efforts.length - 1;
+  const reducedMotion = useReducedMotion();
+  const target = last > 0 ? position / last : 1;
+  const fill = useSpring(target, { stiffness: 600, damping: 42 });
+  useEffect(() => {
+    if (reducedMotion) fill.jump(target);
+    else fill.set(target);
+  }, [fill, target, reducedMotion]);
+  const positionAt = (track: HTMLElement, clientX: number) => {
+    const stops = track.querySelectorAll(".effort-slider-stop");
+    const start = centerX(stops[0]!);
+    const fraction = (clientX - start) / (centerX(stops[last]!) - start);
+    return Math.min(Math.max(fraction, 0), 1) * last;
+  };
+  const release = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    settle(Math.round(positionAt(event.currentTarget, event.clientX)));
+  };
+  const settle = (settled: number) => {
+    setGrip({ position: settled, phase: "released" });
+    if (settled !== level) onChange(settled);
+  };
+  return (
+    <div className="effort-slider">
+      <div className="effort-slider-value">{efforts[index] && <RollingLabel text={formatEffort(efforts[index])} order={index} />}</div>
+      <motion.div
+        className="effort-slider-track"
+        style={{ "--fill": fill } as MotionStyle}
+        data-held={grip?.phase === "held" || undefined}
+        onPointerDown={(event) => {
+          if (event.button !== 0 || last < 1) return;
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setGrip({ position: positionAt(event.currentTarget, event.clientX), phase: "held" });
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          setGrip({ position: positionAt(event.currentTarget, event.clientX), phase: "held" });
+        }}
+        onPointerUp={release}
+        onPointerCancel={() => setGrip(undefined)}
+      >
+        {efforts.map((value, stop) => (
+          <span key={value} className="effort-slider-stop" data-passed={stop <= position || undefined} />
+        ))}
+        <span className="effort-slider-thumb" />
+        <input
+          type="range"
+          min={0}
+          max={last}
+          step={1}
+          value={index}
+          aria-label={t("Reasoning effort")}
+          aria-valuetext={efforts[index] && formatEffort(efforts[index])}
+          disabled={last < 1}
+          onChange={(event) => settle(Number(event.target.value))}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+const roll = {
+  enter: (direction: number) => ({ y: `${direction * 100}%`, opacity: 0 }),
+  center: { y: "0%", opacity: 1 },
+  exit: (direction: number) => ({ y: `${direction * -100}%`, opacity: 0 }),
+};
+
+function RollingLabel({ text, order }: { text: string; order: number }) {
+  const reducedMotion = useReducedMotion();
+  const [shown, setShown] = useState({ order, direction: 1 });
+  if (shown.order !== order) setShown({ order, direction: order > shown.order ? 1 : -1 });
+  if (reducedMotion) return <span className="rolling-label">{text}</span>;
+  return (
+    <span className="rolling-label">
+      <AnimatePresence initial={false} custom={shown.direction}>
+        <motion.span
+          key={text}
+          custom={shown.direction}
+          variants={roll}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {text}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+const centerX = (element: Element) => {
+  const rect = element.getBoundingClientRect();
+  return rect.left + rect.width / 2;
+};
 
 export function PermissionMenu({
   thread,

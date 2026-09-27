@@ -4,7 +4,7 @@ import { normalizeTodos } from "../../../shared/todos.ts";
 
 export interface TimelineRow {
   key: string;
-  messageId: string;
+  messageId?: string;
   row?: Row | { kind: "activity"; id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; previewId?: string };
   first: boolean;
   last: boolean;
@@ -110,6 +110,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   const order = state.order[threadId] ?? [];
   const thread = state.threads[threadId];
   const running = Boolean(thread?.running || thread?.compacting || ["thinking", "working", "queued", "awaiting"].includes(thread?.status ?? ""));
+  const busy = Boolean(thread?.compacting || ["thinking", "working", "queued"].includes(thread?.status ?? ""));
   const startedAt = thread?.runStartedAt;
   const lastAssistantId = order.findLast(id => state.messages[id]?.role === "assistant");
   const replies: string[][] = [];
@@ -132,7 +133,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     const last = lastId === undefined ? undefined : state.parts[lastId];
     if (last) unfinishedReply = last.kind !== "text" || last.complete === false;
   }
-  return replies.flatMap<TimelineRow>((messageIds) => {
+  const timeline = replies.flatMap<TimelineRow>((messageIds, replyIndex) => {
     const messageId = messageIds[0]!;
     const message = state.messages[messageId];
     if (!message) return [];
@@ -143,15 +144,16 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     }
     const partIds = [...owners.keys()];
     const rows = buildRows(partIds.map((id) => state.parts[id]));
-    if (!rows.length) return [];
+    const activityKey = `activity-after-${replies[replyIndex - 1]?.at(-1) ?? threadId}`;
+    const continuing = running && startedAt !== undefined && messageIds.some(id => state.messages[id]!.ts >= startedAt);
+    const containsLatestReply = messageIds.includes(lastAssistantId ?? "");
+    const latest = order.at(-1) === messageIds.at(-1) || (continuing && containsLatestReply);
+    const active = latest && running && (startedAt === undefined || continuing);
+    if (!rows.length && !(active && busy)) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
     let answer: Row | undefined;
     const hasWork = rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts[row.id]?.kind === "reasoning");
     if (hasWork) {
-      const continuing = running && startedAt !== undefined && messageIds.some(id => state.messages[id]!.ts >= startedAt);
-      const containsLatestReply = messageIds.includes(lastAssistantId ?? "");
-      const latest = order.at(-1) === messageIds.at(-1) || (continuing && containsLatestReply);
-      const active = latest && running;
       const inProgress = active || continuing;
       const plan = inProgress
         ? rows.findLast(row => row.kind === "part" && state.parts[row.id]?.kind === "todo")
@@ -175,8 +177,11 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
         visible = [{ kind: "activity", id, ids, messageIds, open, active, previewId }, ...workRows, ...rows.filter(row => !work.has(row))];
       }
     }
+    if (active && busy && !visible.some(row => row.kind === "activity")) {
+      visible = [...visible, { kind: "activity", id: activityKey, ids: [], messageIds, open: false, active: true }];
+    }
     return visible.map((row, index) => ({
-      key: row.kind === "activity" ? `activity-${messageId}` : row.kind === "part" ? row.id : `${row.kind}-${row.ids[0]}`,
+      key: row.kind === "activity" ? activityKey : row.kind === "part" ? row.id : `${row.kind}-${row.ids[0]}`,
       messageId: row.kind === "activity" ? messageId : owners.get(row.kind === "part" ? row.id : row.ids[0]!)!,
       row,
       first: index === 0,
@@ -184,6 +189,11 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       separator: row === answer || undefined,
     }));
   });
+  if (busy && !timeline.some(row => row.row?.kind === "activity" && row.row.active)) {
+    const key = `activity-after-${order.at(-1) ?? threadId}`;
+    timeline.push({ key, first: true, last: true, row: { kind: "activity", id: key, ids: [], messageIds: [], open: false, active: true } });
+  }
+  return timeline;
 }
 
 export function sameTimelineRows(a: TimelineRow[], b: TimelineRow[]): boolean {

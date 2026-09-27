@@ -28,7 +28,7 @@ const warmup = await browser.newPage();
 await warmup.goto(url, { timeout: 120_000 });
 await warmup.close();
 
-async function app(t, { messages, questions: asked = [], permissions = [], preferences = {} }) {
+async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {} }) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, permissions: ["clipboard-read", "clipboard-write"] });
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
@@ -48,7 +48,7 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
       if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages }));
       if (event.t === "git.refresh") socket.send(JSON.stringify({ t: "git.status", projectId: "project", threadId: "chat", status: { branch: "main", ahead: 0, behind: 0, clean: false, files: [{ path: "a.ts", status: "M", staged: false }] } }));
     });
-    socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [thread], home: "/example", providers: [provider], questions: asked, permissions, assistance: { automaticTitles: false, commitModel: null, titleModel: null, reviewModel: null } } }));
+    socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [{ ...thread, ...threadPatch }], home: "/example", providers: [provider], questions: asked, permissions, assistance: { automaticTitles: false, commitModel: null, titleModel: null, reviewModel: null } } }));
   });
   await page.route("**/api/**", (route) => {
     const request = route.request();
@@ -86,6 +86,148 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   t.after(async () => { await browser.close(); await server.close(); });
   const checks = [];
   const check = (name, run) => checks.push(t.test(name, run));
+
+  check("unsupported Markdown links keep their content without opening another app page", async t => {
+    const page = await fixture(t, `
+      import { renderMarkdown } from '/web/src/lib/markdown.ts';
+      const source = ${JSON.stringify('[**Source**](/workspace/app.ts:12) [Relative](src/app.ts) [Section](#details) [Unsafe](javascript:alert%281%29) [Web](https://example.invalid) [Mail](mailto:test@example.invalid) [![Preview](' + square + ')](/workspace/image.svg)')};
+      document.querySelector('#fixture').innerHTML = await renderMarkdown(source, 'dark');
+    `);
+    await page.locator("#fixture strong").waitFor();
+    assert.equal(await page.locator("#fixture strong").textContent(), "Source");
+    assert.deepEqual(await page.locator("#fixture a").evaluateAll(links => links.map(link => link.getAttribute("href"))), ["https://example.invalid", "mailto:test@example.invalid"]);
+    assert.equal(await page.locator("#fixture button.markdown-image").count(), 1);
+    await page.getByText("Source", { exact: true }).click();
+    assert.equal(page.context().pages().length, 1);
+    assert.ok(page.url().includes("/fixture-"));
+  });
+
+  check("queue rows align controls and update their position numbers after reordering", async t => {
+    const queue = [
+      { id: "first", text: "First request", createdAt: 1 },
+      { id: "second", text: "Second request with attachment", createdAt: 2, attachments: [{ id: "file", label: "context.txt", path: "/context.txt" }] },
+      { id: "third", text: "Third request", createdAt: 3 },
+    ];
+    const { page, sent, push } = await app(t, { messages: history(2), threadPatch: { running: false, status: "stopped", queue } });
+    await page.getByRole("button", { name: "3 queued messages", exact: true }).click();
+    const panel = page.getByRole("dialog", { name: "Queued messages", exact: true });
+    await panel.waitFor();
+    assert.equal(await panel.locator("header").count(), 0);
+    assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), ["1", "2", "3"]);
+    for (const width of [1280, 380]) {
+      await page.setViewportSize({ width, height: 860 });
+      await page.waitForTimeout(200);
+      for (const selector of [".composer-queue-send", ".composer-queue-edit", ".composer-queue-remove"]) {
+        const positions = await panel.locator(selector).evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().x));
+        assert.ok(Math.max(...positions) - Math.min(...positions) < 1, selector);
+      }
+      assert.ok(await panel.evaluate(node => node.scrollWidth <= node.clientWidth));
+    }
+    await panel.getByRole("button", { name: "Move up", exact: true }).first().click();
+    assert.ok(sent.some(event => event.t === "queue.move" && event.id === "second" && event.index === 0));
+    push({ t: "thread.upsert", thread: { ...thread, running: false, status: "stopped", queue: [queue[1], queue[0], queue[2]] } });
+    await expect(async () => (await panel.locator(".composer-queue-text").first().textContent()) === queue[1].text);
+    assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), ["1", "2", "3"]);
+  });
+
+  check("thinking keeps its animated row and scroll position when reasoning arrives", async t => {
+    for (const [count, width] of [[13, 1280], [61, 380]]) {
+      const { page, push } = await app(t, { messages: history(count), preferences: { sidebar: "0" }, threadPatch: { running: false, status: "idle" } });
+      await page.setViewportSize({ width, height: 860 });
+      await page.waitForTimeout(300);
+      const runStartedAt = Date.now();
+      push({ t: "thread.upsert", thread: { ...thread, status: "thinking", runStartedAt } });
+      await page.locator(".working").waitFor();
+      assert.equal(await page.locator(".working").evaluate(node => getComputedStyle(node.closest("article")).animationName), "citropy-rise");
+      await page.waitForTimeout(400);
+      await page.evaluate(() => {
+        const canvas = document.querySelector(".canvas");
+        const working = document.querySelector(".working");
+        const article = working.closest("article");
+        window.thinkingFrames = [];
+        const sample = () => {
+          window.thinkingFrames.push({
+            same: document.querySelector(".working") === working && working.closest("article") === article,
+            opacity: Number(getComputedStyle(article).opacity),
+            height: canvas.scrollHeight,
+            top: canvas.scrollTop,
+          });
+          window.thinkingFrame = requestAnimationFrame(sample);
+        };
+        sample();
+      });
+      push({ t: "message.add", threadId: "chat", message: { id: "reply", role: "assistant", ts: Date.now(), parts: [] } });
+      await page.waitForTimeout(80);
+      push({ t: "part.add", threadId: "chat", messageId: "reply", part: { id: "reason", kind: "reasoning", text: "", complete: false } });
+      await page.waitForTimeout(80);
+      push({ t: "part.append", threadId: "chat", messageId: "reply", partId: "reason", text: "Checking the application." });
+      await page.getByRole("button", { name: "Work details", exact: true }).waitFor();
+      await page.waitForTimeout(400);
+      const frames = await page.evaluate(() => {
+        cancelAnimationFrame(window.thinkingFrame);
+        return window.thinkingFrames;
+      });
+      assert.ok(frames.every(frame => frame.same && frame.opacity === 1), JSON.stringify(frames));
+      assert.ok(Math.max(...frames.map(frame => frame.height)) - Math.min(...frames.map(frame => frame.height)) <= 1, JSON.stringify(frames));
+      assert.ok(Math.max(...frames.map(frame => frame.top)) - Math.min(...frames.map(frame => frame.top)) <= 1, JSON.stringify(frames));
+      const details = page.getByRole("button", { name: "Work details", exact: true });
+      assert.ok(await details.isEnabled());
+      await details.click();
+      await page.getByText("Checking the application.", { exact: true }).waitFor();
+      push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt } });
+      await expect(async () => await page.locator(".working").count() === 0);
+    }
+  });
+
+  check("a text-only reply removes its pending activity when the turn ends", async t => {
+    const { page, push } = await app(t, { messages: history(13), threadPatch: { status: "thinking", runStartedAt: 100 } });
+    await page.locator(".working").waitFor();
+    const indicator = await page.locator(".working").elementHandle();
+    push({ t: "message.add", threadId: "chat", message: { id: "reply", role: "assistant", ts: 101, parts: [] } });
+    push({ t: "part.add", threadId: "chat", messageId: "reply", part: { id: "answer", kind: "text", text: "Here is the answer.", complete: false } });
+    await page.getByText("Here is the answer.", { exact: true }).waitFor();
+    assert.ok(await indicator.evaluate(node => node === document.querySelector(".working")));
+    assert.equal(await page.locator(".working").count(), 1);
+    push({ t: "part.patch", threadId: "chat", messageId: "reply", partId: "answer", patch: { complete: true } });
+    push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt: 100 } });
+    await expect(async () => await page.locator(".working").count() === 0);
+    assert.equal(await page.getByRole("button", { name: "Work details", exact: true }).count(), 0);
+    assert.ok(await page.getByText("Here is the answer.", { exact: true }).isVisible());
+  });
+
+  check("settings keep edits made while an earlier save is pending", async t => {
+    const page = await fixture(t, `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { ProjectSettings } from '/web/src/components/ProjectSettings.tsx';
+      import { useApp } from '/web/src/lib/store.ts';
+      useApp.setState({ projects: [${JSON.stringify(project)}], activeProjectId: 'project', projectDefaults: {}, providers: [] });
+      const root = document.querySelector('#fixture');
+      root.style.cssText = 'position:absolute;top:20px;left:40px;width:700px';
+      createRoot(root).render(React.createElement(ProjectSettings));
+    `);
+    let pending;
+    await page.route('**/api/projects**', route => { pending = route; });
+    const pull = page.getByRole('switch', { name: /Pull before starting/ });
+    await pull.check();
+    await page.getByRole('button', { name: 'Save global defaults', exact: true }).click();
+    await expect(() => Boolean(pending));
+    await pull.uncheck();
+    await pending.fulfill({ json: { autoPull: true } });
+    await page.waitForTimeout(100);
+    assert.equal(await pull.isChecked(), false);
+    assert.equal(await page.getByText('Global defaults saved', { exact: true }).count(), 0);
+    pending = undefined;
+    const name = page.getByRole('textbox', { name: 'Project name', exact: true });
+    await name.fill('First name');
+    await page.getByRole('button', { name: 'Save folder settings', exact: true }).click();
+    await expect(() => Boolean(pending));
+    await name.fill('Latest name');
+    await pending.fulfill({ json: { ...project, name: 'First name', settings: {} } });
+    await page.waitForTimeout(100);
+    assert.equal(await name.inputValue(), 'Latest name');
+    assert.equal(await page.getByText('Folder settings saved', { exact: true }).count(), 0);
+  });
 
   check("typing several lines keeps the chat at the bottom", async (t) => {
     const { page } = await app(t, { messages: history(40) });

@@ -21,6 +21,7 @@ function update(state: BrowserState): void {
 
 desktopEvents.on("event", (event) => {
   if (event.t === "browser.state") update(event.browser);
+  if (event.t === "browser.closed") void closeBrowser(event.id);
   if (event.t === "browser.popup" && sessions.has(event.parentId)) {
     const parent = sessions.get(event.parentId)!;
     const id = uid("browser");
@@ -99,6 +100,11 @@ export function browserAction(
     return Promise.reject(
       new Error("This browser tab is closed. Open a new browser tab."),
     );
+  if (input.action === "stop")
+    return desktopRequest<BrowserState>("browser.action", { id, input }).then((state) => {
+      update(state);
+      return state;
+    });
   const operation = (queues.get(id) ?? Promise.resolve())
     .catch(() => {})
     .then(async () => {

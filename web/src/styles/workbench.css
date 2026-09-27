@@ -149,24 +149,6 @@
     display: none;
   }
 }
-.panel-icon-browser {
-  color: var(--web-icon);
-}
-.panel-icon-terminal {
-  color: var(--warn);
-}
-.panel-icon-files {
-  color: var(--file-icon);
-}
-.panel-icon-changes {
-  color: var(--ok);
-}
-.panel-icon-subagents {
-  color: var(--task-icon);
-}
-.panel-icon-tools {
-  color: var(--web-icon);
-}
 .workbench-empty,
 .browser-start {
   display: flex;
@@ -247,18 +229,37 @@
   box-shadow: none;
   font-size: var(--text-xs);
 }
-.browser-address button {
+.browser-address :is(a, button) {
   display: grid;
   place-items: center;
-  width: 26px;
+  align-self: stretch;
+  width: 28px;
   flex: none;
+  border-radius: var(--r-sm);
   color: var(--text-3);
 }
+.browser-address :is(a, button):hover {
+  color: var(--text);
+  background: var(--raised-2);
+}
 .browser-screen {
+  display: grid;
   flex: 1;
   min-height: 0;
   overflow: hidden;
   overscroll-behavior: contain;
+  container-type: size;
+}
+.browser-frame {
+  place-self: center;
+  width: min(100cqw, calc(var(--page-width) * 1px), calc(100cqh * var(--page-width) / var(--page-height)));
+  aspect-ratio: var(--page-width) / var(--page-height);
+  overflow: hidden;
+  background: var(--canvas-deep);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.browser-frame > .browser-start {
+  padding: 16px;
 }
 .browser-cover {
   display: block;
@@ -308,17 +309,6 @@
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
-.browser-device-desktop,
-.browser-device-laptop {
-  color: var(--web-icon);
-}
-.browser-device-tablet,
-.browser-device-custom {
-  color: var(--task-icon);
-}
-.browser-device-phone {
-  color: var(--file-icon);
-}
 .browser-viewport-custom {
   display: grid;
   gap: 12px;
@@ -355,24 +345,12 @@
 .browser-mode {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 14px 12px;
+  gap: 8px;
+  margin-left: auto;
+  padding: 0 6px;
   font-size: var(--text-xs);
   color: var(--text-2);
-}
-.browser-mode > span {
-  display: grid;
-  gap: 3px;
-  flex: 1;
-  min-width: 0;
-}
-.browser-mode > svg {
-  flex: none;
-}
-.browser-mode small {
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  color: var(--text-3);
+  white-space: nowrap;
 }
 .browser-viewport-actions {
   display: flex;

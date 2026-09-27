@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { renderMarkdown } from "./markdown.ts";
+import { renderMarkdown, renderStreamingMarkdown, type FinishedBlocks } from "./markdown.ts";
 import { escapeHtml } from "./escape-html.ts";
 import { useApp } from "./store.ts";
 
@@ -20,52 +20,81 @@ function remember(key: string, html: string): void {
   cacheSize += size;
 }
 
+const STREAM_INTERVAL = 70;
+
 function fallback(text: string): string {
   return `<p>${escapeHtml(text).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br />")}</p>`;
 }
 
-export function useMarkdown(text: string, live: boolean, images = true): { html: string; ready: boolean } {
+export function useMarkdown(text: string, live: boolean, images = true): { html: string; blocks?: string[]; ready: boolean } {
   const theme = useApp((state) => state.scheme);
   const language = useApp((state) => state.language);
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
   const key = `${theme}:${language}:${projectId ?? ""}:${threadId ?? ""}:${images}:${text}`;
-  const [rendered, setRendered] = useState(() => ({
+  const [rendered, setRendered] = useState<{ html: string; blocks?: string[]; key: string | null }>(() => ({
     html: cache.get(key) ?? fallback(text),
     key: cache.has(key) ? key : null,
   }));
   const latest = useRef(key);
+  const settings = `${theme}:${language}:${projectId ?? ""}:${threadId ?? ""}:${images}`;
+  const assets = projectId && threadId ? { projectId, threadId } : undefined;
+  const request = useRef({ text, key, settings, theme, language, images, assets });
+  const stream = useRef<{ timer?: ReturnType<typeof setTimeout>; busy: boolean; last: number; generation: number; finished: FinishedBlocks; settings: string }>({ busy: false, last: 0, generation: 0, finished: { source: "", html: [] }, settings });
+
+  useEffect(() => () => {
+    clearTimeout(stream.current.timer);
+    stream.current.timer = undefined;
+    stream.current.generation++;
+  }, []);
 
   useEffect(() => {
     latest.current = key;
+    request.current = { text, key, settings, theme, language, images, assets };
+    const state = stream.current;
+    if (!live) {
+      clearTimeout(state.timer);
+      state.timer = undefined;
+      state.generation++;
+    }
     const cached = cache.get(key);
     if (cached !== undefined) {
       setRendered((current) => current.key === key ? current : { html: cached, key });
       return;
     }
+    if (live) {
+      const schedule = () => {
+        state.timer = setTimeout(async () => {
+          state.timer = undefined;
+          state.busy = true;
+          state.last = performance.now();
+          const generation = state.generation;
+          const target = request.current;
+          if (state.settings !== target.settings) state.finished = { source: "", html: [] };
+          state.settings = target.settings;
+          const streamed = await renderStreamingMarkdown(target.text, target.theme, undefined, target.assets, { images: target.images, language: target.language }, state.finished).catch(() => undefined);
+          state.busy = false;
+          if (generation !== state.generation) return;
+          if (streamed) state.finished = streamed.finished;
+          setRendered(streamed ? { html: streamed.blocks.join(""), blocks: streamed.blocks, key: target.key } : { html: fallback(target.text), key: target.key });
+          if (request.current.key !== target.key) schedule();
+        }, Math.max(0, STREAM_INTERVAL - (performance.now() - state.last)));
+      };
+      if (state.timer === undefined && !state.busy) schedule();
+      return;
+    }
     let cancelled = false;
     const controller = new AbortController();
-    const run = async () => {
-      const assets = projectId && threadId ? { projectId, threadId } : undefined;
-      const result = await renderMarkdown(text, theme, controller.signal, assets, { images, language, live }).catch(() => fallback(text));
+    void renderMarkdown(text, theme, controller.signal, assets, { images, language, live }).catch(() => fallback(text)).then((result) => {
       if (cancelled || latest.current !== key) return;
-      if (!live) remember(key, result);
+      remember(key, result);
       setRendered({ html: result, key });
-    };
-    if (!live) {
-      void run();
-      return () => {
-        cancelled = true;
-        controller.abort();
-      };
-    }
-    const timer = setTimeout(run, 70);
+    });
     return () => {
       cancelled = true;
       controller.abort();
-      clearTimeout(timer);
     };
-  }, [key, text, theme, language, live, projectId, threadId, images]);
+  }, [key, text, theme, language, live, projectId, threadId, images, settings]);
 
-  return { html: rendered.html, ready: rendered.key === key };
+  return { html: rendered.html, blocks: rendered.blocks, ready: rendered.key === key };
 }

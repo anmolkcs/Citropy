@@ -61,7 +61,7 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
   });
 }
 
-export async function generateOpenCodeText(cwd: string, model: string, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
+export async function generateOpenCodeText(cwd: string, model: string, effort: string | undefined, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
   const [providerID, ...modelParts] = model.split("/");
   if (!providerID || !modelParts.length) throw new Error("Select an OpenCode model with a provider.");
   const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions }, signal, true);
@@ -77,6 +77,7 @@ export async function generateOpenCodeText(cwd: string, model: string, prompt: s
     sessionId = session.id;
     const result = await request(`/session/${encodeURIComponent(sessionId!)}/message`, {
       model: { providerID, modelID: modelParts.join("/") },
+      ...(effort ? { variant: effort } : {}),
       parts: [{ type: "text", text: prompt }],
       tools: { "*": false },
     });

@@ -1,20 +1,53 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Gauge, Hash, MessagesSquare, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChartColumnStacked, Gauge, MessagesSquare, RefreshCw } from "lucide-react";
 import { api } from "../lib/api.ts";
-import { clock, cost, providerLabels, tokens } from "../lib/format.ts";
+import { clock, cost, decimal, providerLabels, tokens } from "../lib/format.ts";
 import { SectionSidebar } from "./SectionSidebar.tsx";
 import type { UsageReport } from "../../../shared/features.ts";
+import type { ProviderId } from "../../../shared/protocol.ts";
 import { currentLocale, useI18n } from "../lib/i18n.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { ProviderLimits } from "./UsageLimits.tsx";
+import { ProviderIcon } from "./ProviderIcon.tsx";
+import { SelectionHighlight } from "./SelectionHighlight.tsx";
+import { AnimatedText } from "./AnimatedText.tsx";
+import { UsageChart } from "./usage/UsageChart.tsx";
+import { ProviderBreakdown } from "./usage/ProviderBreakdown.tsx";
+import { ConversationUsage } from "./usage/ConversationUsage.tsx";
+import {
+  PROVIDER_ORDER,
+  measureOf,
+  modelTotals,
+  rangeTotals,
+  usageBuckets,
+  type UsageMeasure,
+  type UsagePeriod,
+} from "./usage/usage-series.ts";
+import { USAGE_TOTAL_KEYS, emptyUsageTotals, type UsageTotals } from "../../../shared/usage-metrics.ts";
 
-const SECTIONS = [
-  { id: "limits", label: "Limits", icon: Gauge },
-  { id: "tokens", label: "Tokens", icon: Hash },
-  { id: "conversations", label: "Conversations", icon: MessagesSquare },
+const PAGES = [
+  { id: "overview", label: "Overview", icon: ChartColumnStacked, description: "All usage on this computer, read from each provider's own logs, including work outside Citropy." },
+  { id: "limits", label: "Limits", icon: Gauge, description: "Remaining allowance on your provider accounts." },
+  { id: "conversations", label: "Conversations", icon: MessagesSquare, description: "Tokens used by each saved Citropy conversation." },
 ] as const;
 
-type SectionId = typeof SECTIONS[number]["id"];
+type PageId = typeof PAGES[number]["id"];
+
+const PERIODS: Array<{ id: UsagePeriod; label: string; caption: string; previous: string }> = [
+  { id: "daily", label: "Daily", caption: "{measure} per day, last 30 days", previous: "previous 30 days" },
+  { id: "weekly", label: "Weekly", caption: "{measure} per week, last 12 weeks", previous: "previous 12 weeks" },
+  { id: "monthly", label: "Monthly", caption: "{measure} per month, last 12 months", previous: "previous 12 months" },
+];
+
+const MEASURES: Array<{ id: UsageMeasure; label: string }> = [
+  { id: "tokens", label: "Tokens" },
+  { id: "output", label: "Output tokens" },
+  { id: "cost", label: "Cost" },
+];
+
+function sumTotals(totals: Partial<Record<ProviderId, UsageTotals>>, providers: ProviderId[], measure: UsageMeasure): number {
+  return providers.reduce((sum, provider) => sum + (totals[provider] ? measureOf(measure, provider, totals[provider]) : 0), 0);
+}
 
 export function UsageView({
   sidebarOpen,
@@ -30,8 +63,10 @@ export function UsageView({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
-  const [provider, setProvider] = useState("");
-  const [active, setActive] = useState<SectionId>("limits");
+  const [period, setPeriod] = useState<UsagePeriod>("daily");
+  const [measure, setMeasure] = useState<UsageMeasure>("tokens");
+  const [hidden, setHidden] = useState<ReadonlySet<ProviderId>>(new Set());
+  const [active, setActive] = useState<PageId>("overview");
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,43 +85,82 @@ export function UsageView({
   }, [revision]);
 
   useEffect(() => {
-    const root = scroller.current;
-    if (!root || !data) return;
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      if (visible) setActive(visible.target.id.replace("usage-", "") as SectionId);
-    }, { root, rootMargin: "0px 0px -60% 0px" });
-    for (const { id } of SECTIONS) {
-      const element = root.querySelector(`#usage-${id}`);
-      if (element) observer.observe(element);
-    }
-    return () => observer.disconnect();
+    scroller.current?.scrollTo({ top: 0 });
+  }, [active]);
+
+  const history = data?.history ?? [];
+  const known = useMemo(() => {
+    const seen = new Set<ProviderId>([
+      ...(data?.history ?? []).map((entry) => entry.provider),
+      ...(data?.conversations ?? []).map((entry) => entry.provider),
+    ]);
+    return PROVIDER_ORDER.filter((provider) => seen.has(provider));
   }, [data]);
+  const visible = useMemo(() => known.filter((provider) => !hidden.has(provider)), [known, hidden]);
+  const isolated = visible.length === 1 && known.length > 1 ? visible[0] : undefined;
+  const now = useMemo(() => new Date(), [data]);
+  const buckets = useMemo(() => usageBuckets(history, period, visible, now), [history, period, visible, now]);
+  const previousBuckets = useMemo(() => usageBuckets(history, period, visible, now, 1), [history, period, visible, now]);
+  const totals = rangeTotals(buckets);
+  const previousTotals = rangeTotals(previousBuckets);
+  const combined = visible.reduce((sum, provider) => {
+    const value = totals[provider];
+    if (value) for (const key of USAGE_TOTAL_KEYS) sum[key] += value[key];
+    return sum;
+  }, emptyUsageTotals());
+  const reportsCost = history.some((entry) => entry.costUsd > 0);
+  const measures = MEASURES.filter((entry) => entry.id !== "cost" || reportsCost);
+  const shownMeasure = measures.some((entry) => entry.id === measure) ? measure : "tokens";
+  const periodInfo = PERIODS.find((entry) => entry.id === period)!;
+  const measureLabel = t(MEASURES.find((entry) => entry.id === shownMeasure)!.label);
+
+  const change = (current: number, previous: number) => {
+    if (!previous) return current ? t("New this period") : t("No usage in either period");
+    const percent = ((current - previous) / previous) * 100;
+    return t("{change}% vs {period}", { change: `${percent > 0 ? "+" : ""}${decimal(percent, 0)}`, period: t(periodInfo.previous) });
+  };
+  const kpis = [
+    { label: t("Tokens"), value: tokens(sumTotals(totals, visible, "tokens")), note: change(sumTotals(totals, visible, "tokens"), sumTotals(previousTotals, visible, "tokens")) },
+    { label: t("Output tokens"), value: tokens(combined.output), note: change(combined.output, sumTotals(previousTotals, visible, "output")) },
+    { label: t("Reported cost"), value: reportsCost ? cost(combined.costUsd) : t("Not reported"), note: reportsCost ? change(combined.costUsd, sumTotals(previousTotals, visible, "cost")) : t("Providers did not report cost") },
+    { label: t("Responses"), value: decimal(combined.turns, 0), note: change(combined.turns, visible.reduce((sum, provider) => sum + (previousTotals[provider]?.turns ?? 0), 0)) },
+  ];
+
+  const toggle = (provider: ProviderId) => setHidden((current) => {
+    const next = new Set(current);
+    if (next.has(provider)) next.delete(provider);
+    else next.add(provider);
+    return next;
+  });
+  const isolate = (provider: ProviderId) => setHidden(isolated === provider ? new Set() : new Set(known.filter((entry) => entry !== provider)));
 
   const updated = data ? Math.max(0, ...data.providers.map((entry) => entry.updatedAt)) : 0;
   const limited = data?.providers.filter((entry) => entry.windows.length) ?? [];
   const unlimited = data?.providers.filter((entry) => !entry.windows.length).map((entry) => providerLabels[entry.provider]) ?? [];
-  const metrics = data ? [
-    { label: t("Input tokens"), value: tokens(data.totals.input) },
-    { label: t("Output tokens"), value: tokens(data.totals.output) },
-    { label: t("Cache read"), value: tokens(data.totals.cacheRead) },
-    { label: t("Cache write"), value: tokens(data.totals.cacheWrite) },
-    { label: t("Reported cost"), value: data.totals.costUsd ? cost(data.totals.costUsd) : t("Not reported") },
-  ] : [];
+
+  const page = PAGES.find((entry) => entry.id === active)!;
+  const providerFilter = known.length > 1 && (
+    <div className="usage-provider-filter" role="group" aria-label={t("Providers shown")}>
+      {known.map((provider) => (
+        <button key={provider} type="button" data-series={provider} aria-pressed={!hidden.has(provider)} onClick={() => toggle(provider)}>
+          <i />
+          <ProviderIcon provider={provider} />
+          {providerLabels[provider]}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <section className="section-view" aria-label={t("Usage")}>
+    <section className="section-view usage-view" aria-label={t("Usage")}>
       <SectionSidebar activeItem={active} open={sidebarOpen} title={t("Usage")} onBack={onBack} navigation={navigation}>
-        {SECTIONS.map(({ id, label, icon: Icon }) => (
+        {PAGES.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             className="section-link"
             aria-current={active === id ? "page" : undefined}
-            onClick={() => {
-              setActive(id);
-              scroller.current?.querySelector(`#usage-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
+            onClick={() => setActive(id)}
           >
             <Icon size={17} />
             <span>{t(label)}</span>
@@ -97,8 +171,11 @@ export function UsageView({
         <div className="settings-inner usage-inner">
           <header className="settings-heading">
             <div>
-              <h1>{t("Usage")}</h1>
-              <p>{t("Account allowance and tokens used in Citropy.")}</p>
+              <h1 className="settings-title">
+                <span className="settings-title-icon" aria-hidden="true"><page.icon size={19} /></span>
+                <AnimatedText text={t(page.label)} />
+              </h1>
+              <p><AnimatedText text={t(page.description)} /></p>
             </div>
             <button className="btn" disabled={busy} onClick={() => setRevision((value) => value + 1)}>
               {busy ? <PixelLoader size={15} /> : <RefreshCw size={15} />}
@@ -109,8 +186,55 @@ export function UsageView({
           {!data && !error ? (
             <div className="pane-empty" role="status">{t("Reading provider usage…")}</div>
           ) : data && (
-            <div className="usage-sections">
-              <section id="usage-limits">
+            <div className="usage-sections" data-busy={busy || undefined}>
+              {active === "overview" && <section id="usage-overview">
+                <div className="usage-filters">
+                  <div className="usage-segmented sliding-selection" role="group" aria-label={t("Group usage by")}>
+                    <SelectionHighlight value={period} />
+                    {PERIODS.map((entry) => (
+                      <button key={entry.id} type="button" aria-pressed={period === entry.id} onClick={() => setPeriod(entry.id)}>{t(entry.label)}</button>
+                    ))}
+                  </div>
+                  <div className="usage-segmented sliding-selection" role="group" aria-label={t("Measure")}>
+                    <SelectionHighlight value={shownMeasure} />
+                    {measures.map((entry) => (
+                      <button key={entry.id} type="button" aria-pressed={shownMeasure === entry.id} onClick={() => setMeasure(entry.id)}>{t(entry.label)}</button>
+                    ))}
+                  </div>
+                  {providerFilter}
+                </div>
+                <div className="usage-kpis">
+                  {kpis.map(({ label, value, note }) => (
+                    <div key={label}>
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                      <small>{note}</small>
+                    </div>
+                  ))}
+                </div>
+                <UsageChart
+                  buckets={buckets}
+                  providers={visible}
+                  measure={shownMeasure}
+                  period={period}
+                  caption={t(periodInfo.caption, { measure: measureLabel })}
+                />
+                {known.includes("cursor") && <p className="settings-note">{t("Cursor does not save token counts on this computer, so Cursor shows only usage from Citropy.")}</p>}
+                {known.length > 0 && <>
+                  <div className="feature-section-heading usage-subheading">
+                    <h2>{t("Providers")}</h2>
+                    <span>{t("Select a provider to show only its usage")}</span>
+                  </div>
+                  <ProviderBreakdown
+                    providers={known}
+                    totals={totals}
+                    models={(provider) => modelTotals(history, provider, buckets[0]!.start)}
+                    isolated={isolated}
+                    onIsolate={isolate}
+                  />
+                </>}
+              </section>}
+              {active === "limits" && <section id="usage-limits">
                 <div className="feature-section-heading">
                   <h2>{t("Remaining allowance")}</h2>
                   {updated > 0 && <span>{t("Updated {time}", { time: clock(updated) })}</span>}
@@ -124,65 +248,11 @@ export function UsageView({
                   {unlimited.length > 0 && `${t("No allowance data from {providers}.", { providers: new Intl.ListFormat(currentLocale(), { type: "conjunction" }).format(unlimited) })} `}
                   {t("Allowance is shared with other apps using the same account.")}
                 </p>
-              </section>
-              <section id="usage-tokens">
-                <div className="feature-section-heading">
-                  <h2>{t("Tokens")}</h2>
-                  <span>{t("Saved Citropy conversations")}</span>
-                </div>
-                <div className="metric-grid usage-metrics">
-                  {metrics.map(({ label, value }) => (
-                    <div key={label}>
-                      <span>{label}</span>
-                      <strong>{value}</strong>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              <section id="usage-conversations">
-                <div className="feature-section-heading">
-                  <h2>{t("Conversation usage")}</h2>
-                  <select aria-label={t("Filter usage by provider")} value={provider} onChange={(event) => setProvider(event.target.value)}>
-                    <option value="">{t("All providers")}</option>
-                    <option value="claude">Claude Code</option>
-                    <option value="codex">Codex</option>
-                    <option value="opencode">OpenCode</option>
-                    <option value="cursor">Cursor</option>
-                    <option value="pi">Pi</option>
-                  </select>
-                </div>
-                <div className="feature-table-wrap scroll">
-                  <table className="feature-table">
-                    <thead>
-                      <tr>
-                        <th>{t("Conversation")}</th>
-                        <th>{t("Input")}</th>
-                        <th>{t("Output")}</th>
-                        <th>{t("Cache read")}</th>
-                        <th>{t("Cache write")}</th>
-                        <th>{t("Cost")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.conversations
-                        .filter((thread) => !provider || thread.provider === provider)
-                        .map((thread) => (
-                          <tr key={thread.id}>
-                            <td>
-                              <strong className="truncate">{thread.title}</strong>
-                              <small>{providerLabels[thread.provider]} · {thread.model || t("Model not reported")}</small>
-                            </td>
-                            <td>{tokens(thread.usage.input + (thread.provider === "codex" ? 0 : thread.usage.cacheRead + thread.usage.cacheWrite))}</td>
-                            <td>{tokens(thread.usage.output)}</td>
-                            <td>{tokens(thread.usage.cacheRead)}</td>
-                            <td>{tokens(thread.usage.cacheWrite)}</td>
-                            <td>{thread.usage.costUsd ? cost(thread.usage.costUsd) : "—"}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+              </section>}
+              {active === "conversations" && <section id="usage-conversations">
+                {providerFilter}
+                <ConversationUsage conversations={data.conversations.filter((entry) => visible.includes(entry.provider))} />
+              </section>}
             </div>
           )}
         </div>

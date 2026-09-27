@@ -1,5 +1,5 @@
 import { AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   GitFork,
   Trash2,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Menu } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
+import { SnoozeMenu } from "./SnoozeMenu.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
@@ -49,7 +50,9 @@ export function ConversationMenu({
     catch (error) { reportError(error); }
     finally { setBusy(false); }
   };
-  const [editing, setEditing] = useState<"title" | "pullRequest" | "snooze">();
+  const [editing, setEditing] = useState<"title" | "pullRequest">();
+  const [snoozeAnchor, setSnoozeAnchor] = useState<HTMLElement>();
+  const menuId = useId();
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -62,13 +65,7 @@ export function ConversationMenu({
   };
   const edit = (field: typeof editing) => {
     setEditing(field);
-    setValue(
-      field === "title"
-        ? thread.title
-        : field === "pullRequest"
-          ? (thread.pullRequest ?? "")
-          : "",
-    );
+    setValue(field === "title" ? thread.title : (thread.pullRequest ?? ""));
     setError("");
   };
   const update = (patch: object) =>
@@ -80,13 +77,7 @@ export function ConversationMenu({
       if (editing === "title")
         await organizeConversation(thread.id, { title: value.trim() }, environment);
       else
-        await organizeConversation(
-          thread.id,
-          editing === "snooze"
-            ? { snoozedUntil: new Date(value).getTime() }
-            : { pullRequest: value.trim() },
-          environment,
-        );
+        await organizeConversation(thread.id, { pullRequest: value.trim() }, environment);
       setEditing(undefined);
     } catch (error) {
       setError((error as Error).message);
@@ -99,6 +90,8 @@ export function ConversationMenu({
       <Menu
         align="end"
         width={230}
+        span=".thread-card"
+        triggerId={menuId}
         items={[
           ...(project?.isGit ? [{ id: "worktree", label: t("Continue in new worktree…"), icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
           ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: t("Remove worktree…"), icon: <Trash2 size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
@@ -150,12 +143,12 @@ export function ConversationMenu({
                   id: "snooze",
                   label: thread.snoozedUntil
                     ? t("Wake conversation")
-                    : t("Snooze until…"),
+                    : t("Snooze…"),
                   icon: <Clock size={15} />,
                   onSelect: () =>
                     thread.snoozedUntil
                       ? update({ snoozedUntil: null })
-                      : edit("snooze"),
+                      : setSnoozeAnchor(document.getElementById(menuId) ?? undefined),
                 },
                 {
                   id: "archive",
@@ -179,7 +172,7 @@ export function ConversationMenu({
             type="button"
             aria-label={`${t("Organize")} ${thread.title}`}
             aria-haspopup="menu"
-            aria-expanded={open}
+            aria-expanded={open || Boolean(snoozeAnchor)}
             onClick={toggle}
           >
             <MoreHorizontal size={16} />
@@ -188,18 +181,7 @@ export function ConversationMenu({
       />
       <AnimatePresence>{editing && (
         <Modal
-          title={
-            editing === "title"
-              ? t("Rename conversation")
-              : editing === "snooze"
-                ? t("Snooze conversation")
-                : t("Link a pull request")
-          }
-          description={
-            editing === "snooze"
-              ? t("Move this conversation out of your active list until the time you choose.")
-              : undefined
-          }
+          title={editing === "title" ? t("Rename conversation") : t("Link a pull request")}
           onClose={() => setEditing(undefined)}
           onSubmit={save}
           busy={busy}
@@ -226,13 +208,9 @@ export function ConversationMenu({
           }
         >
           <label className="feature-field">
-            {editing === "title"
-              ? t("Name")
-              : editing === "snooze"
-                ? t("Wake at")
-                : t("GitHub pull request URL")}
+            {editing === "title" ? t("Name") : t("GitHub pull request URL")}
             <input
-              type={editing === "snooze" ? "datetime-local" : "text"}
+              type="text"
               value={value}
               maxLength={editing === "title" ? 200 : 2000}
               onChange={(event) => setValue(event.target.value)}
@@ -250,6 +228,7 @@ export function ConversationMenu({
           )}
         </Modal>
       )}</AnimatePresence>
+      {snoozeAnchor && <SnoozeMenu thread={thread} environment={environment} anchor={snoozeAnchor} onClose={() => setSnoozeAnchor(undefined)} />}
     </>
   );
 }

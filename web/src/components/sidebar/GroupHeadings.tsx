@@ -101,7 +101,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         </span>}
         {group.offline && <span className="global-project-offline" title={t("Disconnected")}><Unplug size={12} /></span>}
       </button>
-      <Menu align="end" items={[
+      <Menu align="end" span=".global-project-heading" items={[
         { id: "open", label: t("Open workspace"), icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
         { id: "rename", label: t("Rename project"), icon: <Pencil size={15} />, disabled, onSelect: () => void run(() => setRenaming(true)) },
         { id: "up", label: t("Move up"), disabled: isFirst, onSelect: () => onMove(-1) },

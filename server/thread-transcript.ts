@@ -17,7 +17,7 @@ interface PartRef {
 }
 
 const MAX_OUTPUT = 24_000;
-const IMAGE_FILE = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico)$/i;
+const PREVIEW_FILE = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico|mp4|webm|mov)$/i;
 
 function clip(text: string): string {
   if (text.length <= MAX_OUTPUT) return text;
@@ -29,7 +29,7 @@ function imageFilesFor(name: string, raw: unknown, cwd: string): ImageFile[] | u
   const input = (raw ?? {}) as Record<string, unknown>;
   for (const key of ["file_path", "filePath", "path", "notebook_path"]) {
     const value = input[key];
-    if (typeof value !== "string" || !IMAGE_FILE.test(value)) continue;
+    if (typeof value !== "string" || !PREVIEW_FILE.test(value)) continue;
     return [{ path: inside(cwd, value) ?? resolve(cwd, value), label: basename(value) }];
   }
   return undefined;

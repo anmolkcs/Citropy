@@ -4,6 +4,7 @@ import { useI18n } from "../lib/i18n.ts";
 import { ChevronUp, Clock3, Paperclip } from "lucide-react";
 import { Pencil, X } from "./icons.ts";
 import { editQueued } from "../lib/actions.ts";
+import { isDevFake, moveFakeQueued } from "../lib/dev-triggers.ts";
 import { reportError } from "../lib/api.ts";
 import { flushHeld, takeHeld } from "../lib/offline.ts";
 import { send } from "../lib/socket.ts";
@@ -61,10 +62,14 @@ export function QueueList({
   const steer = Boolean(
     thread.running && !thread.compacting && provider?.capabilities?.steer,
   );
-  const edit = (item: QueuedMessage) =>
-    editQueued(thread.id, item.id)
+  const queueEvent = (event: { t: "queue.send" | "queue.remove"; threadId: string; id: string } | { t: "queue.move"; threadId: string; id: string; index: number }) =>
+    isDevFake(event.id) ? moveFakeQueued(event.threadId, event.id, event.t === "queue.move" ? event.index : undefined) : send(event);
+  const edit = (item: QueuedMessage) => {
+    if (isDevFake(item.id)) { moveFakeQueued(thread.id, item.id); onEdit(item); return; }
+    return editQueued(thread.id, item.id)
       .then(() => onEdit(item))
       .catch(reportError);
+  };
   const editHeld = (id: string) => {
     try {
       onEdit(takeHeld(thread.id, id));
@@ -108,24 +113,21 @@ export function QueueList({
         exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }}
         transition={{ duration: reducedMotion ? 0 : 0.16 }}
       >
-        <header className="composer-queue-header">
-          <h2>{t("Queued")}</h2>
-          <span>{state}</span>
-        </header>
         <ol className="composer-queue-list scroll" aria-label={t("Queued messages")}>
           {queued.map((item, index) => (
             <li className="composer-queue-item" key={item.id}>
-              <QueuedText item={item} />
+              <span className="composer-queue-position" aria-hidden="true">{index + 1}</span>
+              <div className="composer-queue-content"><QueuedText item={item} /></div>
               <div className="composer-queue-actions">
                 {(!thread.running ||
                   (steer && !COMMAND.test(item.text.trim()))) && (
                   <button
                     type="button"
-                    className="btn"
+                    className="btn composer-queue-send"
                     disabled={!connected}
                     title={thread.running ? (provider?.steerHint ?? t("Send now")) : t("Send this message now.")}
                     onClick={() =>
-                      send({
+                      queueEvent({
                         t: "queue.send",
                         threadId: thread.id,
                         id: item.id,
@@ -138,12 +140,12 @@ export function QueueList({
                 {index > 0 && (
                   <button
                     type="button"
-                    className="icon-btn"
+                    className="icon-btn composer-queue-move"
                     aria-label={t("Move up")}
                     title={t("Move up")}
                     disabled={!connected}
                     onClick={() =>
-                      send({
+                      queueEvent({
                         t: "queue.move",
                         threadId: thread.id,
                         id: item.id,
@@ -156,7 +158,7 @@ export function QueueList({
                 )}
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn composer-queue-edit"
                   aria-label={t("Edit")}
                   title={t("Edit")}
                   disabled={!connected}
@@ -166,12 +168,12 @@ export function QueueList({
                 </button>
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn composer-queue-remove"
                   aria-label={t("Remove")}
                   title={t("Remove")}
                   disabled={!connected}
                   onClick={() =>
-                    send({
+                    queueEvent({
                       t: "queue.remove",
                       threadId: thread.id,
                       id: item.id,
@@ -183,17 +185,20 @@ export function QueueList({
               </div>
             </li>
           ))}
-          {held.map((item) => (
+          {held.map((item, index) => (
             <li className="composer-queue-item" key={item.id}>
-              <QueuedText item={item} />
-              <span className="composer-queue-note">
-                {connected ? t("Not sent") : t("Waiting for connection")}
-              </span>
+              <span className="composer-queue-position" aria-hidden="true">{queued.length + index + 1}</span>
+              <div className="composer-queue-content">
+                <QueuedText item={item} />
+                <span className="composer-queue-note">
+                  {connected ? t("Not sent") : t("Waiting for connection")}
+                </span>
+              </div>
               <div className="composer-queue-actions">
                 {connected && (
                   <button
                     type="button"
-                    className="btn"
+                    className="btn composer-queue-send"
                     title={t("Try sending it again.")}
                     onClick={() => void flushHeld()}
                   >
@@ -202,7 +207,7 @@ export function QueueList({
                 )}
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn composer-queue-edit"
                   aria-label={t("Edit")}
                   title={t("Edit")}
                   onClick={() => editHeld(item.id)}
@@ -211,7 +216,7 @@ export function QueueList({
                 </button>
                 <button
                   type="button"
-                  className="icon-btn"
+                  className="icon-btn composer-queue-remove"
                   aria-label={t("Remove")}
                   title={t("Remove")}
                   onClick={() => removeHeld(item.id)}

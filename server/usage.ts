@@ -1,9 +1,12 @@
 import { store } from "./store.ts";
 import { emptyUsage } from "../shared/protocol.ts";
 import { providerControl } from "./providers/control.ts";
+import { USAGE_TOTAL_KEYS, promptTokens } from "../shared/usage-metrics.ts";
+import { providerLogUsage } from "./provider-log-usage.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 import type {
   ProviderUsage,
+  UsageDay,
   UsageReport,
   UsageWindow,
 } from "../shared/features.ts";
@@ -134,6 +137,17 @@ export async function providerLimits(provider: ProviderId): Promise<ProviderUsag
   return request;
 }
 
+function mergeDays(days: UsageDay[]): UsageDay[] {
+  const merged = new Map<string, UsageDay>();
+  for (const day of days) {
+    const key = `${day.day}\u0000${day.provider}\u0000${day.model ?? ""}`;
+    const existing = merged.get(key);
+    if (!existing) { merged.set(key, { ...day }); continue; }
+    for (const field of USAGE_TOTAL_KEYS) existing[field] += day[field];
+  }
+  return [...merged.values()];
+}
+
 export async function usageReport(
   providers: ProviderId[],
 ): Promise<UsageReport> {
@@ -150,11 +164,7 @@ export async function usageReport(
     .sort((a, b) => b.updatedAt - a.updatedAt);
   const totals = emptyUsage();
   for (const thread of conversations) {
-    totals.input +=
-      thread.usage.input +
-      (thread.provider === "codex"
-        ? 0
-        : thread.usage.cacheRead + thread.usage.cacheWrite);
+    totals.input += promptTokens(thread.provider, thread.usage);
     totals.output += thread.usage.output;
     totals.cacheRead += thread.usage.cacheRead;
     totals.cacheWrite += thread.usage.cacheWrite;
@@ -163,6 +173,10 @@ export async function usageReport(
   }
   return {
     totals,
+    history: mergeDays([
+      ...await providerLogUsage(),
+      ...store.usageHistory.entries().filter((entry) => entry.provider === "cursor"),
+    ]),
     conversations,
     providers: await Promise.all(providers.map(providerLimits)),
   };

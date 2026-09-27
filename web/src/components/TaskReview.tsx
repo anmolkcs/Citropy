@@ -8,9 +8,10 @@ import { api } from "../lib/api.ts";
 import { sendMessage, refreshGit } from "../lib/actions.ts";
 import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { Select } from "./Select.tsx";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import type { ChangeReview, ReviewScope } from "../../../shared/review.ts";
-import type { AssistanceSettings } from "../../../shared/assistance.ts";
+import type { AssistanceSettings, WritingModel } from "../../../shared/assistance.ts";
 
 export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta; messageId?: string; onClose: () => void }) {
   const t = useI18n();
@@ -46,6 +47,18 @@ export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta;
     setBusy(true); setError("");
     try { await run(); } catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   };
+  const saveModel = async (reviewModel: WritingModel | null) => {
+    const previous = useApp.getState().assistance.reviewModel;
+    useApp.setState((state) => ({ assistance: { ...state.assistance, reviewModel } }));
+    setError("");
+    try {
+      const assistance = await api<AssistanceSettings>("providers/assistance", { method: "PATCH", body: JSON.stringify({ reviewModel }) });
+      useApp.setState({ assistance });
+    } catch (error) {
+      useApp.setState((state) => ({ assistance: { ...state.assistance, reviewModel: previous } }));
+      setError((error as Error).message);
+    }
+  };
   const hunk = (path: string, index: number, operation: "stage" | "unstage" | "revert") => void action(async () => {
     if (operation === "revert" && !await confirmAction({ title: t("Revert this hunk?"), description: t("Only this unstaged change will be discarded."), label: t("Revert hunk"), danger: true })) return;
     await api(`threads/hunk?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ scope, path, index, operation, revision: review?.revision }) });
@@ -62,9 +75,10 @@ export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta;
   return <Modal title={t("Review changes")} icon={<FileDiff size={18} />} className="task-review-dialog" onClose={onClose} busy={busy}
     footer={<><button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>{t("Close")}</button><button className="btn" type="button" data-variant="primary" disabled={busy || !connected || (!comments.length && !feedback.trim())} onClick={sendFeedback}>{t(active ? "Queue feedback" : "Send feedback")}</button></>}>
     <div className="review-toolbar">
-      <select aria-label={t("Review scope")} value={scope} disabled={busy} onChange={event => setScope(event.target.value as ReviewScope)}>{(["lastTurn", "task", "unstaged", "staged"] as const).map((value, index) => <option key={value} value={value}>{t(["Last turn", "Whole task", "Unstaged", "Staged"][index]!)}</option>)}</select>
+      <Select aria-label={t("Review scope")} value={scope} disabled={busy} onChange={value => setScope(value as ReviewScope)} options={(["lastTurn", "task", "unstaged", "staged"] as const).map((value, index) => ({ value, label: t(["Last turn", "Whole task", "Unstaged", "Staged"][index]!) }))} />
       <button className="icon-btn" type="button" aria-label={t("Refresh review")} disabled={busy || loading} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} /></button>
-      <ModelPicker label={t("Review model")} value={selection} fallback={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model ?? "default" }} allowConversation disabled={busy} onChange={value => void action(async () => { const assistance = await api<AssistanceSettings>("providers/assistance", { method: "PATCH", body: JSON.stringify({ reviewModel: value }) }); useApp.setState({ assistance }); })} />
+      <ModelPicker label={t("Review model")} value={selection} fallback={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model ?? "default" }} allowConversation disabled={busy} onChange={value => void saveModel(value)}
+        tune={{ settings: { effort: selection?.effort }, only: ["effort"], onChange: patch => { if (selection) void saveModel({ ...selection, effort: patch.effort }); } }} />
       <button className="btn" type="button" disabled={busy || loading || !review?.patches.length || !connected} onClick={() => void action(async () => { setResult(await api(`threads/review-model?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ scope, messageId: scope === "lastTurn" ? messageId : undefined }) })); })}><ScanSearch size={15} />{t(busy ? "Working…" : "AI review")}</button>
     </div>
     {error && <p className="feature-error" role="alert">{error}</p>}

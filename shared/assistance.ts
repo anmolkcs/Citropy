@@ -4,6 +4,7 @@ export interface WritingModel {
   provider: ProviderId;
   model: string;
   providerInstanceId?: string;
+  effort?: string;
 }
 
 export interface AssistanceSettings {

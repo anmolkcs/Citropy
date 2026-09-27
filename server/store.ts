@@ -1,14 +1,15 @@
 import { dataRoot } from "./paths.ts";
 import { setLogging } from "./logs.ts";
 import { dev } from "./config.ts";
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, existsSync, renameSync } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, readdirSync, rmSync, existsSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename, resolve } from "node:path";
 import { bus } from "./bus.ts";
 import { eventJournal } from "./event-journal.ts";
 import { removeToolImages } from "./tool-images.ts";
 import { uid } from "./ids.ts";
+import { saveJson } from "./save-json.ts";
+import { UsageHistory } from "./usage-history.ts";
 import { subagentFinishedNotification } from "./subagent-notifications.ts";
 import { emptyUsage } from "../shared/protocol.ts";
 import { normalizeTodos } from "../shared/todos.ts";
@@ -44,6 +45,7 @@ const threadsDir = join(root, "threads");
 const settingsFile = join(root, "settings.json");
 const projectsFile = join(root, "projects.json");
 const notificationsFile = join(root, "notifications.json");
+const usageHistoryFile = join(root, "usage-history.json");
 
 mkdirSync(threadsDir, { recursive: true });
 
@@ -51,16 +53,6 @@ function sameValue(current: unknown, next: unknown): boolean {
   if (Object.is(current, next)) return true;
   if (typeof current !== "object" || typeof next !== "object" || !current || !next) return false;
   return JSON.stringify(current) === JSON.stringify(next);
-}
-
-function save(path: string, value: unknown): void {
-  const temporary = `${path}.${randomUUID()}.tmp`;
-  try {
-    writeFileSync(temporary, JSON.stringify(value), { flag: "wx", mode: 0o600, flush: true });
-    renameSync(temporary, path);
-  } finally {
-    rmSync(temporary, { force: true });
-  }
 }
 
 const LOADED_CONVERSATIONS = 8;
@@ -109,6 +101,7 @@ export class Store {
   };
   logging = true;
   resumeAfterLimits = false;
+  usageHistory = new UsageHistory(usageHistoryFile);
   #savedProjects = "";
   #loaded = new Map<string, Message[]>();
 
@@ -147,6 +140,9 @@ export class Store {
       }
       return [thread.id, thread];
     }));
+    this.usageHistory.load(() => [...this.threads.values()]
+      .filter((thread) => !thread.nativeAgentId)
+      .flatMap((thread) => [...(thread.transfers ?? []), { provider: thread.provider, model: thread.model, usage: thread.usage, at: thread.updatedAt }]));
   }
 
   #track(record: Omit<Thread, "messages">): Thread {
@@ -194,7 +190,7 @@ export class Store {
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
           if (model && ["claude", "codex", "opencode", "cursor", "pi"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
-            this.assistance[key] = { provider: model.provider, model: model.model, ...(typeof model.providerInstanceId === "string" ? { providerInstanceId: model.providerInstanceId } : {}) };
+            this.assistance[key] = { provider: model.provider, model: model.model, ...(typeof model.providerInstanceId === "string" ? { providerInstanceId: model.providerInstanceId } : {}), ...(typeof model.effort === "string" ? { effort: model.effort } : {}) };
         }
         for (const key of ["toasts", "desktop", "sound", "subagents"] as const) {
           if (typeof settings.notifications?.[key] === "boolean")
@@ -257,9 +253,10 @@ export class Store {
     const projects = [...this.projects.values()];
     const serialized = JSON.stringify(projects);
     if (serialized !== this.#savedProjects) {
-      save(projectsFile, projects);
+      saveJson(projectsFile, projects);
       this.#savedProjects = serialized;
     }
+    this.usageHistory.flush();
   }
 
   setProviderEnabled(id: ProviderId, enabled: boolean): void {
@@ -284,7 +281,7 @@ export class Store {
       read: false,
     };
     this.notifications = [notification, ...this.notifications].slice(0, 100);
-    save(notificationsFile, this.notifications);
+    saveJson(notificationsFile, this.notifications);
     bus.emit({ t: "notification.add", notification });
   }
 
@@ -297,13 +294,13 @@ export class Store {
     this.notifications = this.notifications.map((entry) =>
       !ids || ids.includes(entry.id) ? { ...entry, read: true } : entry,
     );
-    save(notificationsFile, this.notifications);
+    saveJson(notificationsFile, this.notifications);
     bus.emit({ t: "notifications.update", notifications: this.notifications });
   }
 
   clearNotifications(): void {
     this.notifications = this.notifications.filter((entry) => !entry.read);
-    save(notificationsFile, this.notifications);
+    saveJson(notificationsFile, this.notifications);
     bus.emit({ t: "notifications.update", notifications: this.notifications });
   }
 
@@ -387,7 +384,7 @@ export class Store {
   }
 
   #saveSettings(patch: Record<string, unknown>): void {
-    save(settingsFile, {
+    saveJson(settingsFile, {
       disabledProviders: [...this.disabledProviders],
       notifications: this.notificationPreferences,
       computerEnabled: this.computerEnabled,
@@ -470,7 +467,7 @@ export class Store {
     const remaining = this.notifications.filter((entry) => entry.target.threadId !== id);
     if (remaining.length !== this.notifications.length) {
       this.notifications = remaining;
-      save(notificationsFile, this.notifications);
+      saveJson(notificationsFile, this.notifications);
       bus.emit({ t: "notifications.update", notifications: this.notifications });
     }
     rmSync(join(threadsDir, `${id}.json`), { force: true });
@@ -563,6 +560,8 @@ export class Store {
   }
 
   setUsage(id: string, usage: Usage): void {
+    const thread = this.threads.get(id);
+    if (thread && !thread.nativeAgentId) this.usageHistory.record(thread.provider, thread.model, thread.usage, usage);
     this.patchThread(id, { usage });
   }
 

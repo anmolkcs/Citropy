@@ -2,6 +2,39 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.4.14
+
+### Added
+- A new Usage overview with daily, weekly, and monthly charts, provider and model breakdowns, period comparisons, and a table view. Local provider logs include work outside Citropy; Cursor shows usage from Citropy conversations.
+- Separate Usage pages for account limits and saved conversations, with sortable conversation totals.
+- Search from the browser address bar, with Google, DuckDuckGo, Bing, or Brave Search as your preferred search engine.
+- Browser buttons to stop loading, copy the current link, and open it in your usual browser.
+- Reasoning effort controls for the models that write conversation titles, commit messages, and code reviews.
+- Snooze conversations for a number of minutes, hours, or days, or until a reported usage limit resets.
+- A Discard plan button that cancels the remaining steps and clears the plan tab.
+- An Opaque pop-ups setting for fully solid menus, pop-ups, and question and permission cards.
+- Video thumbnails in attachments and tool results, with playback in the video viewer.
+
+### Changed
+- Queued messages have position numbers and consistently aligned controls, without the extra heading bar.
+- The work-details arrow slides into view beside Thinking when reasoning arrives.
+- Settings use consistent menus, and model pickers include an animated reasoning-effort slider.
+- Browser size, mobile mode, and rotation controls share a more compact toolbar. The empty page and page preview follow the selected device size.
+- Streaming long replies, switching conversations, resizing panels, and the animated text background do less work on the interface thread.
+- Resume-at-reset and snooze-until-reset options use switches with clearer explanations.
+- More interface icons use neutral colors, and image previews brighten on hover.
+
+### Fixed
+- Thinking no longer disappears or shifts the chat when the first reasoning text arrives. Its entrance animation stays intact.
+- Queued messages keep their attachments and position if preparation fails or sending is interrupted before delivery.
+- Unsupported links in replies display as text instead of opening another copy of the app.
+- Selecting a named pipe as context no longer leaves message preparation waiting indefinitely.
+- Closing an interactive terminal also closes shells that ignore the termination signal.
+- Models are told to check Citropy's available provider accounts and models before declaring a requested cross-provider subagent unavailable.
+- Snoozed conversations appear in their own group when the sidebar is organized by workspace.
+- Back closes page dialogs and popovers in mobile browser mode, and tabs close in Citropy when their page closes itself.
+- Changes made to project settings while a previous save is pending stay in the form instead of being replaced by the older response.
+
 ## 0.4.13
 
 ### Added

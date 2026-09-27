@@ -265,6 +265,7 @@
 .model-picker-trigger:disabled { opacity: 0.5; }
 .model-picker-trigger > .truncate { flex: 1; }
 .model-picker-trigger > svg { flex: none; }
+.model-picker-effort { flex: none; color: var(--text-3); font-size: var(--text-xs); }
 .model-picker-toolbar {
   display: flex;
   align-items: center;
@@ -566,7 +567,7 @@
 }
 .shell[data-backdrop] {
   --panel: color-mix(in srgb, var(--panel-solid) calc(var(--ui-alpha) * 100%), transparent);
-  --overlay: color-mix(in srgb, var(--overlay-solid) calc(max(var(--ui-alpha) + 0.12, 0.95) * 100%), transparent);
+  --overlay: color-mix(in srgb, var(--overlay-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%), transparent);
   --surface: color-mix(in srgb, var(--surface-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised: color-mix(in srgb, var(--raised-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised-2: color-mix(in srgb, var(--raised-2-solid) calc(var(--ui-alpha) * 100%), transparent);

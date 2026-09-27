@@ -150,7 +150,7 @@ export function DiagnosticsSettings() {
               preserveAspectRatio="none"
             >
               {history.length === 1 && (
-                <circle cx="3" cy="10" r="3" fill="var(--web-icon)" />
+                <circle cx="3" cy="10" r="3" fill="var(--text-2)" />
               )}
               <polyline
                 points={history
@@ -160,7 +160,7 @@ export function DiagnosticsSettings() {
                   )
                   .join(" ")}
                 fill="none"
-                stroke="var(--web-icon)"
+                stroke="var(--text-2)"
                 strokeWidth="2"
                 vectorEffect="non-scaling-stroke"
               />

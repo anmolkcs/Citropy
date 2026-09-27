@@ -1,7 +1,7 @@
 import { serverUrl } from "../lib/environment.ts";
 import { AnimatePresence } from "motion/react";
 import { useState } from "react";
-import { X, Download, ImageOff } from "lucide-react";
+import { X, Download, ImageOff, Play } from "lucide-react";
 import { FileIcon } from "./FileIcon.tsx";
 import { Modal } from "./Modal.tsx";
 import { FilePreview } from "./FilePreview.tsx";
@@ -26,11 +26,12 @@ export function Attachments({
   const [preview, setPreview] = useState<Attachment>();
   const [missing, setMissing] = useState<ReadonlySet<string>>(() => new Set());
   const images = files.filter(file => file.mime?.startsWith("image/"));
+  const media = (file: Attachment) => file.mime?.startsWith("image/") || file.mime?.startsWith("video/");
   return (
     <>
       <div className="attachments">
         {files.map((file) => (
-          <div className="attachment" data-image={file.mime?.startsWith("image/") || undefined} key={file.id ?? file.path}>
+          <div className="attachment" data-image={media(file) || undefined} key={file.id ?? file.path}>
             <button
               type="button"
               className="attachment-open"
@@ -38,8 +39,18 @@ export function Attachments({
               aria-label={`${t("Preview")} ${file.label}`}
               title={`${t("Preview")} ${file.label}`}
             >
-              {file.mime?.startsWith("image/") ? (
-                missing.has(file.id ?? file.path) ? <span className="image-unavailable" role="img" aria-label={t("Image unavailable")}><ImageOff size={20} aria-hidden="true" /><span>{t("Image unavailable")}</span></span> : <img
+              {media(file) ? (
+                missing.has(file.id ?? file.path) ? <span className="image-unavailable" role="img" aria-label={t("Image unavailable")}><ImageOff size={20} aria-hidden="true" /><span>{t("Image unavailable")}</span></span> : file.mime?.startsWith("video/") ? <span className="video-thumbnail">
+                  <video
+                    src={`${serverUrl(`/api/assets?${assetQuery(projectId, file.path, threadId, file.id)}`)}#t=0.1`}
+                    preload="metadata"
+                    muted
+                    playsInline
+                    aria-hidden="true"
+                    onError={() => setMissing(previous => new Set(previous).add(file.id ?? file.path))}
+                  />
+                  <Play size={14} fill="currentColor" aria-hidden="true" />
+                </span> : <img
                   alt={file.label}
                   loading="lazy"
                   decoding="async"
@@ -49,7 +60,7 @@ export function Attachments({
               ) : (
                 <FileIcon path={file.label} mime={file.mime} size={22} className="attachment-file-icon" />
               )}
-              {!file.mime?.startsWith("image/") && <span>
+              {!media(file) && <span>
                 <strong className="truncate">{file.label}</strong>
                 <small>
                   {file.size !== undefined

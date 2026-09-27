@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Play, RefreshCw, Terminal } from "lucide-react";
 import { useGitHub } from "../../lib/use-github.ts";
 import { useI18n } from "../../lib/i18n.ts";
+import { Select } from "../Select.tsx";
 import { github } from "../../lib/actions.ts";
 import {
   GitHubDialog,
@@ -69,19 +70,18 @@ export function GitHubActions({
     <div className="github-workspace">
       <div className="github-toolbar">
         <h2>{t("Workflow runs")}</h2>
-        <select
+        <Select
           aria-label={t("Workflow branch")}
           value={branch}
-          onChange={(event) => {
-            setBranch(event.target.value);
+          onChange={(value) => {
+            setBranch(value);
             setPage(1);
           }}
-        >
-          <option value="">{t("All branches")}</option>
-          {branches.data?.map((name) => (
-            <option key={name}>{name}</option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: t("All branches") },
+            ...(branches.data ?? []).map((name) => ({ value: name, label: name })),
+          ]}
+        />
         <button
           className="icon-btn"
           aria-label={t("Refresh workflows")}
@@ -269,6 +269,8 @@ export function GitHubActions({
                 provided.length
               )
                 throw new Error(t("Each input needs a unique name."));
+              if (!formText(data, "workflow"))
+                throw new Error(t("Select a workflow"));
               mutation = {
                 action: "dispatch",
                 id: Number(formText(data, "workflow")),
@@ -294,16 +296,13 @@ export function GitHubActions({
                 error={workflows.error}
                 loading={workflows.loading}
               />
-              <label className="git-field">{" "}{t("Workflow")}{" "}<select name="workflow" required defaultValue="">
-                  <option value="" disabled>{" "}{t("Select a workflow")}{" "}</option>
-                  {workflows.data
-                    ?.filter((workflow) => workflow.state === "active")
-                    .map((workflow) => (
-                      <option key={workflow.id} value={workflow.id}>
-                        {workflow.name}
-                      </option>
-                    ))}
-                </select>
+              <label className="git-field">{" "}{t("Workflow")}{" "}<Select
+                  name="workflow"
+                  placeholder={t("Select a workflow")}
+                  options={(workflows.data ?? [])
+                    .filter((workflow) => workflow.state === "active")
+                    .map((workflow) => ({ value: String(workflow.id), label: workflow.name }))}
+                />
               </label>
               <label className="git-field">{" "}{t("Branch or tag")}{" "}<input
                   name="ref"

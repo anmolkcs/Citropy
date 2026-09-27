@@ -114,6 +114,15 @@ export const threadRoutes: Routes = {
     store.patchThread(thread.id, { usageLimit: { ...thread.usageLimit, resume: event.enabled } });
     checkUsageResume();
   },
+  "thread.discardPlan": (event) => {
+    const thread = store.threads.get(event.id);
+    if (!thread) throw new Error("This conversation no longer exists.");
+    const message = thread.messages.findLast((entry) => entry.parts.some((part) => part.kind === "todo"));
+    const plan = message?.parts.findLast((part) => part.kind === "todo");
+    if (!message || plan?.kind !== "todo") throw new Error("This conversation has no plan to discard.");
+    const items = plan.items.map((item) => item.status === "pending" || item.status === "in_progress" ? { ...item, status: "cancelled" as const } : item);
+    store.patchPart(thread.id, message.id, plan.id, { items });
+  },
   "thread.config": async (event, send) => {
     const thread = store.threads.get(event.id);
     if (!thread) throw new Error("Conversation not found");

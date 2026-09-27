@@ -19,11 +19,20 @@ import type {
   FilePatch,
   GitResult,
   PermissionMode,
+  ProjectSettings,
   ProviderId,
   ThreadMeta,
 } from "../../../shared/protocol.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
 import { movePanelTab } from "../../../shared/workbench.ts";
+
+export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
+  const desktop = window.citropyDesktop ?? window.loomDesktop;
+  const result = desktop?.configureProjectDefaults ? await desktop.configureProjectDefaults(settings) : await api<ProjectSettings>("projects/defaults", {
+    method: "PATCH", body: JSON.stringify({ settings }),
+  });
+  useApp.setState({ projectDefaults: result });
+}
 
 export function moveWorkbenchPanel(id: string, targetId: string, edge: "before" | "after"): void {
   const state = useApp.getState();
@@ -200,8 +209,12 @@ export async function createThread(provider?: ProviderId, options = false): Prom
   }
 }
 
+const requestedThreads = new Set<string>();
+
 export function loadThread(id: string): void {
-  if (useApp.getState().loaded[id]) return;
+  if (useApp.getState().loaded[id] || requestedThreads.has(id)) return;
+  requestedThreads.add(id);
+  setTimeout(() => requestedThreads.delete(id), 10_000);
   send({ t: "thread.load", id });
 }
 
