@@ -6,7 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { valid, gt } from "semver";
 import { providers } from "./index.ts";
-import { openCodePackage } from "./opencode.ts";
+import { openCodeBinary, openCodePackage } from "./opencode.ts";
 import { clearCommandCache, commandIdentity, invocation, resolveCommand } from "./binary.ts";
 import { bus } from "../bus.ts";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
@@ -91,7 +91,7 @@ async function nativeUpdaterHelp(binaryPath: string, args: string[]): Promise<st
 }
 
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
-  const binaryPath = await executablePath(providers[provider].binary);
+  const binaryPath = await executablePath(provider === "opencode" ? openCodeBinary() : providers[provider].binary);
   if (!binaryPath) {
     const packageName = packageFor(provider);
     if (packageName) {

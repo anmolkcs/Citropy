@@ -206,7 +206,7 @@ export class SshEnvironments {
     try {
       await new Promise((resolve, reject) => {
         child.once("error", reject);
-        child.once("exit", code => code === 0 && !aborted ? resolve() : reject(new Error(aborted ? "SSH connection cancelled or timed out." : stderr.trim() || `${command} exited with code ${code}.`)));
+        child.once("close", code => code === 0 && !aborted ? resolve() : reject(new Error(aborted ? "SSH connection cancelled or timed out." : stderr.trim() || `${command} exited with code ${code}.`)));
       });
       signal?.throwIfAborted();
       return stdout;
