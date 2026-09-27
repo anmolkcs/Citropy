@@ -178,7 +178,7 @@ export function createAppUpdater({
               version: next,
               checkedAt: Date.now(),
               percent: undefined,
-              message: `The installer will download Citropy ${next} and reopen the app.`,
+              message: undefined,
             });
             loadNotes(next);
           }
@@ -186,10 +186,11 @@ export function createAppUpdater({
           const result = await updater.checkForUpdates();
           if (!result) throw new Error("No release feed is available");
         } else if (action === "download" && external) {
+          await external.download(state.version);
           publish({
             status: "ready",
             percent: 100,
-            message: "Click again to quit Citropy and apply the update. It reopens automatically when the installer finishes.",
+            message: "The update is downloaded and verified. Restart Citropy to apply it.",
           });
         } else if (action === "download") {
           await updater.downloadUpdate();
@@ -197,7 +198,7 @@ export function createAppUpdater({
             throw new Error("The download did not pass verification");
         } else {
           await prepareInstall();
-          if (external) await external.install();
+          if (external) await external.install(state.version);
           else if (applyInstall) {
             if (typeof downloadedFile !== "string" || !downloadedFile)
               throw new Error("The downloaded update file is missing.");

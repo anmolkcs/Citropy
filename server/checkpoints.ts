@@ -30,11 +30,40 @@ export async function checkpointLock<T>(cwd: string, action: () => Promise<T>): 
   try { return await next; } finally { if (jobs.get(cwd) === next) jobs.delete(cwd); }
 }
 
-async function git(cwd: string, args: string[], privateRepo = true): Promise<string> {
-  return (await run("git", [...(privateRepo ? [`--git-dir=${join(directory(cwd), "repository")}`, `--work-tree=${cwd}`, "-c", "core.bare=false"] : []), ...args], {
+export async function cleanupCheckpoints(cwd: string, threadIds: string[]): Promise<void> {
+  await checkpointLock(cwd, async () => {
+    for (const id of threadIds) {
+      await rm(join(root, `${id}-redo.json`), { force: true });
+      await rm(join(root, `${id}-redo.json.tmp`), { force: true });
+    }
+    const dir = directory(cwd);
+    const repository = join(dir, "repository");
+    if (!(await lstat(join(repository, "HEAD")).catch(error => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    }))) return;
+    const options = { cwd: dir, timeout: 60_000, maxBuffer: 32 * 1024 * 1024 };
+    const output = (await run("git", [`--git-dir=${repository}`, "for-each-ref", "--format=%(refname)", "refs/turns/", "refs/redo/"], options)).stdout;
+    const deleted = new Set(threadIds);
+    const refs = output.split("\n").filter(ref => deleted.has(/^refs\/(?:turns|redo)\/([^/]+)\//.exec(ref)?.[1] ?? ""));
+    if (!refs.length) return;
+    const update = run("git", [`--git-dir=${repository}`, "update-ref", "--stdin"], options);
+    update.child.stdin!.on("error", () => {});
+    update.child.stdin!.end(refs.map(ref => `delete ${ref}\n`).join(""));
+    await update;
+  });
+}
+
+async function git(cwd: string, args: string[], privateRepo = true, input?: string): Promise<string> {
+  const command = run("git", [...(privateRepo ? [`--git-dir=${join(directory(cwd), "repository")}`, `--work-tree=${cwd}`, "-c", "core.bare=false"] : []), ...args], {
     cwd, timeout: 60_000, maxBuffer: 32 * 1024 * 1024,
     env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1" },
-  })).stdout;
+  });
+  if (input !== undefined) {
+    command.child.stdin!.on("error", () => {});
+    command.child.stdin!.end(input);
+  }
+  return (await command).stdout;
 }
 
 async function capture(cwd: string): Promise<string> {
@@ -46,24 +75,26 @@ async function capture(cwd: string): Promise<string> {
   if (paths.length > 20_000) throw new Error("Checkpoint skipped: this workspace has more than 20,000 files.");
   let bytes = 0;
   const existing: string[] = [];
-  for (const path of paths) {
-    const absolute = inside(cwd, path);
-    if (!absolute) throw new Error("A checkpoint path is outside the workspace.");
-    const info = await lstat(absolute).catch(error => { if (error.code === "ENOENT") return null; throw error; });
-    if (!info || info.isDirectory()) continue;
-    bytes += info.size;
-    if (info.size > 20 * 1024 * 1024 || bytes > 128 * 1024 * 1024) throw new Error("Checkpoint skipped: snapshot files exceed the 128 MB budget or a file exceeds 20 MB.");
-    existing.push(path);
-  }
-  const list = join(dir, `paths-${randomUUID()}`);
-  try {
-    await git(cwd, ["read-tree", "--empty"]);
-    if (existing.length) {
-      await writeFile(list, existing.join("\0") + "\0", { mode: 0o600 });
-      await git(cwd, ["add", "--force", `--pathspec-from-file=${list}`, "--pathspec-file-nul"]);
+  for (let offset = 0; offset < paths.length; offset += 32) {
+    const entries = await Promise.all(paths.slice(offset, offset + 32).map(async path => {
+      const absolute = inside(cwd, path);
+      if (!absolute) throw new Error("A checkpoint path is outside the workspace.");
+      const info = await lstat(absolute).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+      return { path, info };
+    }));
+    for (const { path, info } of entries) {
+      if (!info || info.isDirectory()) continue;
+      bytes += info.size;
+      if (info.size > 20 * 1024 * 1024 || bytes > 128 * 1024 * 1024) throw new Error("Checkpoint skipped: snapshot files exceed the 128 MB budget or a file exceeds 20 MB.");
+      existing.push(path);
     }
-    return (await git(cwd, ["write-tree"])).trim();
-  } finally { await rm(list, { force: true }); }
+  }
+  const included = new Set(existing);
+  const removed = (await git(cwd, ["ls-files", "--cached", "-z"]))
+    .split("\0").filter(path => path && !included.has(path));
+  if (removed.length) await git(cwd, ["update-index", "--force-remove", "-z", "--stdin"], true, removed.join("\0") + "\0");
+  if (existing.length) await git(cwd, ["update-index", "--add", "-z", "--stdin"], true, existing.join("\0") + "\0");
+  return (await git(cwd, ["write-tree"])).trim();
 }
 
 function overlapping(thread: Thread): boolean {
@@ -83,12 +114,14 @@ export async function beginCheckpoint(thread: Thread, messageId: string): Promis
   const cwd = workspacePath(thread.projectId, thread.id);
   if (!(await isRepo(cwd))) return;
   await checkpointLock(cwd, async () => {
+    if (store.threads.get(thread.id) !== thread) return;
     for (const other of store.threads.values()) {
       if (other.id !== thread.id && other.running && workspacePath(other.projectId, other.id) === cwd && other.checkpoints?.length) store.patchThread(other.id, { checkpoints: other.checkpoints.map((entry, index) => index === other.checkpoints!.length - 1 ? { ...entry, overlapping: true } : entry) });
     }
     const checkpoint = { messageId, createdAt: Date.now(), overlapping: overlapping(thread), before: undefined as string | undefined, error: undefined as string | undefined };
     try {
       checkpoint.before = await capture(cwd);
+      if (store.threads.get(thread.id) !== thread) return;
       await git(cwd, ["update-ref", `refs/turns/${thread.id}/${messageId}/before`, checkpoint.before]);
     } catch (error) { checkpoint.error = (error as Error).message; }
     const previous = thread.checkpoints ?? [];
@@ -112,8 +145,10 @@ export async function finishCheckpoint(thread: Thread, messageId?: string): Prom
   if (!checkpoint || !before || checkpoint.after) return;
   const cwd = workspacePath(thread.projectId, thread.id);
   await checkpointLock(cwd, async () => {
+    if (store.threads.get(thread.id) !== thread) return;
     try {
       const after = await capture(cwd);
+      if (store.threads.get(thread.id) !== thread) return;
       await git(cwd, ["update-ref", `refs/turns/${thread.id}/${checkpoint.messageId}/after`, after]);
       if (store.threads.get(thread.id) === thread) store.patchThread(thread.id, { checkpoints: thread.checkpoints?.map(entry => entry === checkpoint ? { ...entry, after, overlapping: entry.overlapping || overlapping(thread) } : entry) });
       if (messageId) {

@@ -10,7 +10,7 @@ import { QueueList } from "./QueueList.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Square } from "./icons.ts";
 import { Paperclip, CheckCircle2 } from "lucide-react";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
@@ -38,6 +38,7 @@ import {
   type TuningSettings,
 } from "./composer/ComposerOptions.tsx";
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
+import { onComposerAttachments, takeComposerAttachments } from "../lib/composer-inbox.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
 import { GitActions } from "./GitActions.tsx";
@@ -81,6 +82,15 @@ export function Composer({
     onUploaded: (attachment) =>
       setAttachments((previous) => [...previous, attachment]),
   });
+  useEffect(() => {
+    if (!threadId) return;
+    const receive = () => {
+      const incoming = takeComposerAttachments(threadId);
+      if (incoming.length) setAttachments((previous) => [...previous, ...incoming]);
+    };
+    receive();
+    return onComposerAttachments(receive);
+  }, [threadId, setAttachments]);
   const [sending, setSending] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [dragging, setDragging] = useState(false);

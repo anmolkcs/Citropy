@@ -27,7 +27,7 @@ function due(thread: ThreadMeta, now: number): boolean {
 
 async function resumeWhenAvailable(thread: ThreadMeta): Promise<void> {
   const now = Date.now();
-  const usage = await providerLimits(thread.provider);
+  const usage = await providerLimits(thread.provider, thread.providerInstanceId);
   const until = exhaustedUntil(usage.windows);
   const current = store.threads.get(thread.id);
   if (!current?.usageLimit?.resume || current.running) return;

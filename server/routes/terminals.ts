@@ -11,7 +11,7 @@ export const terminalRoutes: Routes = {
     if (panel?.kind !== "terminal" || panel.projectId !== project.id)
       throw new Error("This terminal tab is closed");
     await terminals.open(event.termId, workspacePath(project.id, panel.threadId), event.cols, event.rows);
-    send({ t: "term.data", termId: event.termId, data: terminals.read(event.termId), reset: true });
+    send({ t: "term.data", termId: event.termId, ...terminals.replay(event.termId, event.offset, event.sessionId) });
   },
   "term.data": async (event) => {
     await terminals.write(event.termId, event.data);

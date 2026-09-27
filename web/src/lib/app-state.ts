@@ -103,7 +103,7 @@ export interface AppState {
   threads: Record<string, ThreadMeta>;
   threadOrder: string[];
   messages: Record<string, MessageShell>;
-  parts: Record<string, Part>;
+  parts: Map<string, Part>;
   reveals: Record<string, true>;
   order: Record<string, string[]>;
   loaded: Record<string, boolean>;
@@ -275,7 +275,7 @@ export const useApp = create<AppState>(() => ({
   threads: {},
   threadOrder: [],
   messages: {},
-  parts: {},
+  parts: new Map(),
   reveals: {},
   order: {},
   loaded: {},

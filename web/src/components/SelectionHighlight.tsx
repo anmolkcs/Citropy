@@ -57,8 +57,11 @@ export function SelectionHighlight({ value, layout, selector = SELECTED }: {
       pill.hidden = false;
       previous.current = { value, bounds };
     };
-    position(Boolean(previous.current && previous.current.value !== value));
-    const resize = new ResizeObserver(() => position(false));
+    let initial = true;
+    const resize = new ResizeObserver(() => {
+      position(initial && Boolean(previous.current && previous.current.value !== value));
+      initial = false;
+    });
     resize.observe(host);
     resize.observe(selected);
     if (host.children.length <= WATCHED_CHILDREN) for (const child of host.children) if (child !== pill) resize.observe(child);

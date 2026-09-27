@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, type CSSProperties } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useApp } from "../lib/store.ts";
 import { clock, modelLabel } from "../lib/format.ts";
 import type { TimelineRow } from "../lib/timeline.ts";
@@ -16,11 +16,27 @@ export const MessageNavigator = memo(function MessageNavigator({
   const t = useI18n();
   const messages = useMemo(() => rows.filter((row): row is TimelineRow & { messageId: string } => row.first && row.messageId !== undefined), [rows]);
   const [preview, setPreview] = useState<string>();
+  const [focused, setFocused] = useState<string>();
+  const track = useRef<HTMLDivElement>(null);
   const activeIndex = Math.max(
     0,
     messages.findIndex((row) => row.messageId === activeMessageId),
   );
   const previewIndex = messages.findIndex((row) => row.messageId === preview);
+  const focusedIndex = messages.findIndex((row) => row.messageId === focused);
+  const groupSize = Math.max(1, Math.ceil(messages.length / 30));
+  const stops = Array.from({ length: Math.ceil(messages.length / groupSize) }, (_, group) => {
+    const start = group * groupSize;
+    const end = Math.min(start + groupSize, messages.length);
+    const index = focusedIndex >= start && focusedIndex < end ? focusedIndex
+      : activeIndex >= start && activeIndex < end ? activeIndex : start;
+    return { group, index, messageId: messages[index]!.messageId };
+  });
+  useLayoutEffect(() => {
+    if (focusedIndex < 0) return;
+    track.current?.querySelector<HTMLButtonElement>(`[data-message-group="${Math.floor(focusedIndex / groupSize)}"]`)
+      ?.focus({ preventScroll: true });
+  }, [focusedIndex, groupSize]);
   if (messages.length < 2) return null;
   return (
     <nav
@@ -29,11 +45,14 @@ export const MessageNavigator = memo(function MessageNavigator({
       onMouseLeave={() => setPreview(undefined)}
     >
       <div
+        ref={track}
         className="message-nav-track"
         style={{ "--count": messages.length } as CSSProperties}
         onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget))
+          if (!event.currentTarget.contains(event.relatedTarget)) {
             setPreview(undefined);
+            setFocused(undefined);
+          }
         }}
         onKeyDown={(event) => {
           const index = Number(
@@ -48,28 +67,34 @@ export const MessageNavigator = memo(function MessageNavigator({
           if (next !== undefined) {
             event.preventDefault();
             event.currentTarget
-              .querySelector<HTMLButtonElement>(`[data-message-index="${next}"]`)
+              .querySelector<HTMLButtonElement>(`[data-message-group="${Math.floor(next / groupSize)}"]`)
               ?.focus({ preventScroll: true });
+            setFocused(messages[next]!.messageId);
+            setPreview(messages[next]!.messageId);
           }
           if (event.key === "Escape") setPreview(undefined);
         }}
       >
-        {messages.map((row, index) => (
+        {stops.map(({ group, index, messageId }) => (
           <button
-            key={row.messageId}
+            key={group}
             type="button"
             className="message-nav-stop"
             data-message-index={index}
+            data-message-group={group}
             aria-label={`${t("Go to message")} ${index + 1}`}
             aria-current={index === activeIndex ? "location" : undefined}
             aria-describedby={
-              row.messageId === preview ? "message-nav-preview" : undefined
+              messageId === preview ? "message-nav-preview" : undefined
             }
-            tabIndex={index === activeIndex ? 0 : -1}
-            onMouseEnter={() => setPreview(row.messageId)}
-            onFocus={() => setPreview(row.messageId)}
+            tabIndex={group === Math.floor(activeIndex / groupSize) ? 0 : -1}
+            onMouseEnter={() => setPreview(messageId)}
+            onFocus={() => {
+              setFocused(messageId);
+              setPreview(messageId);
+            }}
             onClick={() => {
-              onSelect(row.messageId);
+              onSelect(messageId);
               setPreview(undefined);
             }}
           >
@@ -114,7 +139,7 @@ function MessagePreview({
     const shell = state.messages[messageId];
     if (!shell) return "";
     for (const id of shell.partIds) {
-      const part = state.parts[id];
+      const part = state.parts.get(id);
       if (part?.kind === "text" && part.text.trim()) {
         const threadId = state.activeThreadId;
         if (

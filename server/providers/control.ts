@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import { spawnCommand } from "./binary.ts";
+import type { ProviderLaunch } from "./types.ts";
 import { tmpdir } from "node:os";
 import { onJson } from "../lines.ts";
 import { stopProcess } from "./process.ts";
@@ -8,10 +9,11 @@ export function providerControl(
   method: string,
   params: Record<string, unknown> = {},
   cwd = tmpdir(),
+  launch: ProviderLaunch = {},
 ): Promise<Record<string, any>> {
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      provider,
+    const child = spawnCommand(
+      launch.binary ?? provider,
       provider === "codex"
         ? ["app-server"]
         : [
@@ -26,7 +28,7 @@ export function providerControl(
             '{"mcpServers":{}}',
             "--no-session-persistence",
           ],
-      { cwd, stdio: ["pipe", "pipe", "ignore"] },
+      { cwd, env: { ...process.env, ...launch.environment }, stdio: ["pipe", "pipe", "ignore"] },
     );
     let finished = false;
     const finish = (error?: Error, result?: Record<string, any>) => {

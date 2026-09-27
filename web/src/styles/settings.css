@@ -963,6 +963,9 @@
 .provider-update-row .btn {
   flex: none;
 }
+.provider-update-row + .provider-update-row {
+  margin-top: 12px;
+}
 .provider-update-row .btn > svg {
   color: var(--ok);
 }

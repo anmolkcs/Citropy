@@ -25,7 +25,8 @@ export function applyEvents(
     if (unloadedDelta(state, event)) continue;
     for (const key of historyChanges[event.t] ?? []) {
       if (copied.has(key)) continue;
-      Object.assign(state, { [key]: { ...state[key] } });
+      if (key === "parts") state.parts = new Map(state.parts);
+      else Object.assign(state, { [key]: { ...state[key] } });
       copied.add(key);
     }
     applyEvent(state, event, focused);

@@ -14,7 +14,7 @@ interface Props {
 }
 
 export const PartView = memo(function PartView({ partId, live }: Props) {
-  const part = useApp((state) => state.parts[partId]);
+  const part = useApp((state) => state.parts.get(partId));
   if (!part) return null;
 
   switch (part.kind) {

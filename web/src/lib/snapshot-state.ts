@@ -50,7 +50,7 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
     snapshot.threads.map((thread) => [thread.id, thread]),
   );
   state.messages = {};
-  state.parts = {};
+  state.parts = new Map();
   state.reveals = {};
   state.order = {};
   state.loaded = {};

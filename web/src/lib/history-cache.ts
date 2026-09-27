@@ -12,7 +12,7 @@ export function replaceHistory(
   for (const message of messages) {
     const partIds: string[] = [];
     for (const part of message.parts) {
-      state.parts[part.id] = part;
+      state.parts.set(part.id, part);
       partIds.push(part.id);
     }
     state.messages[message.id] = {
@@ -46,7 +46,7 @@ function contentBytes(value: unknown): number {
 export function removeMessages(state: AppState, threadId: string): void {
   for (const id of state.order[threadId] ?? []) {
     for (const partId of state.messages[id]?.partIds ?? []) {
-      delete state.parts[partId];
+      state.parts.delete(partId);
       delete state.reveals[partId];
       delete state.disclosures[partId];
     }
@@ -98,7 +98,11 @@ export function trimHistories(state: AppState, previous?: AppState): void {
     count -= 1;
   }
   if (!evict.length) return;
-  for (const key of allHistory) Object.assign(state, { [key]: { ...state[key] } });
+  for (const key of allHistory) {
+    if (previous && state[key] !== previous[key]) continue;
+    if (key === "parts") state.parts = new Map(state.parts);
+    else Object.assign(state, { [key]: { ...state[key] } });
+  }
   for (const id of evict) removeMessages(state, id);
 }
 
@@ -122,7 +126,7 @@ export function applyMessageEvent(
       state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(event.message);
       const partIds: string[] = [];
       for (const part of event.message.parts) {
-        state.parts[part.id] = part;
+        state.parts.set(part.id, part);
         if (event.message.role === "assistant" && part.kind === "text")
           state.reveals[part.id] = true;
         partIds.push(part.id);
@@ -146,7 +150,7 @@ export function applyMessageEvent(
       const shell = state.messages[event.messageId];
       if (!shell) return;
       state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(event.part);
-      state.parts[event.part.id] = event.part;
+      state.parts.set(event.part.id, event.part);
       if (shell.role === "assistant" && event.part.kind === "text")
         state.reveals[event.part.id] = true;
       state.messages[event.messageId] = {
@@ -156,23 +160,23 @@ export function applyMessageEvent(
       return;
     }
     case "part.append": {
-      const part = state.parts[event.partId];
+      const part = state.parts.get(event.partId);
       if (!part || (part.kind !== "text" && part.kind !== "reasoning")) return;
       state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + event.text.length * 2;
       const updated = { ...part, text: part.text + event.text };
       if (partFingerprint(part) !== partFingerprint(updated))
         state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
-      state.parts[event.partId] = updated;
+      state.parts.set(event.partId, updated);
       return;
     }
     case "part.patch": {
-      const part = state.parts[event.partId];
+      const part = state.parts.get(event.partId);
       if (!part) return;
       const updated = { ...part, ...event.patch } as Part;
       if (partFingerprint(part) !== partFingerprint(updated))
         state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
       state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(updated) - contentBytes(part);
-      state.parts[event.partId] = updated;
+      state.parts.set(event.partId, updated);
       return;
     }
   }

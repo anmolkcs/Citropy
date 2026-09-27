@@ -45,6 +45,7 @@ export function ComposerFrame() {
     const ring = ringRef.current!;
     const shell = ring.parentElement!;
     const tabList = shell.querySelector<HTMLElement>(":scope > .composer-tabs")!;
+    let geometry = "";
     const draw = () => {
       const fillet = parseFloat(getComputedStyle(tabList).paddingLeft);
       const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-wide-tab")].map((tab) => {
@@ -67,6 +68,9 @@ export function ComposerFrame() {
         return { ...tab, top: tab.top + shift + rise, height, radius: Math.min(tab.radius, height), fillet: Math.min(tab.fillet, height) };
       });
       const shellBox = { left: 0, top: rise, width: shell.offsetWidth, height: shell.offsetHeight, radius: parseFloat(getComputedStyle(shell).borderTopLeftRadius) };
+      const nextGeometry = JSON.stringify([shellBox, visible]);
+      if (nextGeometry === geometry) return;
+      geometry = nextGeometry;
       const masks = frameMasks(shellBox.width, rise + shellBox.height, shellBox, visible);
       for (const layer of [glass, ring]) layer.style.top = `${-rise}px`;
       glass.style.maskImage = masks.fill;

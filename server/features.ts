@@ -6,6 +6,7 @@ import { tree } from "./files.ts";
 import { store } from "./store.ts";
 import { refreshProvidersNow } from "./provider-registry.ts";
 import { closeProject } from "./routes/projects.ts";
+import { removeThread } from "./routes/threads.ts";
 import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./shells.ts";
 import { dev, developmentOrigin } from "./config.ts";
@@ -449,8 +450,7 @@ export async function handleFeatures(
       respond({ ok: true });
     } else if (url.pathname === "/api/threads" && req.method === "DELETE") {
       if (!store.threads.has(threadId ?? "")) throw new Error("Conversation not found");
-      disposeRuntime(threadId!);
-      store.removeThread(threadId!);
+      await removeThread(threadId!);
       respond({ ok: true });
     } else if (url.pathname === "/api/threads/transfer" && req.method === "POST") {
       const input = await body(req);

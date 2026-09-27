@@ -35,54 +35,57 @@ export async function isRepo(cwd: string): Promise<boolean> {
 }
 
 export async function status(cwd: string): Promise<GitStatus> {
-  const porcelain = await tryGit(cwd, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-  const branchLine = (await tryGit(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"])).trim();
-  const upstream = (await tryGit(cwd, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])).trim() || null;
+  const porcelain = await tryGit(cwd, ["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"]);
+  let branch = "detached";
+  let upstream: string | null = null;
+  let ahead = 0;
+  let behind = 0;
   const records = porcelain.split("\0").filter(Boolean);
-  const trackedChanges = records.some(record => !record.startsWith("?? "));
-  const counts = trackedChanges ? await numstat(cwd) : new Map<string, { added: number; removed: number }>();
-
   const files: GitFile[] = [];
   for (let i = 0; i < records.length; i += 1) {
-    const record = records[i];
-    if (!record || record.length < 3) continue;
-    const index = record[0] ?? " ";
-    const work = record[1] ?? " ";
-    let path = record.slice(3);
-    if ([index, work].some((value) => value === "R" || value === "C")) {
-      i += 1;
-
+    const record = records[i]!;
+    if (record.startsWith("# branch.head ")) {
+      const name = record.slice("# branch.head ".length);
+      branch = name === "(detached)" ? "detached" : name;
+    } else if (record.startsWith("# branch.upstream ")) {
+      upstream = record.slice("# branch.upstream ".length);
+    } else if (record.startsWith("# branch.ab ")) {
+      const match = /^# branch.ab \+(\d+) -(\d+)$/.exec(record);
+      ahead = Number(match?.[1] ?? 0);
+      behind = Number(match?.[2] ?? 0);
     }
-    const stat = counts.get(path) ?? { added: 0, removed: 0 };
+    const type = record[0];
+    if (!["1", "2", "u", "?"].includes(type ?? "")) continue;
+    const fields = record.split(" ");
+    const untracked = type === "?";
+    const index = untracked ? "?" : fields[1]![0]!.replace(".", " ");
+    const work = untracked ? "?" : fields[1]![1]!.replace(".", " ");
+    const path = untracked ? record.slice(2) : fields.slice(type === "1" ? 8 : type === "2" ? 9 : 10).join(" ");
+    if (type === "2") i++;
     files.push({
       path,
       index,
       work,
-      added: stat.added,
-      removed: stat.removed,
+      added: 0,
+      removed: 0,
       staged: index !== " " && index !== "?",
-      untracked: index === "?",
+      untracked,
     });
   }
-
-  let ahead = 0;
-  let behind = 0;
-  const tracking = upstream ? (await tryGit(cwd, ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"])).trim() : "";
-  if (tracking) {
-    const [b, a] = tracking.split(/\s+/);
-    behind = Number(b ?? 0);
-    ahead = Number(a ?? 0);
+  if (files.some(file => !file.untracked)) {
+    const counts = await numstat(cwd);
+    for (const file of files) Object.assign(file, counts.get(file.path));
   }
-
   files.sort((x, y) => x.path.localeCompare(y.path));
-  return { branch: branchLine || "detached", upstream, ahead, behind, files, clean: files.length === 0 };
+  return { branch, upstream, ahead, behind, files, clean: files.length === 0 };
 }
 
 /** Collect binary-safe working-tree/index line counts, keyed by the destination filename. */
 async function numstat(cwd: string): Promise<Map<string, { added: number; removed: number }>> {
   const map = new Map<string, { added: number; removed: number }>();
-  for (const args of [["diff", "--numstat", "-z"], ["diff", "--numstat", "-z", "--cached"]]) {
-    const records = (await tryGit(cwd, args)).split("\0");
+  const outputs = await Promise.all([["diff", "--numstat", "-z"], ["diff", "--numstat", "-z", "--cached"]].map(args => tryGit(cwd, args)));
+  for (const output of outputs) {
+    const records = output.split("\0");
     for (let index = 0; index < records.length; index += 1) {
       // -z preserves raw filenames (including tabs/newlines) rather than C-quoting them.
       const match = /^(\d+|-)\t(\d+|-)\t([\s\S]*)$/.exec(records[index] ?? "");

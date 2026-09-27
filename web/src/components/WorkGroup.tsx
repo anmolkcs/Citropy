@@ -53,7 +53,7 @@ function GroupTree({ ids, tools, live, auto }: { ids: string[]; tools: ToolPart[
 
 export const WorkGroup = memo(function WorkGroup({ ids, live }: { ids: string[]; live: boolean }) {
   const t = useI18n();
-  const tools = useApp(useShallow(state => ids.map(id => state.parts[id]).filter((part): part is ToolPart => part?.kind === "tool")));
+  const tools = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ToolPart => part?.kind === "tool")));
   const showFailedTools = useApp(state => state.showFailedTools);
   const stats = groupStats(tools);
   const chosen = useApp(state => state.disclosures[ids[0]!]?.group);

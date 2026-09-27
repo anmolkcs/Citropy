@@ -5,12 +5,14 @@ import { spawn, spawnSync } from "node:child_process";
 import { release } from "node:os";
 import v8 from "node:v8";
 import { createAppUpdater } from "./updates.mjs";
+import { stageScriptUpdate } from "./script-update.mjs";
 import { fetchReleaseHistory, fetchReleaseNotes } from "./release-notes.mjs";
 import { spawnAppImageRelaunch } from "./appimage-relaunch.mjs";
 import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.mjs";
 import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
 import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
+import { browserActivity } from "./browser-activity.mjs";
 import { computerRequest, connectComputerEvents, stopComputer } from "./computer.mjs";
 import {
   app,
@@ -72,9 +74,8 @@ if (app.isPackaged) {
   process.env.CITROPY_UI_URL = process.env.CITROPY_URL;
   process.env.CITROPY_DESKTOP_TOKEN = randomBytes(32).toString("hex");
 }
-// js-flags only reaches child processes; the backend worker shares this process's V8 flags.
+// Only the backend worker, which shares this process's V8 flags, trades speed for memory. Renderers keep default flags because the size mode made interface work about 13% slower.
 v8.setFlagsFromString("--optimize-for-size");
-app.commandLine.appendSwitch("js-flags", "--optimize-for-size");
 app.commandLine.appendSwitch("enable-features", "NetworkServiceInProcess2");
 app.commandLine.appendSwitch("disable-features", "AudioServiceOutOfProcess");
 const backend = app.isPackaged ? packagedBackend(process.env, diagnose) : undefined;
@@ -127,8 +128,6 @@ const emit = (event) => {
 connectComputerEvents(emit);
 
 const updateRepository = "tinuxongit/Citropy";
-const updateScriptName = process.platform === "win32" ? "install.ps1" : "install.sh";
-const updateScriptUrl = `https://raw.githubusercontent.com/${updateRepository}/main/scripts/${updateScriptName}`;
 
 function macScriptUpdates() {
   if (process.platform !== "darwin" || !app.isPackaged) return false;
@@ -313,7 +312,7 @@ async function open(input) {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
       webSecurity: true,
     },
   });
@@ -324,10 +323,9 @@ async function open(input) {
     width: input.width || 1920,
     height: input.height || 1080,
   });
-  window.contentView.addChildView(view);
-  view.setVisible(true);
   const tab = {
     view,
+    activity: browserActivity(view, window.contentView, enabled => cdp(tab, "Emulation.setFocusEmulationEnabled", { enabled })),
     visible: false,
     presentation: 0,
     bounds: view.getBounds(),
@@ -357,6 +355,7 @@ async function open(input) {
     publish(tab);
   });
   content.once("destroyed", () => {
+    tab.activity.dispose();
     if (quitting || tabs.get(input.id) !== tab) return;
     tabs.delete(input.id);
     window.contentView.removeChildView(view);
@@ -398,16 +397,18 @@ async function open(input) {
     publish(tab);
   });
   await content.loadURL("about:blank");
-  await applyViewport(tab);
-  await applyMobileMode(tab);
-  const navigation = content
-    .loadURL(address(input.url ?? "about:blank"))
-    .catch((error) => {
-      if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
-    });
-  await Promise.all([navigation, cdp(tab, "Page.enable")]);
-  publish(tab);
-  return state(tab);
+  return tab.activity.run(async () => {
+    await applyViewport(tab);
+    await applyMobileMode(tab);
+    const navigation = content
+      .loadURL(address(input.url ?? "about:blank"))
+      .catch((error) => {
+        if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
+      });
+    await Promise.all([navigation, cdp(tab, "Page.enable")]);
+    publish(tab);
+    return state(tab);
+  });
 }
 
 async function target(tab, input) {
@@ -734,16 +735,21 @@ async function request(method, params) {
   if (!tab) throw new Error("This browser tab is closed");
   if (method === "browser.close") {
     tabs.delete(params.id);
+    tab.activity.dispose();
     window.contentView.removeChildView(tab.view);
     tab.view.webContents.close({ waitForBeforeUnload: false });
     return;
   }
-  if (method === "browser.action") return action(tab, params.input);
-  if (method === "browser.snapshot") {
-    if (tab.state.dialog)
+  if (tab.state.dialog) {
+    if (method === "browser.action") return action(tab, params.input);
+    if (method === "browser.snapshot")
       throw new Error(
         `A ${tab.state.dialog.type} dialog is open: ${tab.state.dialog.message}. Use browser_action with action dialog to respond.`,
       );
+  }
+  if (method === "browser.action" && params.input.action === "dialog") return action(tab, params.input);
+  if (method === "browser.action") return tab.activity.run(() => action(tab, params.input));
+  if (method === "browser.snapshot") return tab.activity.run(async () => {
     if (tab.view.webContents.getURL() !== "about:blank") await present(tab);
     const { nodes } = await cdp(tab, "Accessibility.getFullAXTree");
     const lines = nodes
@@ -773,7 +779,7 @@ async function request(method, params) {
       text: `${tab.view.webContents.getTitle()}\n${tab.view.webContents.getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions.\n\n${lines.join("\n").slice(0, 28000)}`,
       image,
     };
-  }
+  });
   throw new Error("Unknown desktop operation");
 }
 
@@ -878,6 +884,7 @@ app
           tab.presentation++;
           tab.visible = false;
           tab.view.setBounds({ ...tab.view.getBounds(), x: window.getContentSize()[0] + 20 });
+          tab.activity.present(false);
         }
         return state;
       },
@@ -910,20 +917,22 @@ app
         : undefined;
     const scriptedUpdates = !unavailableUpdate && macScriptUpdates();
     const autoUpdater = unavailableUpdate || scriptedUpdates ? undefined : (await import("electron-updater").then(module => module.default || module)).autoUpdater;
+    let stagedUpdate;
     const scriptInstaller = {
       check: async () => {
         const response = await fetch(`https://github.com/${updateRepository}/releases/latest`, { signal: AbortSignal.timeout(10000) });
         if (!response.ok) throw new Error(`GitHub answered ${response.status} for the latest release.`);
         return response.url.match(/\/releases\/tag\/v?([^/?#]+)$/)?.[1];
       },
-      install: async () => {
-        const response = await fetch(updateScriptUrl, { signal: AbortSignal.timeout(15000) });
-        if (!response.ok) throw new Error(`Could not download the installer (${response.status}).`);
-        const script = join(app.getPath("userData"), updateScriptName);
-        mkdirSync(app.getPath("userData"), { recursive: true });
-        writeFileSync(script, await response.text(), { mode: 0o700 });
-        const env = { ...process.env, CITROPY_RELAUNCH: "1", CITROPY_PARENT_PID: String(process.pid) };
-        for (const name of ["CITROPY_VERSION", "CITROPY_BASE_URL", "CITROPY_BIN_DIR", "CITROPY_BIN_PATH", "CITROPY_APP_DIR"]) delete env[name];
+      download: async target => {
+        const architecture = app.runningUnderARM64Translation ? "arm64" : process.arch;
+        stagedUpdate = await stageScriptUpdate(updateRepository, target, architecture, app.getPath("userData"));
+      },
+      install: async target => {
+        if (stagedUpdate?.version !== target) throw new Error("Download and verify this release before applying it.");
+        const script = stagedUpdate.script;
+        const env = { ...process.env, CITROPY_RELAUNCH: "1", CITROPY_PARENT_PID: String(process.pid), CITROPY_VERSION: target, CITROPY_STAGED_DOWNLOAD: stagedUpdate.directory };
+        for (const name of ["CITROPY_BASE_URL", "CITROPY_BIN_DIR", "CITROPY_BIN_PATH", "CITROPY_APP_DIR"]) delete env[name];
         if (process.platform === "darwin") {
           const directory = resolve(process.execPath, "..", "..", "..", "..");
           try {
@@ -1040,6 +1049,7 @@ app
             ...tab.view.getBounds(),
             x: window.getContentSize()[0] + 20,
           });
+          tab.activity.present(false);
         }
         window.webContents.reload();
       } else if (command === "restart") {
@@ -1078,6 +1088,11 @@ app
       "leave-full-screen",
     ])
       window.on(event, publishWindow);
+    for (const event of ["show", "hide", "minimize", "restore"])
+      window.on(event, () => {
+        for (const tab of tabs.values())
+          tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
+      });
     window.webContents.on("will-navigate", (event, url) => {
       if (new URL(url).origin !== ui.origin) event.preventDefault();
     });
@@ -1129,6 +1144,7 @@ app
             ),
           };
           tab.visible = true;
+          tab.activity.present(window.isVisible() && !window.isMinimized());
           try {
             await applyViewport(tab);
           } catch (error) {
@@ -1146,6 +1162,7 @@ app
                 ...other.view.getBounds(),
                 x: width + 20,
               });
+              other.activity.present(false);
             }
           window.webContents.send("browser:cover", id, undefined);
         } else if (cover && tab.visible) {
@@ -1163,7 +1180,7 @@ app
             ...tab.view.getBounds(),
             x: window.getContentSize()[0] + 20,
           });
-        tab.view.setVisible(true);
+        tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
         publish(tab);
       },
     );

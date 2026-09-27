@@ -31,7 +31,7 @@ export function useTextReveal(
   useLayoutEffect(() => {
     const element = root.current;
     if (!id || !element || (!streaming && (pending || !ready))) return;
-    if (useApp.getState().parts[id]?.kind === "reasoning") {
+    if (useApp.getState().parts.get(id)?.kind === "reasoning") {
       markTextPresented(id);
       return;
     }

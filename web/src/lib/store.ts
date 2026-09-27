@@ -64,7 +64,7 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     threads: {},
     threadOrder: [],
     messages: {},
-    parts: {},
+    parts: new Map(),
     reveals: {},
     order: {},
     loaded: {},

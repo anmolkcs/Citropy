@@ -620,5 +620,11 @@ export const settingsEs: Record<string, string> = {
   "Show only {provider}": "Mostrar solo {provider}",
   "{percent}% of tokens": "{percent}% de los tokens",
   "Last used": "Último uso",
-  "No conversations for these providers": "No hay conversaciones de estos proveedores"
+  "No conversations for these providers": "No hay conversaciones de estos proveedores",
+  "OpenCode version": "Versión de OpenCode",
+  "Using OpenCode {version}": "Usando OpenCode {version}",
+  "Version not detected": "Versión no detectada",
+  "Detect automatically": "Detectar automáticamente",
+  "Switch OpenCode version?": "¿Cambiar la versión de OpenCode?",
+  "Switch version": "Cambiar versión"
 };

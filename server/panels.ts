@@ -24,6 +24,8 @@ export function openPanel(
     subagents: "Subagents",
     tools: "Tools",
     computer: "Computer",
+    drawing: "Drawing",
+    notes: "Notes",
   };
   if (!Object.hasOwn(titles, kind)) throw new Error("Unknown panel type");
   const existing =

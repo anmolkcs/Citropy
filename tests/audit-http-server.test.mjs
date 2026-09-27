@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer, request } from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { WebSocket } from 'ws';
 
 /** Reserve an ephemeral loopback port for the isolated backend child process. */
 async function freePort() {
@@ -35,8 +36,10 @@ function exchange(port, path, method = 'GET') {
   });
 }
 
-test('the real backend survives malformed HTTP requests before feature routing', { timeout: 30000 }, async t => {
+test('the real backend survives malformed HTTP requests and WebSocket frames', { timeout: 30000 }, async t => {
   const home = await mkdtemp(join(tmpdir(), 'citropy-http-server-'));
+  await mkdir(join(home, 'data'));
+  await writeFile(join(home, 'data', 'settings.json'), JSON.stringify({ disabledProviders: ['claude', 'codex', 'opencode', 'cursor', 'pi'] }));
   const port = await freePort();
   let log = '';
   const child = spawn(process.execPath, ['--experimental-strip-types', 'server/main.ts', '--packaged'], {
@@ -91,6 +94,20 @@ test('the real backend survives malformed HTTP requests before feature routing',
   }
   assert.equal((await exchange(port, '/%', 'HEAD')).status, 400);
   assert.equal((await exchange(port, '//[', 'POST')).status, 400);
+  for (const send of [
+    socket => socket._socket.write(Buffer.from([0x83, 0x80, 0, 0, 0, 0])),
+    socket => socket.send(Buffer.alloc(2 * 1024 * 1024 + 1)),
+  ]) {
+    const socket = new WebSocket(`ws://127.0.0.1:${port}/socket`);
+    socket.on('error', () => {});
+    await new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { socket.terminate(); reject(new Error('Malformed client was not closed')); }, 5000);
+      socket.once('close', () => { clearTimeout(timer); resolve(); });
+      send(socket);
+    });
+    assert.equal((await exchange(port, '/api/health')).status, 200, log);
+  }
   assert.equal(child.exitCode, null, log);
   assert.equal(child.signalCode, null, log);
 });

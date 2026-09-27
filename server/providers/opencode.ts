@@ -2,14 +2,17 @@ import { commandVersion, spawnCommand } from "./binary.ts";
 import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverOpenCodeModels } from "./models.ts";
+import { OpenCode2Session, generateOpenCode2Text, openCode2Commands, openCode2Models } from "./opencode2.ts";
+import { withSkills } from "./skill-prompt.ts";
+import { store } from "../store.ts";
 import type { ChildProcess } from "node:child_process";
 import { request } from "node:http";
 import { realpath } from "node:fs/promises";
 import { onLines } from "../lines.ts";
 import { askQuestion, answerQuestion, cancelQuestions } from "../questions.ts";
 import { ask, cancelThread } from "../permissions.ts";
-import type { AgentSession, Provider, StartOptions } from "./types.ts";
-import type { Attachment } from "../../shared/protocol.ts";
+import type { AgentSession, Provider, ProviderLaunch, StartOptions } from "./types.ts";
+import type { Attachment, OpenCodeMajor, ProviderInfo } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
 import { pathToFileURL } from "node:url";
 import type { ProviderCommand } from "../../shared/features.ts";
@@ -62,6 +65,7 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
 }
 
 export async function generateOpenCodeText(cwd: string, model: string, effort: string | undefined, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
+  if (await resolveOpenCodeMajor(launchOptions) === 2) return generateOpenCode2Text(cwd, model, effort, prompt, signal, launchOptions);
   const [providerID, ...modelParts] = model.split("/");
   if (!providerID || !modelParts.length) throw new Error("Select an OpenCode model with a provider.");
   const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions }, signal, true);
@@ -91,6 +95,7 @@ export async function generateOpenCodeText(cwd: string, model: string, effort: s
 }
 
 export async function discoverOpenCodeCommands(cwd: string): Promise<ProviderCommand[]> {
+  if (await resolveOpenCodeMajor() === 2) return openCode2Commands(cwd);
   const controller = new AbortController();
   const instance = await launch({ cwd, threadId: "commands", permissionMode: "manual", emit: () => {} }, controller.signal);
   try {
@@ -550,12 +555,6 @@ class OpenCodeSession implements AgentSession {
   }
 }
 
-function withSkills(text: string, skills: Array<{ name: string; path: string }>): string {
-  if (!skills.length) return text;
-  const instructions = skills.map((skill) => `Use the ${skill.name} skill. Read its instructions at ${skill.path}.`).join("\n");
-  return /^\/[\w.:-]+(?:\s|$)/.test(text.trim()) ? `${text}\n\n${instructions}` : `${instructions}\n\n${text}`;
-}
-
 function mapTool(tool: string): string {
   switch (tool) {
     case "bash":
@@ -584,6 +583,46 @@ function mapTool(tool: string): string {
   }
 }
 
+const detectedMajors = new Map<string, OpenCodeMajor>();
+
+function launchKey(launch?: ProviderLaunch): string {
+  return `${launch?.binary ?? "opencode"}\0${JSON.stringify(launch?.environment ?? {})}`;
+}
+
+function majorOf(version: string | undefined): OpenCodeMajor | undefined {
+  const match = /(\d+)\.\d+\.\d+/.exec(version ?? "");
+  if (!match) return undefined;
+  return Number(match[1]) >= 2 ? 2 : 1;
+}
+
+async function detectOpenCode(launch?: ProviderLaunch): Promise<string | undefined> {
+  const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
+  const major = majorOf(version);
+  if (major) detectedMajors.set(launchKey(launch), major);
+  return version;
+}
+
+async function resolveOpenCodeMajor(launch?: ProviderLaunch): Promise<OpenCodeMajor> {
+  if (store.openCodeVersion !== "auto") return store.openCodeVersion;
+  const version = await detectOpenCode(launch);
+  const major = detectedMajors.get(launchKey(launch));
+  if (!major) throw new Error(`Citropy could not tell which OpenCode version "${version ?? "no output"}" is. Choose OpenCode 1 or 2 in Settings > Providers.`);
+  return major;
+}
+
+function startedOpenCodeMajor(launch?: ProviderLaunch): OpenCodeMajor {
+  if (store.openCodeVersion !== "auto") return store.openCodeVersion;
+  const major = detectedMajors.get(launchKey(launch));
+  if (!major) throw new Error("Citropy has not detected the OpenCode version yet. Refresh Settings > Providers, or choose OpenCode 1 or 2 there.");
+  return major;
+}
+
+export function openCodeVersionInfo(): ProviderInfo["openCodeVersion"] {
+  const setting = store.openCodeVersion;
+  const active = setting === "auto" ? detectedMajors.get(launchKey()) : setting;
+  return { setting, ...(active ? { active } : {}) };
+}
+
 export const opencodeProvider: Provider = {
   id: "opencode",
   label: "OpenCode",
@@ -593,16 +632,13 @@ export const opencodeProvider: Provider = {
   steerHint: "OpenCode adds it to the run in progress.",
   models: [],
   async listModels(launch) {
-    const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
-    const major = Number(/(\d+)\.\d+\.\d+/.exec(version ?? "")?.[1]);
-    if (major >= 2) throw new Error(`OpenCode ${version} is not supported yet. Citropy works with OpenCode 1.x.`);
-    return discoverOpenCodeModels(launch);
+    return await resolveOpenCodeMajor(launch) === 2 ? openCode2Models(launch) : discoverOpenCodeModels(launch);
   },
   async detect(launch) {
-    const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
+    const version = await detectOpenCode(launch);
     return { available: Boolean(version), version };
   },
   start(options) {
-    return new OpenCodeSession(options);
+    return startedOpenCodeMajor(options) === 2 ? new OpenCode2Session(options) : new OpenCodeSession(options);
   },
 };

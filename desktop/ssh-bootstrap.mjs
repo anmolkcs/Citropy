@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile, rename, rm, open, stat } from "node:fs/prom
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { pruneRemoteBuilds } from "./remote-builds.mjs";
 
 const [id, build] = process.argv.slice(2);
 if (!/^[a-f0-9-]{36}$/.test(id || "") || !/^[a-f0-9]{64}$/.test(build || "")) throw new Error("Invalid remote environment.");
@@ -93,6 +94,7 @@ try {
       const state = { port, token, pid: child.pid, build };
       await writeFile(`${statePath}.tmp`, JSON.stringify(state), { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
+      await pruneRemoteBuilds(join(root, "builds"), build, previous?.build).catch(() => {});
       process.stdout.write(`CITROPY_READY ${JSON.stringify(state)}\n`);
     } catch (error) {
       child.kill("SIGTERM");

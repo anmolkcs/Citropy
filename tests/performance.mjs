@@ -28,25 +28,25 @@ try {
   assert.equal(journal.messages("chat")[0].parts[0].text, "streamed text ".repeat(10000));
   console.log(JSON.stringify({ benchmark: "journal: 10000 durable text deltas", elapsedMs: elapsed, cpuMs: (usage.user + usage.system) / 1000, rssGrowthMiB: rssGrowth / 1024 / 1024 }));
 
-  const state = { threads: { chat: { running: true, status: "working" } }, messages: {}, order: { chat: [] }, parts: {}, disclosures: {} };
+  const state = { threads: { chat: { running: true, status: "working" } }, messages: {}, order: { chat: [] }, parts: new Map(), disclosures: {} };
   for (let index = 0; index < 5000; index++) {
     const id = `message${index}`;
     const partId = `part${index}`;
     state.order.chat.push(id);
     state.messages[id] = { id, role: index % 2 ? "assistant" : "user", ts: index, partIds: [partId] };
-    state.parts[partId] = { id: partId, kind: "text", text: "History ".repeat(100), complete: true };
+    state.parts.set(partId, { id: partId, kind: "text", text: "History ".repeat(100), complete: true });
   }
   const select = createTimelineSelector("chat");
   const rows = select(state);
-  const snapshots = Array.from({ length: 300 }, (_, index) => ({ ...state, parts: { ...state.parts, part4999: { ...state.parts.part4999, text: `Streaming ${index}` } } }));
+  const snapshots = Array.from({ length: 300 }, (_, index) => ({ ...state, parts: new Map(state.parts).set("part4999", { ...state.parts.get("part4999"), text: `Streaming ${index}` }) }));
   global.gc?.();
   const selectionStarted = performance.now();
   for (const snapshot of snapshots) assert.strictEqual(select(snapshot), rows);
   console.log(JSON.stringify({ benchmark: "timeline selector: 5000 messages, 300 streaming updates", elapsedMs: performance.now() - selectionStarted }));
 
-  let live = { ...state, parts: {}, messages: {}, order: {}, loaded: {}, reveals: {}, historyBytes: {}, timelineVersions: {}, disclosures: {}, activeThreadId: "chat" };
+  let live = { ...state, parts: new Map(), messages: {}, order: {}, loaded: {}, reveals: {}, historyBytes: {}, timelineVersions: {}, disclosures: {}, activeThreadId: "chat" };
   replaceHistory(live, "chat", state.order.chat.map((id) => ({
-    ...state.messages[id], parts: state.messages[id].partIds.map((partId) => state.parts[partId]),
+    ...state.messages[id], parts: state.messages[id].partIds.map((partId) => state.parts.get(partId)),
   })));
   const selectLive = createTimelineSelector("chat");
   const liveRows = selectLive(live);

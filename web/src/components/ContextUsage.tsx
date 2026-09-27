@@ -79,7 +79,7 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
             role: shell.role,
             ts: shell.ts,
             parts: shell.partIds.flatMap((partId) => {
-              const part = state.parts[partId];
+              const part = state.parts.get(partId);
               return part ? [part] : [];
             }),
             attachments: shell.attachments,

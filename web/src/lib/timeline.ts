@@ -1,3 +1,4 @@
+import type { Part } from "../../../shared/protocol.ts";
 import type { AppState } from "./app-state.ts";
 import { buildRows, type Row } from "./group.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
@@ -11,7 +12,7 @@ export interface TimelineRow {
   separator?: boolean;
 }
 
-export function partFingerprint(part: AppState["parts"][string] | undefined): string {
+export function partFingerprint(part: Part | undefined): string {
   if (!part) return "-";
   switch (part.kind) {
     case "text":
@@ -44,16 +45,19 @@ function sameTimelineContent(previous: AppState, state: AppState, threadId: stri
   const version = state.timelineVersions?.[threadId];
   const sameParts = previous.parts === state.parts ||
     (version !== undefined && previous.timelineVersions?.[threadId] === version);
-  if (previous.messages === state.messages && sameParts &&
-    previous.disclosures === state.disclosures) return true;
+  const sameMessages = previous.messages === state.messages;
+  const sameDisclosures = previous.disclosures === state.disclosures;
+  if (sameMessages && sameParts && sameDisclosures) return true;
   for (const messageId of order ?? []) {
     const message = state.messages[messageId];
-    if (previous.messages[messageId] !== message) return false;
+    if (!sameMessages && previous.messages[messageId] !== message) return false;
     for (const partId of message?.partIds ?? []) {
-      if (previous.disclosures[partId]?.activity !== state.disclosures[partId]?.activity) return false;
-      const part = state.parts[partId];
-      const previousPart = previous.parts[partId];
-      if (previousPart !== part && partFingerprint(previousPart) !== partFingerprint(part)) return false;
+      if (!sameDisclosures && previous.disclosures[partId]?.activity !== state.disclosures[partId]?.activity) return false;
+      if (!sameParts) {
+        const part = state.parts.get(partId);
+        const previousPart = previous.parts.get(partId);
+        if (previousPart !== part && partFingerprint(previousPart) !== partFingerprint(part)) return false;
+      }
     }
   }
   return true;
@@ -80,7 +84,7 @@ export function createTimelineSelector(threadId: string | null): (state: AppStat
 function isActionRow(row: Row, parts: AppState["parts"]): boolean {
   if (row.kind === "group") return true;
   if (row.kind !== "part") return false;
-  const part = parts[row.id];
+  const part = parts.get(row.id);
   return part?.kind === "tool" || part?.kind === "todo" || part?.kind === "question";
 }
 
@@ -89,17 +93,17 @@ function finalAnswerRange(
   parts: AppState["parts"],
   inProgress: boolean,
 ): { start: number; end: number } | undefined {
-  const lastContent = rows.findLast(row => row.kind !== "part" || parts[row.id]?.kind !== "notice");
-  const endsWithText = lastContent?.kind === "part" && parts[lastContent.id]?.kind === "text";
+  const lastContent = rows.findLast(row => row.kind !== "part" || parts.get(row.id)?.kind !== "notice");
+  const endsWithText = lastContent?.kind === "part" && parts.get(lastContent.id)?.kind === "text";
   if (inProgress && !endsWithText) return;
 
-  const end = rows.findLastIndex(row => row.kind === "part" && parts[row.id]?.kind === "text");
+  const end = rows.findLastIndex(row => row.kind === "part" && parts.get(row.id)?.kind === "text");
   if (end === -1 || rows.slice(end + 1).some(row => isActionRow(row, parts))) return;
 
   let start = end;
   while (start > 0) {
     const previous = rows[start - 1]!;
-    const part = previous.kind === "part" ? parts[previous.id] : undefined;
+    const part = previous.kind === "part" ? parts.get(previous.id) : undefined;
     if (part?.kind !== "text" && part?.kind !== "notice") break;
     start -= 1;
   }
@@ -126,11 +130,11 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     if (previous && unfinishedReply) previous.push(messageId);
     else replies.push([messageId]);
     const lastId = message.partIds.findLast(id => {
-      const part = state.parts[id];
+      const part = state.parts.get(id);
       return part && part.kind !== "notice" &&
         (!(part.kind === "text" || part.kind === "reasoning") || part.text.trim());
     });
-    const last = lastId === undefined ? undefined : state.parts[lastId];
+    const last = lastId === undefined ? undefined : state.parts.get(lastId);
     if (last) unfinishedReply = last.kind !== "text" || last.complete === false;
   }
   const timeline = replies.flatMap<TimelineRow>((messageIds, replyIndex) => {
@@ -143,7 +147,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       for (const partId of state.messages[id]!.partIds) owners.set(partId, id);
     }
     const partIds = [...owners.keys()];
-    const rows = buildRows(partIds.map((id) => state.parts[id]));
+    const rows = buildRows(partIds.map((id) => state.parts.get(id)));
     const activityKey = `activity-after-${replies[replyIndex - 1]?.at(-1) ?? threadId}`;
     const continuing = running && startedAt !== undefined && messageIds.some(id => state.messages[id]!.ts >= startedAt);
     const containsLatestReply = messageIds.includes(lastAssistantId ?? "");
@@ -152,18 +156,18 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     if (!rows.length && !(active && busy)) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
     let answer: Row | undefined;
-    const hasWork = rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts[row.id]?.kind === "reasoning");
+    const hasWork = rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning");
     if (hasWork) {
       const inProgress = active || continuing;
       const plan = inProgress
-        ? rows.findLast(row => row.kind === "part" && state.parts[row.id]?.kind === "todo")
+        ? rows.findLast(row => row.kind === "part" && state.parts.get(row.id)?.kind === "todo")
         : undefined;
       const finalAnswer = finalAnswerRange(rows, state.parts, inProgress);
       answer = finalAnswer ? rows[finalAnswer.start] : undefined;
       const work = new Set(rows.filter((row, index) => {
         if (finalAnswer && index >= finalAnswer.start && index <= finalAnswer.end) return false;
         if (row === plan) return false;
-        const part = row.kind === "part" ? state.parts[row.id] : undefined;
+        const part = row.kind === "part" ? state.parts.get(row.id) : undefined;
         if (part?.kind === "question" && part.status === "pending") return false;
         if (part?.kind === "images") return false;
         return part?.kind !== "notice" || part.level === "info";
@@ -171,7 +175,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       const ids = [...work].flatMap(row => row.kind === "part" ? [row.id] : row.ids);
       const id = partIds[0]!;
       const open = state.disclosures[id]?.activity ?? false;
-      const previewId = finalAnswer ? undefined : ids.findLast(id => state.parts[id]?.kind === "text");
+      const previewId = finalAnswer ? undefined : ids.findLast(id => state.parts.get(id)?.kind === "text");
       if (ids.length) {
         const workRows = open ? rows.filter(row => work.has(row)) : [];
         visible = [{ kind: "activity", id, ids, messageIds, open, active, previewId }, ...workRows, ...rows.filter(row => !work.has(row))];

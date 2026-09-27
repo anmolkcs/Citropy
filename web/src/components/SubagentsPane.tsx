@@ -7,7 +7,7 @@ import { Collapsible } from "./Collapsible.tsx";
 import { VirtualList } from "./VirtualList.tsx";
 import { Network, ArrowUpRight, Square } from "lucide-react";
 import { loadThread } from "../lib/actions.ts";
-import { selectThread, useApp } from "../lib/store.ts";
+import { selectThread, useApp, type AppState } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
@@ -21,8 +21,18 @@ export function SubagentsPane() {
   });
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
-  const children = useApp(useShallow((state) => Object.values(state.threads)
-    .filter((thread) => thread.parentThreadId === parentId)));
+  const selectChildren = useMemo(() => {
+    let previous: AppState["threads"] | undefined;
+    let children: AppState["threads"][string][] = [];
+    return (state: AppState) => {
+      if (previous !== state.threads) {
+        previous = state.threads;
+        children = Object.values(state.threads).filter(thread => thread.parentThreadId === parentId);
+      }
+      return children;
+    };
+  }, [parentId]);
+  const children = useApp(useShallow(selectChildren));
   const { current, earlier } = useMemo(() => groupSubagents(
     children.toSorted((a, b) => a.createdAt - b.createdAt),
   ), [children]);

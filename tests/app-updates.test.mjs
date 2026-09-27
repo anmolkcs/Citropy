@@ -226,3 +226,33 @@ test("development builds cannot download and current versions cannot downgrade",
   assert.equal(control.state().status, "current");
   await assert.rejects(control.command("download"), /new release/);
 });
+
+test("scripted updates finish downloading before shutdown and install the checked version", async t => {
+  const calls = [];
+  let downloaded;
+  const { control } = fixture({
+    external: {
+      check: async () => "0.2.0",
+      download: version => {
+        calls.push(["download", version]);
+        return new Promise(resolve => { downloaded = resolve; });
+      },
+      install: async version => { calls.push(["install", version]); },
+    },
+    prepareInstall: async () => { calls.push(["prepare"]); },
+  });
+  t.after(() => control.dispose());
+  await control.command("check");
+  await tick();
+  await control.command("download");
+  assert.equal(control.state().status, "downloading");
+  assert.deepEqual(calls, [["download", "0.2.0"]]);
+  await control.command("install");
+  assert.deepEqual(calls, [["download", "0.2.0"]]);
+  downloaded();
+  await tick();
+  assert.equal(control.state().status, "ready");
+  await control.command("install");
+  await tick();
+  assert.deepEqual(calls, [["download", "0.2.0"], ["prepare"], ["install", "0.2.0"]]);
+});

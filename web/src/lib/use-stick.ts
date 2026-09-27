@@ -71,8 +71,8 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     const onToggle = (event: Event) => {
       const button = (event.target as Element).closest("button[aria-expanded]");
       if (!button) return;
-      readingExpanded.current = button.getAttribute("aria-expanded") !== "true";
-      stuck.current = !readingExpanded.current && node.scrollHeight - node.scrollTop - node.clientHeight < 2;
+      stuck.current = button.getAttribute("aria-expanded") === "true" && node.scrollHeight - node.scrollTop - node.clientHeight < 2;
+      readingExpanded.current = !stuck.current;
       node.scrollTo({ top: node.scrollTop, behavior: "instant" });
       lastTop.current = node.scrollTop;
     };

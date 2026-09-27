@@ -128,6 +128,64 @@ test('binary files retain finite zero line counts', async t => {
   assert.equal(entry?.removed, 0);
 });
 
+test('status reports tracking counts and branch state from one porcelain response', async t => {
+  const { cwd, git } = await fixture(t);
+  const branch = git('symbolic-ref', '--short', 'HEAD').trim();
+  git('branch', 'upstream');
+  git('branch', '--set-upstream-to=upstream');
+  await writeFile(join(cwd, 'keep.txt'), 'ahead\n');
+  git('commit', '-qam', 'ahead');
+  let result = await status(cwd);
+  assert.equal(result.branch, branch);
+  assert.equal(result.upstream, 'upstream');
+  assert.equal(result.ahead, 1);
+  assert.equal(result.behind, 0);
+  assert.equal(result.clean, true);
+  git('checkout', '-q', 'upstream');
+  await writeFile(join(cwd, 'behind.txt'), 'behind\n');
+  git('add', '--', 'behind.txt');
+  git('commit', '-qm', 'behind');
+  git('checkout', '-q', branch);
+  result = await status(cwd);
+  assert.equal(result.ahead, 1);
+  assert.equal(result.behind, 1);
+  git('checkout', '-q', '--detach');
+  result = await status(cwd);
+  assert.equal(result.branch, 'detached');
+  assert.equal(result.upstream, null);
+  assert.equal(result.ahead, 0);
+  assert.equal(result.behind, 0);
+});
+
+test('status preserves filenames and conflict codes in an unmerged index', async t => {
+  const path = ' conflicting file.txt';
+  const { cwd, git } = await fixture(t, { [path]: 'base\n' });
+  const branch = git('symbolic-ref', '--short', 'HEAD').trim();
+  git('checkout', '-qb', 'other');
+  await writeFile(join(cwd, path), 'other\n');
+  git('commit', '-qam', 'other');
+  git('checkout', '-q', branch);
+  await writeFile(join(cwd, path), 'current\n');
+  git('commit', '-qam', 'current');
+  assert.throws(() => git('merge', 'other'));
+  const result = await status(cwd);
+  assert.equal(result.clean, false);
+  assert.equal(result.files.length, 1);
+  assert.equal(result.files[0].path, path);
+  assert.equal(result.files[0].index, 'U');
+  assert.equal(result.files[0].work, 'U');
+  assert.equal(result.files[0].staged, true);
+});
+
+test('status keeps the unborn branch and untracked paths', async t => {
+  const { cwd, git } = await fixture(t, { 'space name.txt': 'new\n' }, false);
+  git('rm', '--cached', '--', 'space name.txt');
+  const result = await status(cwd);
+  assert.equal(result.branch, git('symbolic-ref', '--short', 'HEAD').trim());
+  assert.equal(result.upstream, null);
+  assert.deepEqual(result.files, [{ path: 'space name.txt', index: '?', work: '?', added: 0, removed: 0, staged: false, untracked: true }]);
+});
+
 test('real Git patches round-trip Unicode, whitespace, and escaped paths', async t => {
   const paths = ['café-猫.txt', 'space name.txt', 'item[0-9].txt'];
   if (process.platform !== 'win32') paths.push(' leading.txt', 'trailing.txt ', 'tab\tfile.txt', 'line\nfile.txt', 'quote"file.txt', 'back\\slash.txt');

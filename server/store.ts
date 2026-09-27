@@ -10,9 +10,10 @@ import { removeToolImages } from "./tool-images.ts";
 import { uid } from "./ids.ts";
 import { saveJson } from "./save-json.ts";
 import { UsageHistory } from "./usage-history.ts";
+import { ConversationSearch } from "./conversation-search.ts";
+import { onShutdown } from "./lifecycle.ts";
 import { subagentFinishedNotification } from "./subagent-notifications.ts";
 import { emptyUsage } from "../shared/protocol.ts";
-import { normalizeTodos } from "../shared/todos.ts";
 import { defaultAssistance, gitActionBusy, type AssistanceSettings } from "../shared/assistance.ts";
 import type {
   ProviderId,
@@ -26,6 +27,7 @@ import type {
   Usage,
   AppNotification,
   NotificationPreferences,
+  OpenCodeVersionSetting,
 } from "../shared/protocol.ts";
 
 const root = dataRoot;
@@ -89,6 +91,7 @@ export class Store {
   threads = new Map<string, Thread>();
   disabledProviders = new Set<ProviderId>();
   providerInstances = new Map<string, ProviderInstance>();
+  openCodeVersion: OpenCodeVersionSetting = "auto";
   computerEnabled = false;
   assistance: AssistanceSettings = { ...defaultAssistance };
   projectDefaults: ProjectSettings = {};
@@ -104,8 +107,10 @@ export class Store {
   usageHistory = new UsageHistory(usageHistoryFile);
   #savedProjects = "";
   #loaded = new Map<string, Message[]>();
+  #search = new ConversationSearch(join(root, "events.sqlite"));
 
   constructor() {
+    onShutdown(() => this.#search.close());
     this.#load();
     eventJournal.importThreads(this.threads.values());
     const unsettled = eventJournal.unsettledThreads();
@@ -129,7 +134,6 @@ export class Store {
       const originalMessages = JSON.stringify(messages);
       for (const message of messages) for (const part of message.parts) {
         if (part.kind === "question" && part.status === "pending") part.status = "dismissed";
-        if (part.kind === "todo") part.items = normalizeTodos(part.items);
         if (part.kind === "text" || part.kind === "reasoning") part.complete = true;
         if (part.kind === "tool" && part.status === "running") { part.status = "error"; part.output ||= "The provider stopped before returning a tool result."; }
       }
@@ -173,8 +177,8 @@ export class Store {
     return this.#loaded.get(threadId) ?? eventJournal.messages(threadId);
   }
 
-  searchText(threadId: string): Array<{ id: string; text: string }> {
-    return eventJournal.messageTexts(threadId);
+  search(query: string, projectId?: string, signal?: AbortSignal) {
+    return this.#search.search(this.threads.values(), query, projectId, signal);
   }
 
   #load(): void {
@@ -184,6 +188,7 @@ export class Store {
         if (settings.projectDefaults && typeof settings.projectDefaults === "object" && !Array.isArray(settings.projectDefaults))
           this.projectDefaults = settings.projectDefaults;
         this.computerEnabled = settings.computerEnabled === true;
+        if (settings.openCodeVersion === 1 || settings.openCodeVersion === 2) this.openCodeVersion = settings.openCodeVersion;
         this.logging = settings.logging !== false;
         this.resumeAfterLimits = settings.resumeAfterLimits === true;
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
@@ -266,6 +271,12 @@ export class Store {
     else disabled.add(id);
     this.#saveSettings({ disabledProviders: [...disabled] });
     this.disabledProviders = disabled;
+  }
+
+  setOpenCodeVersion(setting: OpenCodeVersionSetting): void {
+    if (setting !== "auto" && setting !== 1 && setting !== 2) throw new Error("Invalid OpenCode version setting");
+    this.#saveSettings({ openCodeVersion: setting });
+    this.openCodeVersion = setting;
   }
 
   setComputerEnabled(enabled: boolean): void {
@@ -393,6 +404,7 @@ export class Store {
       assistance: this.assistance,
       projectDefaults: this.projectDefaults,
       providerInstances: [...this.providerInstances.values()],
+      openCodeVersion: this.openCodeVersion,
       ...patch,
     });
   }

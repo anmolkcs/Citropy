@@ -11,8 +11,8 @@ import type {
   UsageWindow,
 } from "../shared/features.ts";
 
-const cached = new Map<ProviderId, ProviderUsage>();
-const pending = new Map<ProviderId, Promise<ProviderUsage>>();
+const cached = new Map<string, ProviderUsage>();
+const pending = new Map<string, Promise<ProviderUsage>>();
 
 export function parseProviderLimits(
   provider: ProviderId,
@@ -82,10 +82,14 @@ export function parseProviderLimits(
   };
 }
 
-export async function providerLimits(provider: ProviderId): Promise<ProviderUsage> {
-  const saved = cached.get(provider);
+export async function providerLimits(provider: ProviderId, instanceId?: string): Promise<ProviderUsage> {
+  const instance = instanceId ? store.providerInstances.get(instanceId) : undefined;
+  if (instanceId && (!instance || instance.provider !== provider))
+    throw new Error("The selected provider account is unavailable.");
+  const key = JSON.stringify([provider, instanceId, instance?.binary, instance?.environment]);
+  const saved = cached.get(key);
   if (saved && Date.now() - saved.updatedAt < 30_000) return saved;
-  const existing = pending.get(provider);
+  const existing = pending.get(key);
   if (existing) return existing;
   const request = (async (): Promise<ProviderUsage> => {
     try {
@@ -117,6 +121,9 @@ export async function providerLimits(provider: ProviderId): Promise<ProviderUsag
         await providerControl(
           provider,
           provider === "codex" ? "account/rateLimits/read" : "get_usage",
+          {},
+          undefined,
+          { binary: instance?.binary, environment: instance?.environment },
         ),
       );
     } catch (error) {
@@ -129,11 +136,17 @@ export async function providerLimits(provider: ProviderId): Promise<ProviderUsag
     }
   })()
     .then((result) => {
-      cached.set(provider, result);
+      for (const id of cached.keys()) {
+        const [savedProvider, savedInstanceId] = JSON.parse(id) as [ProviderId, string | null];
+        if (!savedInstanceId) continue;
+        const current = store.providerInstances.get(savedInstanceId);
+        if (!current || current.provider !== savedProvider || id !== JSON.stringify([savedProvider, savedInstanceId, current.binary, current.environment])) cached.delete(id);
+      }
+      cached.set(key, result);
       return result;
     })
-    .finally(() => pending.delete(provider));
-  pending.set(provider, request);
+    .finally(() => pending.delete(key));
+  pending.set(key, request);
   return request;
 }
 
@@ -178,6 +191,6 @@ export async function usageReport(
       ...store.usageHistory.entries().filter((entry) => entry.provider === "cursor"),
     ]),
     conversations,
-    providers: await Promise.all(providers.map(providerLimits)),
+    providers: await Promise.all(providers.map(provider => providerLimits(provider))),
   };
 }

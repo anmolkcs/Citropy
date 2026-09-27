@@ -76,11 +76,12 @@ function flush(connection: Connection): void {
     connection.slice = pickEnvironmentSlice(useApp.getState());
   } else {
     const previous = useApp.getState();
-    const next = applyEvents({ ...previous, ...connection.slice }, batch, false);
-    connection.slice = pickEnvironmentSlice(next);
+    const current = { ...previous, ...connection.slice };
+    const next = applyEvents(current, batch, false);
+    if (next !== current) connection.slice = pickEnvironmentSlice(next);
     if (next.toasts.length > previous.toasts.length)
       useApp.setState(state => ({ toasts: [...state.toasts, ...next.toasts.slice(previous.toasts.length)] }));
-    publishBackgrounds();
+    if (next !== current) publishBackgrounds();
   }
   if (batch.some(event => ["hello", "project.upsert", "project.remove"].includes(event.t))) rememberCatalog(connection);
   else if (!connection.rememberTimer && batch.some(event => event.t === "thread.upsert" || event.t === "thread.remove"))

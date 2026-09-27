@@ -18,6 +18,8 @@ import {
   MoreHorizontal,
   Minimize2,
   Maximize2,
+  PenTool,
+  NotebookPen,
 } from "lucide-react";
 import { Changes } from "./Changes.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
@@ -27,6 +29,8 @@ import { BrowserPane } from "./BrowserPane.tsx";
 import { SubagentsPane } from "./SubagentsPane.tsx";
 import { ToolsPane } from "./ToolsPane.tsx";
 import { ComputerPane } from "./ComputerPane.tsx";
+import { DrawingPane } from "./drawing/DrawingPane.tsx";
+import { NotesPane } from "./notes/NotesPane.tsx";
 import { Menu } from "./Menu.tsx";
 import { usePanelTabActions } from "./use-panel-tab-actions.tsx";
 import { scaled, selectPanel, useApp } from "../lib/store.ts";
@@ -71,6 +75,18 @@ const options = [
     label: "Tools",
     hint: "MCP connection and available tools",
     icon: Plug,
+  },
+  {
+    kind: "drawing",
+    label: "Drawing",
+    hint: "Sketch an idea and attach it to a message",
+    icon: PenTool,
+  },
+  {
+    kind: "notes",
+    label: "Notes",
+    hint: "Write notes and attach them to a message",
+    icon: NotebookPen,
   },
 ] satisfies Array<{
   kind: PanelKind;
@@ -343,6 +359,10 @@ export function Inspector({ visible }: { visible: boolean }) {
                 <BrowserPane panel={panel} active={active} />
               ) : panel.kind === "terminal" ? (
                 <TerminalPane panel={panel} active={active} />
+              ) : panel.kind === "drawing" ? (
+                <DrawingPane projectId={panel.projectId} />
+              ) : panel.kind === "notes" ? (
+                <NotesPane projectId={panel.projectId} />
               ) : panel.projectId !== projectId ? null : panel.kind ===
                 "files" ? (
                 <FileTree panelId={panel.id} active={active} />

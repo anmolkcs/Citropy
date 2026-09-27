@@ -17,6 +17,7 @@ test("terminal snapshot replies cannot discard the live ANSI updates immediately
   let output = "\x1b[2J\x1b[HWaiting for login";
   const updates = Array.from({ length: 50 }, (_, index) => ["\x1b[", "H\x1b[2K", `Login progress ${index}\r\n`]).flat();
   updates.push("\x1b[H\x1b[2KLogin complete\r\n");
+  let recoveredOffset;
   const sockets = new Set();
   const server = createServer(socket => {
     sockets.add(socket);
@@ -31,9 +32,9 @@ test("terminal snapshot replies cannot discard the live ANSI updates immediately
         input = input.slice(end + 1);
         let result = null;
         let following = "";
-        if (request.op === "hello") result = [];
+        if (request.op === "hello") result = recoveredOffset === undefined ? [] : [{ id: "terminal", sessionId: "persistent-process", cwd: root, output, offset: recoveredOffset, running: true }];
         if (request.op === "open") {
-          result = { id: "terminal", cwd: root, output, offset: output.length, running: true };
+          result = { id: "terminal", sessionId: "persistent-process", cwd: root, output, offset: output.length, running: true };
           for (const data of updates) {
             output += data;
             following += JSON.stringify({ event: { type: "data", id: "terminal", data, offset: output.length } }) + "\n";
@@ -59,4 +60,25 @@ test("terminal snapshot replies cannot discard the live ANSI updates immediately
     assert.equal(terminals.read("terminal"), output);
     assert.equal(terminals.session("terminal").offset, output.length);
   }
+  assert.deepEqual(terminals.replay('terminal'), { data: output, reset: true, offset: output.length, sessionId: 'persistent-process' });
+  assert.deepEqual(terminals.replay('terminal', output.length, 'persistent-process'), { data: '', reset: false, offset: output.length, sessionId: 'persistent-process' });
+  assert.deepEqual(terminals.replay('terminal', output.length - 20, 'persistent-process'), { data: output.slice(-20), reset: false, offset: output.length, sessionId: 'persistent-process' });
+  for (const [offset, sessionId] of [[-1, 'persistent-process'], [output.length + 1, 'persistent-process'], [output.length, 'previous-process'], [0.5, 'persistent-process']])
+    assert.equal(terminals.replay('terminal', offset, sessionId).reset, true);
+  const { bus } = await import("../server/bus.ts");
+  recoveredOffset = output.length + 100;
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { unsubscribe(); reject(new Error("Changed offsets must reset a recovered terminal even when retained text is identical")); }, 5000);
+    const unsubscribe = bus.subscribe(event => {
+      if (event.t !== "term.data" || !event.reset) return;
+      clearTimeout(timer);
+      unsubscribe();
+      try {
+        assert.equal(event.offset, recoveredOffset);
+        assert.equal(event.data, output);
+        resolve();
+      } catch (error) { reject(error); }
+    });
+    for (const socket of sockets) socket.destroy();
+  });
 });

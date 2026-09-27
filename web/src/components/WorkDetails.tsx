@@ -21,12 +21,12 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
   const [shownOpen, setShownOpen] = useState(open);
   const toggled = shownOpen !== open;
   if (toggled) setShownOpen(open);
-  const tools = useApp(useShallow(state => ids.map(id => state.parts[id]).filter((part): part is ToolPart => part?.kind === "tool")));
+  const tools = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ToolPart => part?.kind === "tool")));
   const stats = groupStats(tools);
   const thread = useApp(state => active ? state.threads[state.activeThreadId ?? ""] : undefined);
-  const preview = useApp(state => previewId ? state.parts[previewId] : undefined);
+  const preview = useApp(state => previewId ? state.parts.get(previewId) : undefined);
   const hasGallery = useApp(state => messageIds.some(id => state.messages[id]?.partIds.some(partId => {
-    const part = state.parts[partId];
+    const part = state.parts.get(partId);
     return part?.kind === "images" && part.files.length > 0;
   })));
   const latest = active ? tools.findLast(tool => tool.status === "running") ?? tools.at(-1)

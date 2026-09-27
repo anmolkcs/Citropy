@@ -19,9 +19,10 @@ import { randomUUID } from "node:crypto";
 import { dev, developmentOrigin, host, origin, port } from "./config.ts";
 import { activeWork, duringCommand, trackRequest } from "./activity.ts";
 import { startDevelopment } from "./development.ts";
-import { onShutdown, shutdown } from "./lifecycle.ts";
+import { onShutdown, shutdown, shuttingDown } from "./lifecycle.ts";
 import { providerInfo, refreshProviders } from "./provider-registry.ts";
 import { handle } from "./routes/index.ts";
+import { cancelThreadSearch } from "./routes/threads.ts";
 import { refreshGit } from "./git-monitor.ts";
 import { pendingRequests } from "./permissions.ts";
 import { handleMcp, workspaceTools } from "./mcp.ts";
@@ -195,6 +196,7 @@ const wss = new WebSocketServer({
 });
 
 wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
+  socket.on("error", () => socket.terminate());
   if (new URL(req.url ?? "/socket", origin).searchParams.has("desktop")) { attachDesktop(socket); return; }
   if (new URL(req.url ?? "/socket", origin).searchParams.get("workspace") === "1") { attachWorkspaceFeed(socket); return; }
   const consumer = randomUUID();
@@ -274,7 +276,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       else send({ t: "toast", level: "error", text: (error as Error).message });
     }
   });
-  socket.on("close", () => { unsubscribe(); unwatchShell?.(); terminals.release(consumer); });
+  socket.on("close", () => { cancelThreadSearch(send); unsubscribe(); unwatchShell?.(); terminals.release(consumer); });
 });
 
 desktopEvents.on("event", (event) => {
@@ -324,15 +326,17 @@ server.listen(port, host, async () => {
     }
   }
   await terminals.restore();
-  await refreshProviders();
-  stopProviderUpdateChecks = startProviderUpdateChecks();
-  stopUsageResume = startUsageResume();
+  void refreshProviders().then(() => {
+    if (shuttingDown()) return;
+    stopProviderUpdateChecks = startProviderUpdateChecks();
+    stopUsageResume = startUsageResume();
+    const available = providerInfo().filter((entry) => entry.available).map((entry) => entry.label);
+    writeLog("info", "providers", `Discovery finished with ${available.join(", ") || "no providers"}`);
+  });
   process.send?.({ t: "ready" });
   parentPort?.postMessage({ t: "ready" });
-  const available = providerInfo().filter((entry) => entry.available).map((entry) => entry.label);
-  writeLog("info", "server", `Started on ${origin} with ${available.join(", ") || "no providers"}`);
+  writeLog("info", "server", `Started on ${origin}`);
   process.stdout.write(`\n  Citropy listening on ${origin}\n`);
-  process.stdout.write(`  providers: ${available.join(", ") || "none detected"}\n`);
   if (dev) {
     process.stdout.write(`  ui (dev): ${developmentOrigin}\n\n`);
   } else {

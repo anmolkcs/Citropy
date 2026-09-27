@@ -8,11 +8,13 @@ import { useApp } from "../../lib/store.ts";
 import type { FileEntry } from "../../../../shared/protocol.ts";
 
 export function FileExplorer({
+  active,
   projectId,
   threadId,
   selected,
   onOpen,
 }: {
+  active: boolean;
   projectId: string;
   threadId?: string;
   selected?: string;
@@ -23,16 +25,23 @@ export function FileExplorer({
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const viewport = useRef<HTMLDivElement>(null);
   const requests = useRef(new Map<string, AbortController>());
+  const loadedRoot = useRef("");
+  const loadedSearch = useRef("");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [directories, setDirectories] = useState<Map<string, { entries: FileEntry[]; error?: string }>>(() => new Map());
+
+  useEffect(() => {
+    loadedRoot.current = "";
+    loadedSearch.current = "";
+  }, [projectId, threadId, connected]);
 
   useEffect(() => () => {
     for (const controller of requests.current.values()) controller.abort();
     requests.current.clear();
-  }, [projectId, threadId, connected]);
+  }, [active, projectId, threadId, connected]);
 
   useEffect(() => {
-    if (!connected) return;
+    if (!active || !connected) return;
     for (const path of expanded) {
       if (directories.has(path) || requests.current.has(path)) continue;
       const controller = new AbortController();
@@ -50,7 +59,7 @@ export function FileExplorer({
           if (requests.current.get(path) === controller) requests.current.delete(path);
         });
     }
-  }, [expanded, directories, projectId, threadId, connected]);
+  }, [active, expanded, directories, projectId, threadId, connected]);
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -58,19 +67,34 @@ export function FileExplorer({
     [],
   );
   useEffect(() => {
-    if (!query || !connected) return;
+    loadedSearch.current = "";
+  }, [query]);
+  useEffect(() => {
+    if (!active || !query || !connected) return;
+    const path = `editor/search?${assetQuery(projectId, "", threadId)}&query=${encodeURIComponent(query)}`;
+    if (loadedSearch.current === path) {
+      setSearching(false);
+      return;
+    }
     const controller = new AbortController();
     setMatches([]);
     setSearching(true);
     setError("");
     const timer = setTimeout(() => {
       api<Array<{ path: string; dir: boolean }>>(
-        `editor/search?${assetQuery(projectId, "", threadId)}&query=${encodeURIComponent(query)}`,
+        path,
         { signal: controller.signal },
       )
-        .then(setMatches)
+        .then((matches) => {
+          if (!controller.signal.aborted) {
+            loadedSearch.current = path;
+            setMatches(matches);
+          }
+        })
         .catch((error) => {
-          if (!controller.signal.aborted) setError(error.message);
+          if (!controller.signal.aborted) {
+            setError(error.message);
+          }
         })
         .finally(() => {
           if (!controller.signal.aborted) setSearching(false);
@@ -80,26 +104,38 @@ export function FileExplorer({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [projectId, threadId, query, connected]);
+  }, [active, projectId, threadId, query, connected]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!connected) return;
+    if (!active || !connected) return;
+    const path = `editor/tree?${assetQuery(projectId, "", threadId)}`;
+    if (loadedRoot.current === path) {
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    api<FileEntry[]>(`editor/tree?${assetQuery(projectId, "", threadId)}`, {
+    api<FileEntry[]>(path, {
       signal: controller.signal,
     })
-      .then(setEntries)
+      .then((entries) => {
+        if (!controller.signal.aborted) {
+          loadedRoot.current = path;
+          setEntries(entries);
+        }
+      })
       .catch((error) => {
-        if (!controller.signal.aborted) setError(error.message);
+        if (!controller.signal.aborted) {
+          setError(error.message);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [projectId, threadId, connected]);
+  }, [active, projectId, threadId, connected]);
   const rows = useMemo(() => {
     const result: Array<{ path: string; entry: FileEntry; depth: number }> = [];
     if (query) return matches.filter((entry) => !entry.dir).map((entry) => ({

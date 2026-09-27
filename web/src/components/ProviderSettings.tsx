@@ -287,6 +287,41 @@ export function ProviderSettings() {
                 )}
               </div>
               <div className="provider-maintenance">
+                {provider.openCodeVersion && (
+                  <div className="provider-update-row">
+                    <div className="provider-installation">
+                      <span>{t("OpenCode version")}</span>
+                      <small>
+                        {provider.openCodeVersion.active
+                          ? t("Using OpenCode {version}", { version: provider.openCodeVersion.active })
+                          : t("Version not detected")}
+                      </small>
+                    </div>
+                    <Select
+                      aria-label={t("OpenCode version")}
+                      value={String(provider.openCodeVersion.setting)}
+                      disabled={!connected || switching || isUpdating}
+                      options={[
+                        { value: "auto", label: t("Detect automatically") },
+                        { value: "1", label: "OpenCode 1" },
+                        { value: "2", label: "OpenCode 2" },
+                      ]}
+                      onChange={async (value) => {
+                        if (
+                          active &&
+                          !(await confirmAction({
+                            title: t("Switch OpenCode version?"),
+                            description: t("This stops {count} active {conversations}. Saved conversations will remain available.", { count: active, conversations: active === 1 ? t("conversation") : t("conversations") }),
+                            label: "Switch version",
+                            danger: true,
+                          }))
+                        )
+                          return;
+                        send({ t: "providers.opencodeVersion", setting: value === "auto" ? "auto" : value === "2" ? 2 : 1 });
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="provider-update-row">
                   <div className="provider-installation">
                     <span>{t(state?.method ?? "CLI installation")}</span>

@@ -1,5 +1,6 @@
 import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   scaled,
   setPanelWidth,
@@ -7,6 +8,8 @@ import {
   viewportWidth,
   type PanelId,
 } from "../lib/store.ts";
+
+let resizeSession = 0;
 
 const labels: Record<PanelId, string> = {
   sidebar: "Sidebar width",
@@ -31,6 +34,7 @@ export function ResizeHandle({
     targets: [HTMLElement, string][];
     moved: boolean;
     pointerX: number;
+    limit: number;
   } | null>(null);
   const uiScale = useApp((state) => state.uiScale);
   const direction = panel === "inspector" ? -1 : 1;
@@ -59,13 +63,13 @@ export function ResizeHandle({
       (uiScale / 100);
     return Math.max(minimum, Math.min(640, available - 360));
   };
-  const clamp = (value: number) =>
-    Math.round(Math.max(minimum, Math.min(maximum(), value)));
+  const clamp = (value: number, limit = maximum()) =>
+    Math.round(Math.max(minimum, Math.min(limit, value)));
   const liveTargets = (element: HTMLElement, root: HTMLElement): [HTMLElement, string][] => {
     const found: [HTMLElement | null | undefined, string][] = panel === "sidebar"
-      ? [[element.parentElement, "--rail"], [root.querySelector<HTMLElement>(".topbar-left"), "--rail"], [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"]]
+      ? [[element.parentElement, "width"], [element, "width"], [root.querySelector<HTMLElement>(".topbar-left"), "width"], [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"]]
       : panel === "inspector"
-        ? [[element.parentElement, "--inspector"]]
+        ? [[element.parentElement, "width"], [element, "width"]]
         : [[element.parentElement, `--${panel}-width`]];
     return found.filter((target): target is [HTMLElement, string] => Boolean(target[0]));
   };
@@ -85,10 +89,12 @@ export function ResizeHandle({
   useEffect(() => {
     const element = pane();
     if (!element) return;
-    const measure = () =>
+    const measure = () => {
+      if (drag.current) return;
       setWidth(
         Math.round(element.getBoundingClientRect().width / (uiScale / 100)),
       );
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -128,7 +134,9 @@ export function ResizeHandle({
           targets: liveTargets(element, root),
           moved: false,
           pointerX: event.clientX,
+          limit: maximum(),
         };
+        resizeSession++;
         document.documentElement.dataset.resizing = "true";
       }}
       onPointerMove={(event) => {
@@ -140,7 +148,7 @@ export function ResizeHandle({
         frame.current = requestAnimationFrame(() => {
           frame.current = 0;
           if (drag.current !== current) return;
-          const next = clamp(current.width + direction * (current.pointerX - current.x) / (uiScale / 100));
+          const next = clamp(current.width + direction * (current.pointerX - current.x) / (uiScale / 100), current.limit);
           for (const [element, property] of current.targets) element.style.setProperty(property, `${scaled(next)}px`);
         });
       }}
@@ -150,18 +158,21 @@ export function ResizeHandle({
         cancelAnimationFrame(frame.current);
         frame.current = 0;
         drag.current = null;
-        delete document.documentElement.dataset.resizing;
         if (event.currentTarget.hasPointerCapture(event.pointerId))
           event.currentTarget.releasePointerCapture(event.pointerId);
-        if (current.moved)
-          setPanelWidth(
-            panel,
-            clamp(
-              current.width +
-                (direction * (event.clientX - current.x)) / (uiScale / 100),
-            ),
+        if (current.moved) {
+          const next = clamp(
+            current.width +
+              (direction * (event.clientX - current.x)) / (uiScale / 100),
           );
+          flushSync(() => setPanelWidth(panel, next));
+          setWidth(next);
+        }
         release(current);
+        const session = resizeSession;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (session === resizeSession) delete document.documentElement.dataset.resizing;
+        }));
       }}
       onPointerCancel={cancel}
       onLostPointerCapture={cancel}

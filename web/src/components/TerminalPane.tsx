@@ -62,8 +62,7 @@ function hasWebgl2(): boolean {
   try {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("webgl2");
-    const lose = context?.getExtension("WEBGL_lose_context");
-    lose?.loseContext();
+    context?.getExtension("WEBGL_lose_context")?.loseContext();
     return Boolean(context);
   } catch {
     return false;
@@ -81,7 +80,11 @@ export function TerminalPane({
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const fit = useRef<FitAddon | null>(null);
+  const renderer = useRef<{ dispose(): void } | null>(null);
+  const webgl = useRef<boolean | undefined>(undefined);
+  const [ready, setReady] = useState(false);
   const replays = useRef(new WeakMap<Terminal, number>());
+  const cursor = useRef<{ offset: number; sessionId: string } | undefined>(undefined);
   const attached = useRef(false);
   const [signal] = useState(environmentSignal);
   const projectId = panel.projectId;
@@ -95,7 +98,7 @@ export function TerminalPane({
       send({ t: "term.unsubscribe", termId: panel.id });
       attached.current = false;
     }
-    if (term.current) term.current.options.cursorBlink = active && connected;
+    if (!active || !connected) term.current?.blur();
     if (!active || !connected || !host.current || signal.aborted) return;
     const detach = () => {
       if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: panel.id });
@@ -114,6 +117,7 @@ export function TerminalPane({
           cols: term.current.cols,
           rows: term.current.rows,
           flowControl: true,
+          ...cursor.current,
         });
       }
       if (!document.activeElement?.matches('[role="tab"]:focus-visible')) term.current.focus();
@@ -158,21 +162,6 @@ export function TerminalPane({
         return false;
       });
 
-      if (hasWebgl2()) {
-        try {
-          const { WebglAddon } = await import("@xterm/addon-webgl");
-          if (disposed || signal.aborted) {
-            instance.dispose();
-            return;
-          }
-          const webgl = new WebglAddon();
-          webgl.onContextLoss(() => webgl.dispose());
-          instance.loadAddon(webgl);
-        } catch {
-          /* dom renderer stays in place */
-        }
-      }
-
       if (disposed || signal.aborted) {
         instance.dispose();
         return;
@@ -180,6 +169,7 @@ export function TerminalPane({
       fitAddon.fit();
       term.current = instance;
       fit.current = fitAddon;
+      setReady(true);
       attached.current = true;
 
       send({
@@ -207,24 +197,87 @@ export function TerminalPane({
   }, [active, projectId, connected, panel.id]);
 
   useEffect(() => {
+    if (!ready || signal.aborted) return;
+    if (!active || !connected) {
+      const timer = setTimeout(() => renderer.current?.dispose(), 5000);
+      return () => clearTimeout(timer);
+    }
+    if (renderer.current || webgl.current === false) return;
+    let cancelled = false;
+    const timer = setTimeout(() => void (async () => {
+      webgl.current ??= hasWebgl2();
+      if (!webgl.current) return;
+      const { WebglAddon } = await import("@xterm/addon-webgl");
+      const instance = term.current;
+      if (cancelled || signal.aborted || !instance) return;
+      const addon = new WebglAddon();
+      try {
+        instance.loadAddon(addon);
+      } catch {
+        webgl.current = false;
+        addon.dispose();
+        return;
+      }
+      const contexts = [...instance.element!.querySelectorAll("canvas")]
+        .map(canvas => canvas.getContext("webgl2")).filter(context => context !== null);
+      const release = {
+        dispose() {
+          if (renderer.current !== release) return;
+          renderer.current = null;
+          addon.dispose();
+          for (const context of contexts) context.getExtension("WEBGL_lose_context")?.loseContext();
+        },
+      };
+      renderer.current = release;
+      addon.onContextLoss(() => release.dispose());
+      fit.current?.fit();
+    })().catch(() => { webgl.current = false; }), 500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [active, connected, ready]);
+
+  useEffect(() => {
     if (!active || !connected) return;
     return onTerminal((event) => {
       if (event.termId !== panel.id || !attached.current) return;
       if (event.t === "term.data") {
         const instance = term.current;
         if (!instance) return;
+        const acknowledge = () => {
+          if (event.streamId && event.data.length && !signal.aborted)
+            send({ t: "term.ack", termId: panel.id, count: event.data.length, streamId: event.streamId });
+        };
+        const position = event.sessionId && Number.isSafeInteger(event.offset)
+          ? { sessionId: event.sessionId, offset: event.offset! } : undefined;
+        let data = event.data;
+        if (position && !event.reset) {
+          const previous = cursor.current;
+          if (!previous || previous.sessionId !== position.sessionId || previous.offset < position.offset - data.length || previous.offset >= position.offset) {
+            acknowledge();
+            return;
+          }
+          data = data.slice(Math.max(0, previous.offset - (position.offset - data.length)));
+        }
+        cursor.current = position;
+        if (!data && !event.reset) { acknowledge(); return; }
         if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 0) + 1);
-        instance.write((event.reset ? "\x1bc" : "") + event.data, () => {
+        instance.write((event.reset ? "\x1bc" : "") + data, () => {
           if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 1) - 1);
           if (event.reset && attached.current && !signal.aborted && term.current) {
             if (!document.documentElement.hasAttribute("data-resizing")) fit.current?.fit();
             send({ t: "term.resize", termId: panel.id, cols: term.current.cols, rows: term.current.rows });
           }
-          if (event.streamId && !signal.aborted) send({ t: "term.ack", termId: panel.id, count: event.data.length, streamId: event.streamId });
+          acknowledge();
         });
       }
-      else
+      else {
+        if (event.sessionId && Number.isSafeInteger(event.offset)) {
+          const previous = cursor.current;
+          const ending = `\r\n[process exited with code ${event.code}]\r\n`;
+          if (!previous || previous.sessionId !== event.sessionId || previous.offset !== event.offset! - ending.length) return;
+          cursor.current = { sessionId: event.sessionId, offset: event.offset! };
+        } else cursor.current = undefined;
         term.current?.writeln(`\r\n${t("[process exited with code {code}]", { code: event.code ?? "?" })}`);
+      }
     });
   }, [active, connected, panel.id, t]);
 
@@ -269,8 +322,10 @@ export function TerminalPane({
   useEffect(() => {
     return () => {
       if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: panel.id });
+      renderer.current?.dispose();
       term.current?.dispose();
       term.current = null;
+      cursor.current = undefined;
       fit.current = null;
       attached.current = false;
     };

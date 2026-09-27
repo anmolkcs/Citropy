@@ -1,10 +1,10 @@
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ListTodo } from "lucide-react";
 import { send } from "../../lib/socket.ts";
 import { normalizeTodos } from "../../../../shared/todos.ts";
 import type { TodoItem } from "../../../../shared/protocol.ts";
-import { useApp } from "../../lib/store.ts";
+import { useApp, type AppState } from "../../lib/store.ts";
 import { useI18n } from "../../lib/i18n.ts";
 import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
 import { useAnchoredPanel, useDismiss } from "../../lib/use-anchored-panel.ts";
@@ -12,17 +12,32 @@ import { TodoSteps } from "../parts/TodoBoard.tsx";
 import { ComposerTab } from "./ComposerTab.tsx";
 
 function useLatestPlan(threadId: string): TodoItem[] {
-  const items = useApp((state) => {
-    const ids = state.order[threadId] ?? [];
-    for (let message = ids.length - 1; message >= 0; message--) {
-      const partIds = state.messages[ids[message]!]?.partIds ?? [];
-      for (let part = partIds.length - 1; part >= 0; part--) {
-        const entry = state.parts[partIds[part]!];
-        if (entry?.kind === "todo") return entry.items;
+  const selectPlan = useMemo(() => {
+    let previous: AppState | undefined;
+    let latestId: string | undefined;
+    return (state: AppState) => {
+      const version = state.timelineVersions?.[threadId];
+      if (!previous || previous.order[threadId] !== state.order[threadId] || previous.messages !== state.messages ||
+        (previous.parts !== state.parts && (version === undefined || previous.timelineVersions?.[threadId] !== version))) {
+        latestId = undefined;
+        const ids = state.order[threadId] ?? [];
+        for (let message = ids.length - 1; message >= 0 && latestId === undefined; message--) {
+          const partIds = state.messages[ids[message]!]?.partIds ?? [];
+          for (let part = partIds.length - 1; part >= 0; part--) {
+            const id = partIds[part]!;
+            if (state.parts.get(id)?.kind === "todo") {
+              latestId = id;
+              break;
+            }
+          }
+        }
       }
-    }
-    return undefined;
-  });
+      previous = state;
+      const entry = latestId === undefined ? undefined : state.parts.get(latestId);
+      return entry?.kind === "todo" ? entry.items : undefined;
+    };
+  }, [threadId]);
+  const items = useApp(selectPlan);
   return normalizeTodos(items);
 }
 

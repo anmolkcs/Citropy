@@ -1,7 +1,7 @@
 import { claudeProvider } from "./claude.ts";
 import { codexProvider } from "./codex.ts";
 import { cursorProvider } from "./cursor.ts";
-import { opencodeProvider } from "./opencode.ts";
+import { openCodeVersionInfo, opencodeProvider } from "./opencode.ts";
 import { piProvider } from "./pi.ts";
 import { commandIdentity } from "./binary.ts";
 import type { Provider, ProviderLaunch } from "./types.ts";
@@ -63,6 +63,7 @@ export async function describeProviders(modelsMaxAge = 0): Promise<ProviderInfo[
       version: detected.version,
       modelsError,
       modelsUpdatedAt,
+      ...(provider.id === "opencode" ? { openCodeVersion: openCodeVersionInfo() } : {}),
       instances: await Promise.all([...store.providerInstances.values()].filter(instance => instance.provider === provider.id).map(async instance => {
         const launch = { binary: instance.binary, environment: instance.environment };
         const previousInstance = previous?.instances?.find(entry => entry.id === instance.id);

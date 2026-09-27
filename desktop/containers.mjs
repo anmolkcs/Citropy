@@ -44,8 +44,10 @@ export async function startContainer(manager, connection, signal, progress) {
   const dockerfile = `FROM node:22.23.2-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends git python3 make g++ ca-certificates openssh-client && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt/citropy
+RUN npm install --global opencode-ai@1.18.31 --no-audit --no-fund
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
 COPY . .
-RUN npm ci --omit=dev --no-audit --no-fund && npm install --global opencode-ai@1.18.31 --no-audit --no-fund
 ENV HOME=/home/citropy SHELL=/bin/bash PATH=/home/citropy/.local/bin:$PATH NPM_CONFIG_PREFIX=/home/citropy/.local
 CMD ["node", "--experimental-strip-types", "--optimize-for-size", "server/main.ts"]
 `;

@@ -1,3 +1,8 @@
+@property --visible-rail {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
 .shell {
   --strip: 48px;
   --rail: clamp(
@@ -6,14 +11,6 @@
     min(440px, calc((var(--viewport-width) - var(--strip)) * 0.34))
   );
   --visible-rail: 0px;
-  --inspector: clamp(
-    260px,
-    var(
-      --inspector-width,
-      clamp(280px, calc(var(--viewport-width) * 0.29), 500px)
-    ),
-    calc(var(--viewport-width) - var(--strip) - var(--visible-rail) - 360px)
-  );
   position: relative;
   display: grid;
   padding-left: var(--strip);
@@ -27,6 +24,22 @@
 }
 .shell[data-navigation="bar"] {
   --strip: 0px;
+}
+.shell-body,
+.shell-body > .sliding-panel[data-side="right"],
+.shell > .toasts {
+  --visible-rail: inherit;
+}
+.shell-body > .sliding-panel[data-side="right"],
+.shell > .toasts {
+  --inspector: clamp(
+    260px,
+    var(
+      --inspector-width,
+      clamp(280px, calc(var(--viewport-width) * 0.29), 500px)
+    ),
+    calc(var(--viewport-width) - var(--strip) - var(--visible-rail) - 360px)
+  );
 }
 
 .shell-body {
@@ -481,6 +494,7 @@
   initial-value: 0px;
 }
 .backdrop-layers {
+  --visible-rail: inherit;
   --glass-width: var(--visible-rail);
   position: absolute;
   inset: 0;

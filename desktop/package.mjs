@@ -44,6 +44,7 @@ for (const name of [
   "server",
   "shared",
   "skills",
+  "scripts",
   "dist",
   "package.json",
   "package-lock.json",

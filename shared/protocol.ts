@@ -335,7 +335,11 @@ export interface ProviderInfo {
   modelsError?: string;
   modelsUpdatedAt?: number;
   instances?: Array<{ id: string; name: string; available: boolean; version?: string; models: ModelOption[]; modelsError?: string }>;
+  openCodeVersion?: { setting: OpenCodeVersionSetting; active?: OpenCodeMajor };
 }
+
+export type OpenCodeMajor = 1 | 2;
+export type OpenCodeVersionSetting = "auto" | OpenCodeMajor;
 
 export interface ProviderInstance {
   id: string;
@@ -453,8 +457,8 @@ export type ServerEvent = (
   | { t: "git.diff"; requestId: string; patch: FilePatch | null; error?: string }
   | { t: "file.tree"; requestId: string; entries: FileEntry[] }
   | { t: "file.content"; requestId: string; path: string; content: string | null }
-  | { t: "term.data"; termId: string; data: string; streamId?: string; reset?: boolean }
-  | { t: "term.exit"; termId: string; code: number }
+  | { t: "term.data"; termId: string; data: string; streamId?: string; reset?: boolean; offset?: number; sessionId?: string }
+  | { t: "term.exit"; termId: string; code: number; offset?: number; sessionId?: string }
   | { t: "toast"; level: "info" | "warn" | "error" | "success"; text: string }
 ) & { sequence?: number };
 
@@ -491,6 +495,7 @@ export type ClientEvent = (
   | { t: "project.choose"; path?: string }
   | { t: "providers.refresh"; force?: boolean }
   | { t: "providers.configure"; provider: ProviderId; enabled: boolean }
+  | { t: "providers.opencodeVersion"; setting: OpenCodeVersionSetting }
   | { t: "project.open"; path: string }
   | { t: "project.rename"; id: string; name: string }
   | { t: "project.close"; id: string }
@@ -546,7 +551,7 @@ export type ClientEvent = (
   | { t: "file.tree"; requestId: string; projectId: string; path?: string }
   | { t: "file.read"; requestId: string; projectId: string; path: string }
   | { t: "shell.watch"; id: string | null }
-  | { t: "term.open"; termId: string; projectId: string; cols: number; rows: number; flowControl?: boolean }
+  | { t: "term.open"; termId: string; projectId: string; cols: number; rows: number; flowControl?: boolean; offset?: number; sessionId?: string }
   | { t: "term.ack"; termId: string; count: number; streamId: string }
   | { t: "term.unsubscribe"; termId: string }
   | { t: "term.data"; termId: string; data: string }

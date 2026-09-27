@@ -10,6 +10,7 @@ files:
   - server/**
   - shared/**
   - skills/**
+  - scripts/install.sh
   - dist/**
   - package.json
   - LICENSE

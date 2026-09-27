@@ -1,5 +1,5 @@
 import { useI18n } from "../../lib/i18n.ts";
-import { lazy, Suspense, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Code2,
   FilePlus2,
@@ -91,6 +91,7 @@ function Workspace({
   const [newPath, setNewPath] = useState("");
   const [creatingFile, setCreatingFile] = useState(false);
   const [selected, setSelected] = useState<string>();
+  const [started, setStarted] = useState(active);
   const [explorer, setExplorer] = useState(true);
   const panels = useApp((state) => state.panels);
   const dock = useApp((state) => state.editorTerminals[panelId]);
@@ -115,6 +116,10 @@ function Workspace({
   const showExplorer = explorer || !current;
   const request = useRef(0);
   const tabStrip = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (active) setStarted(true);
+  }, [active]);
 
   useLayoutEffect(() => {
     const strip = tabStrip.current;
@@ -241,6 +246,7 @@ function Workspace({
           )}
           <FileExplorer
             key={refresh}
+            active={active && showExplorer}
             projectId={projectId}
             threadId={threadId}
             selected={current?.path}
@@ -406,7 +412,7 @@ function Workspace({
                 onClose={() => void discard(current)}
               />
             ) : current ? (
-              <Suspense fallback={<div className="pane-empty" role="status">{t("Loading editor…")}</div>}>
+              (active || started) && <Suspense fallback={<div className="pane-empty" role="status">{t("Loading editor…")}</div>}>
                 <CodeEditor document={current} wrap={wrap} onReady={ready} />
               </Suspense>
             ) : (

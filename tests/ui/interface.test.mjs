@@ -18,6 +18,11 @@ async function expect(condition) {
   for (let attempt = 0; attempt < 50 && !(await condition()); attempt++) await new Promise((resolve) => setTimeout(resolve, 20));
   assert.ok(await condition());
 }
+async function settled(page) {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForFunction(() => document.getAnimations().every(animation =>
+    animation.effect.getComputedTiming().iterations === Infinity || animation.playState === "finished"));
+}
 const history = (count) => Array.from({ length: count }, (_, index) => ({ id: `m${index}`, role: index % 2 ? "assistant" : "user", ts: index, parts: [text(`p${index}`, `Paragraph ${index}. `.repeat(20))] }));
 
 const server = await createServer({ configFile: false, root, cacheDir: fileURLToPath(new URL("../../node_modules/.vite-tests", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
@@ -26,10 +31,11 @@ const url = server.resolvedUrls.local[0];
 const browser = await chromium.launch();
 const warmup = await browser.newPage();
 await warmup.goto(url, { timeout: 120_000 });
+await warmup.locator(".shell").waitFor({ timeout: 120_000 });
 await warmup.close();
 
-async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {} }) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 860 }, permissions: ["clipboard-read", "clipboard-write"] });
+async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {}, width = 1280 }) {
+  const context = await browser.newContext({ viewport: { width, height: 860 }, permissions: ["clipboard-read", "clipboard-write"] });
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
   const errors = [];
@@ -116,7 +122,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), ["1", "2", "3"]);
     for (const width of [1280, 380]) {
       await page.setViewportSize({ width, height: 860 });
-      await page.waitForTimeout(200);
+      await settled(page);
       for (const selector of [".composer-queue-send", ".composer-queue-edit", ".composer-queue-remove"]) {
         const positions = await panel.locator(selector).evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().x));
         assert.ok(Math.max(...positions) - Math.min(...positions) < 1, selector);
@@ -130,16 +136,15 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), ["1", "2", "3"]);
   });
 
-  check("thinking keeps its animated row and scroll position when reasoning arrives", async t => {
-    for (const [count, width] of [[13, 1280], [61, 380]]) {
-      const { page, push } = await app(t, { messages: history(count), preferences: { sidebar: "0" }, threadPatch: { running: false, status: "idle" } });
-      await page.setViewportSize({ width, height: 860 });
-      await page.waitForTimeout(300);
+  for (const [count, width] of [[13, 1280], [61, 380]]) {
+    check(`thinking keeps its animated row and scroll position at ${width}px when reasoning arrives`, async t => {
+      const { page, push } = await app(t, { messages: history(count), preferences: { sidebar: "0" }, threadPatch: { running: false, status: "idle" }, width });
+      await settled(page);
       const runStartedAt = Date.now();
       push({ t: "thread.upsert", thread: { ...thread, status: "thinking", runStartedAt } });
       await page.locator(".working").waitFor();
       assert.equal(await page.locator(".working").evaluate(node => getComputedStyle(node.closest("article")).animationName), "citropy-rise");
-      await page.waitForTimeout(400);
+      await settled(page);
       await page.evaluate(() => {
         const canvas = document.querySelector(".canvas");
         const working = document.querySelector(".working");
@@ -157,16 +162,21 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
         sample();
       });
       push({ t: "message.add", threadId: "chat", message: { id: "reply", role: "assistant", ts: Date.now(), parts: [] } });
-      await page.waitForTimeout(80);
+      await settled(page);
       push({ t: "part.add", threadId: "chat", messageId: "reply", part: { id: "reason", kind: "reasoning", text: "", complete: false } });
-      await page.waitForTimeout(80);
+      await settled(page);
       push({ t: "part.append", threadId: "chat", messageId: "reply", partId: "reason", text: "Checking the application." });
       await page.getByRole("button", { name: "Work details", exact: true }).waitFor();
-      await page.waitForTimeout(400);
+      await page.waitForFunction(() => {
+        const arrow = document.querySelector(".activity-chevron");
+        return getComputedStyle(arrow).opacity === "1" && arrow.getBoundingClientRect().width === 12;
+      });
+      await settled(page);
       const frames = await page.evaluate(() => {
         cancelAnimationFrame(window.thinkingFrame);
         return window.thinkingFrames;
       });
+      assert.ok(frames.length >= 3);
       assert.ok(frames.every(frame => frame.same && frame.opacity === 1), JSON.stringify(frames));
       assert.ok(Math.max(...frames.map(frame => frame.height)) - Math.min(...frames.map(frame => frame.height)) <= 1, JSON.stringify(frames));
       assert.ok(Math.max(...frames.map(frame => frame.top)) - Math.min(...frames.map(frame => frame.top)) <= 1, JSON.stringify(frames));
@@ -176,8 +186,8 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await page.getByText("Checking the application.", { exact: true }).waitFor();
       push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt } });
       await expect(async () => await page.locator(".working").count() === 0);
-    }
-  });
+    });
+  }
 
   check("a text-only reply removes its pending activity when the turn ends", async t => {
     const { page, push } = await app(t, { messages: history(13), threadPatch: { status: "thinking", runStartedAt: 100 } });
@@ -201,6 +211,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       import { createRoot } from 'react-dom/client';
       import { ProjectSettings } from '/web/src/components/ProjectSettings.tsx';
       import { useApp } from '/web/src/lib/store.ts';
+      window.settingsStore = useApp;
       useApp.setState({ projects: [${JSON.stringify(project)}], activeProjectId: 'project', projectDefaults: {}, providers: [] });
       const root = document.querySelector('#fixture');
       root.style.cssText = 'position:absolute;top:20px;left:40px;width:700px';
@@ -214,7 +225,8 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await expect(() => Boolean(pending));
     await pull.uncheck();
     await pending.fulfill({ json: { autoPull: true } });
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() => window.settingsStore.getState().projectDefaults.autoPull === true);
+    await settled(page);
     assert.equal(await pull.isChecked(), false);
     assert.equal(await page.getByText('Global defaults saved', { exact: true }).count(), 0);
     pending = undefined;
@@ -223,8 +235,10 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.getByRole('button', { name: 'Save folder settings', exact: true }).click();
     await expect(() => Boolean(pending));
     await name.fill('Latest name');
+    const finished = page.waitForEvent('requestfinished', request => request === pending.request());
     await pending.fulfill({ json: { ...project, name: 'First name', settings: {} } });
-    await page.waitForTimeout(100);
+    await finished;
+    await settled(page);
     assert.equal(await name.inputValue(), 'Latest name');
     assert.equal(await page.getByText('Folder settings saved', { exact: true }).count(), 0);
   });
@@ -240,7 +254,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await input.press("Shift+Enter");
       await input.pressSequentially(line);
     }
-    await page.waitForTimeout(300);
+    await settled(page);
     assert.ok(await canvas.evaluate((node) => node.scrollHeight - node.scrollTop - node.clientHeight < 2));
     assert.equal(await page.getByRole("button", { name: "Latest", exact: true }).count(), 0);
   });
@@ -249,7 +263,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     const tool = (id, status) => ({ id, kind: "tool", callId: id, name: "Bash", shape: "command", headline: "npm test", input: { command: "npm test" }, status, startedAt: 1 });
     const { page, push } = await app(t, { messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first", "ok"), text("update", "Checked the first part. ".repeat(12))] }] });
     await page.locator('[data-part-id="update"]').waitFor();
-    await page.waitForTimeout(300);
+    await settled(page);
     await page.evaluate(() => {
       const canvas = document.querySelector(".canvas");
       window.heights = [];
@@ -258,7 +272,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     });
     push({ t: "part.add", threadId: "chat", messageId: "reply", part: tool("second", "running") });
     await page.locator(".activity-update").waitFor();
-    await page.waitForTimeout(500);
+    await settled(page);
     const heights = await page.evaluate(() => window.heights);
     const lowest = heights.indexOf(Math.min(...heights));
     assert.ok(Math.max(...heights.slice(lowest)) - heights[lowest] < 20, `height grew back after folding: ${heights.join(",")}`);
@@ -333,20 +347,20 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     const older = page.getByRole("button", { name: "Older release", exact: true });
     const newer = page.getByRole("button", { name: "Newer release", exact: true });
     await older.waitFor();
-    await page.waitForTimeout(250);
+    await settled(page);
     assert.equal(await newer.isVisible(), false);
     const start = (await older.boundingBox()).y;
     for (const version of ["0.1.2", "0.1.1"]) {
       await older.click();
       await page.getByText(`What's in ${version}`, { exact: true }).waitFor();
-      await page.waitForTimeout(250);
+      await settled(page);
       assert.ok(Math.abs((await newer.boundingBox()).y - start) < 1);
     }
     assert.equal(await older.isVisible(), false);
     await newer.click();
     await newer.click();
     await page.getByText("What's in 0.1.3", { exact: true }).waitFor();
-    await page.waitForTimeout(400);
+    await settled(page);
     assert.equal(await page.locator(".app-update-popover").count(), 1);
     assert.equal(await newer.isVisible(), false);
     assert.equal(await older.evaluate((node) => node === document.activeElement), true);

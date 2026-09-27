@@ -2,6 +2,34 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.0
+
+### Added
+- OpenCode 2 support. Citropy detects whether OpenCode 1 or 2 is installed and connects the right way, with models, chats, permission prompts, questions, subagents, steering, compaction, slash commands, and writing titles and commit messages. Thanks to @anmolkcs for reporting the broken OpenCode sync (#26).
+- An OpenCode version choice in Settings > Providers, to pick OpenCode 1 or 2 yourself instead of detecting it automatically.
+
+### Changed
+- Long replies use less CPU to save streamed text while preserving every committed update.
+- Conversation search reuses a background index and cancels work when a query is replaced or its client disconnects.
+- Inactive browser tabs reduce background activity while remaining available for browser tools.
+- Terminal tabs resume from their last output position instead of replaying unchanged history.
+- Idle terminals release GPU renderers, and rapid tab switches avoid rebuilding them.
+- Large conversations use fewer navigation controls, with keyboard access to every message.
+- Streaming replies spend less time copying conversation state.
+- Production assets use precompressed downloads, and Git status needs fewer subprocesses.
+- The app opens before provider discovery finishes, and completed plans no longer force history recovery on startup.
+- Checkpoints reuse file metadata and batch native Git updates, remote environments retire old builds, and container source changes preserve dependency layers.
+- Link icons have bounded requests and stop loading when no clients need them.
+
+### Fixed
+- OpenCode 2 no longer fails to load its models with "Unrecognized flag: --verbose".
+- Malformed WebSocket frames close the affected connection without crashing the server.
+- Concurrent syntax highlighting no longer corrupts cache accounting.
+- Automatic quota resumption checks the selected provider account and preserves known limits during outages.
+- Deleting conversations releases their checkpoint references.
+- Discard changes is reachable with the keyboard.
+- Scripted macOS updates download and verify the selected release before stopping the app.
+
 ## 0.4.14
 
 ### Added

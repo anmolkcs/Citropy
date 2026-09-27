@@ -49,33 +49,32 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
 
   return (
     <div className="change" data-open={open}>
-      <button className="change-head" type="button" aria-expanded={open} onClick={onToggle}>
-        <ChevronRight size={12} className="change-chevron" />
-        <span className="change-file">
-          <FileIcon path={file.path} />
-          <span className="change-name truncate">{name}</span>
-          {dir && <span className="change-dir truncate">{dir}</span>}
-        </span>
-        <span className="change-stat">
-          {file.added > 0 && <span className="diff-plus">+{file.added}</span>}
-          {file.removed > 0 && <span className="diff-minus">-{file.removed}</span>}
-        </span>
-        <span className="change-badge" data-kind={statusLabel(file, t)}>
-          {statusLabel(file, t)}
-        </span>
-        <span
+      <div className="change-heading">
+        <button className="change-head" type="button" aria-expanded={open} onClick={onToggle}>
+          <ChevronRight size={12} className="change-chevron" />
+          <span className="change-file">
+            <FileIcon path={file.path} />
+            <span className="change-name truncate">{name}</span>
+            {dir && <span className="change-dir truncate">{dir}</span>}
+          </span>
+          <span className="change-stat">
+            {file.added > 0 && <span className="diff-plus">+{file.added}</span>}
+            {file.removed > 0 && <span className="diff-minus">-{file.removed}</span>}
+          </span>
+          <span className="change-badge" data-kind={statusLabel(file, t)}>
+            {statusLabel(file, t)}
+          </span>
+        </button>
+        <button
           className="change-action"
-          role="button"
-          tabIndex={-1}
+          type="button"
+          aria-label={t("Discard changes")}
           title={t("Discard changes")}
-          onClick={(event) => {
-            event.stopPropagation();
-            discardFile(projectId, file.path);
-          }}
+          onClick={() => discardFile(projectId, file.path)}
         >
           <RotateCcw size={12} />
-        </span>
-      </button>
+        </button>
+      </div>
 
       <Collapsible open={open} className="change-body">
         <div className="change-body-inner">

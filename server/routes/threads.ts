@@ -1,16 +1,44 @@
 import { checkUsageResume } from "../usage-resume.ts";
-import { searchConversations } from "../conversation-search.ts";
 import { answer as answerPermission } from "../permissions.ts";
 import { providerInfo } from "../provider-registry.ts";
 import { disposeRuntime, runtimeFor, runtimeIfExists } from "../runtime.ts";
 import { store } from "../store.ts";
-import { chooseThreadWorkspace } from "../workspaces.ts";
+import { chooseThreadWorkspace, workspacePath } from "../workspaces.ts";
+import { cleanupCheckpoints } from "../checkpoints.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../shared/model-options.ts";
 import type { ClientEvent, Thread } from "../../shared/protocol.ts";
-import type { Routes } from "./types.ts";
+import type { Respond, Routes } from "./types.ts";
 
 type ConfigEvent = Extract<ClientEvent, { t: "thread.config" }>;
 type Settings = ReturnType<typeof modelSettings>;
+const searches = new WeakMap<Respond, AbortController>();
+
+export function cancelThreadSearch(send: Respond): void {
+  searches.get(send)?.abort();
+  searches.delete(send);
+}
+
+export async function removeThread(id: string): Promise<void> {
+  const workspaces = new Map<string, string[]>();
+  const pending = [id];
+  while (pending.length) {
+    const thread = store.threads.get(pending.pop()!);
+    if (!thread) continue;
+    const cwd = workspacePath(thread.projectId, thread.id);
+    const ids = workspaces.get(cwd) ?? [];
+    ids.push(thread.id);
+    workspaces.set(cwd, ids);
+    for (const child of store.threads.values()) {
+      if (child.parentThreadId === thread.id) pending.push(child.id);
+    }
+  }
+  disposeRuntime(id);
+  store.removeThread(id);
+  await Promise.all([...workspaces].map(async ([cwd, ids]) => {
+    try { await cleanupCheckpoints(cwd, ids); }
+    catch (error) { console.error("Deleted conversation checkpoint cleanup failed:", ids, error); }
+  }));
+}
 
 function hasHistory(thread: Thread): boolean {
   return Boolean(
@@ -88,20 +116,22 @@ export const threadRoutes: Routes = {
   "thread.stop": (event) => {
     runtimeFor(event.threadId).stop();
   },
-  "thread.remove": (event) => {
-    disposeRuntime(event.id);
-    store.removeThread(event.id);
-  },
+  "thread.remove": (event) => removeThread(event.id),
   "thread.finish": (event) => {
     store.setThreadFinished(event.id, event.finished);
   },
-  "thread.search": (event, send) => {
-    send({
-      t: "thread.search",
-      query: event.query,
-      projectId: event.projectId,
-      results: searchConversations(store.threads.values(), (id) => store.searchText(id), event.query, event.projectId),
-    });
+  "thread.search": async (event, send) => {
+    cancelThreadSearch(send);
+    const controller = new AbortController();
+    searches.set(send, controller);
+    try {
+      const results = await store.search(event.query, event.projectId, controller.signal);
+      if (!controller.signal.aborted) send({ t: "thread.search", query: event.query, projectId: event.projectId, results });
+    } catch (error) {
+      if (!controller.signal.aborted) throw error;
+    } finally {
+      if (searches.get(send) === controller) searches.delete(send);
+    }
   },
   "thread.load": (event, send) => {
     const thread = store.threads.get(event.id);

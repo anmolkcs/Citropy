@@ -63,7 +63,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ steps.playwright.outputs.version }}
       - run: npx playwright install --with-deps chromium
+      - run: npm run build
       - run: npm run test:ui
+      - name: Check production resource usage
+        run: node tests/performance-browser.mjs
 
   portable:
     name: ${{ matrix.os }} / Node ${{ matrix.node }}

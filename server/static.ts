@@ -81,13 +81,37 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
     opened = openFile(canonicalRoot, join(canonicalRoot, "index.html"));
   if (!opened) return false;
 
+  const contentType = TYPES[extname(opened.path).toLowerCase()] ?? "application/octet-stream";
+  const immutable = relative(canonicalRoot, opened.path).split(sep).join("/").startsWith("assets/");
+  const compressible = immutable && /\.(js|css|svg|json)$/.test(opened.path);
+  let encoding: string | undefined;
+  if (compressible) {
+    const accepted = new Map<string, number>();
+    for (const part of String(res.req?.headers["accept-encoding"] ?? "").toLowerCase().split(",")) {
+      const [name, ...parameters] = part.trim().split(";");
+      const value = parameters.find(parameter => parameter.trim().startsWith("q="))?.trim().slice(2);
+      const quality = value === undefined ? 1 : Number(value);
+      accepted.set(name!.trim(), quality >= 0 && quality <= 1 ? quality : 0);
+    }
+    const quality = (name: string) => accepted.get(name) ?? accepted.get("*") ?? 0;
+    for (const name of ["br", "gzip"].sort((left, right) => quality(right) - quality(left))) {
+      if (quality(name) <= 0 || quality(name) < (accepted.get("identity") ?? 0)) continue;
+      const compressed = openFile(canonicalRoot, `${opened.path}.${name === "gzip" ? "gz" : "br"}`);
+      if (!compressed) continue;
+      closeSync(opened.fd);
+      opened = compressed;
+      encoding = name;
+      break;
+    }
+  }
   const { fd, info, path } = opened;
-  const immutable = relative(canonicalRoot, path).split(sep).join("/").startsWith("assets/");
   res.writeHead(200, {
-    "content-type": TYPES[extname(path).toLowerCase()] ?? "application/octet-stream",
+    "content-type": contentType,
     "content-length": info.size,
     "x-content-type-options": "nosniff",
     "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+    ...(compressible ? { vary: "Accept-Encoding" } : {}),
+    ...(encoding ? { "content-encoding": encoding } : {}),
   });
   if (res.req?.method === "HEAD" || info.size === 0) {
     closeSync(fd);

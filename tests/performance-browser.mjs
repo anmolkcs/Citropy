@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { preview } from "vite";
+import { readFile, readdir } from "node:fs/promises";
+import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import { brotliDecompressSync, gunzipSync } from "node:zlib";
 import { chromium } from "playwright";
+import { serveStatic } from "../server/static.ts";
 
-const server = await preview({ configFile: false, logLevel: "error", preview: { host: "127.0.0.1", port: 0 } });
+const root = new URL("../dist/", import.meta.url);
+const assets = await readdir(new URL("assets/", root));
+assert.ok(assets.some(name => name.endsWith(".br")), "production build must include compressed assets");
+for (const name of assets.filter(name => /\.(br|gz)$/.test(name))) {
+  const original = await readFile(new URL(`assets/${name.replace(/\.(br|gz)$/, "")}`, root));
+  const compressed = await readFile(new URL(`assets/${name}`, root));
+  assert.ok(original.equals((name.endsWith(".br") ? brotliDecompressSync : gunzipSync)(compressed)), `compressed asset differs from final output: ${name}`);
+}
+const server = createServer((req, res) => {
+  if (!serveStatic(fileURLToPath(root), req.url, res)) res.writeHead(404).end();
+});
+await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+const appUrl = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, args: ["--enable-unsafe-swiftshader"] });
 const project = { id: "project", name: "Performance fixture", path: "/fixture", isGit: false, lastOpened: 1 };
 const picture = await readFile(new URL("./fixtures/editor-preview.png", import.meta.url));
@@ -12,9 +27,15 @@ async function fixture(panels, threads = []) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
   const errors = [];
   const requests = [];
+  const compressedResponses = [];
   let connection;
+  let terminalReplayBytes = 0;
+  const terminalOutput = Array.from({ length: 500 }, (_, index) => `\u001b[32m${index}\u001b[0m ${"Terminal output ".repeat(8)}\r\n`).join("");
   page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
   page.on("request", (request) => requests.push(request.url()));
+  page.on("response", response => {
+    if (/^(br|gzip)$/.test(response.headers()["content-encoding"] ?? "")) compressedResponses.push(response.url());
+  });
   await page.addInitScript(() => {
     localStorage.setItem("citropy.project", "project");
     localStorage.setItem("citropy.inspector", "1");
@@ -33,18 +54,21 @@ async function fixture(panels, threads = []) {
     connection = socket;
     socket.onMessage((raw) => {
       const event = JSON.parse(raw);
-      if (event.t === "term.open") socket.send(JSON.stringify({
-        t: "term.data", termId: event.termId, reset: true,
-        data: Array.from({ length: 500 }, (_, index) => `\u001b[32m${index}\u001b[0m ${"Terminal output ".repeat(8)}\r\n`).join(""),
-      }));
+      if (event.t === "term.open") {
+        const resumed = event.sessionId === event.termId && Number.isSafeInteger(event.offset) && event.offset >= 0 && event.offset <= terminalOutput.length;
+        const data = resumed ? terminalOutput.slice(event.offset) : terminalOutput;
+        terminalReplayBytes += Buffer.byteLength(data);
+        socket.send(JSON.stringify({ t: "term.data", termId: event.termId, reset: !resumed, data, offset: terminalOutput.length, sessionId: event.termId }));
+      }
       if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: [] }));
     });
     socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads, providers: [], permissions: [], home: "/fixture", panels } }));
   });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Performance.enable");
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(appUrl);
   await page.getByRole("button", { name: "Expand workspace", exact: true }).waitFor();
+  assert.ok(compressedResponses.some(url => url.endsWith(".js")), "production JavaScript must use negotiated compression");
   const metrics = async () => {
     await cdp.send("HeapProfiler.collectGarbage");
     const entries = Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map(({ name, value }) => [name, value]));
@@ -55,6 +79,7 @@ async function fixture(panels, threads = []) {
       styleMs: entries.RecalcStyleDuration * 1000,
       domNodes: (await cdp.send("Memory.getDOMCounters")).nodes,
       terminalCanvases: await page.locator(".term canvas").count(),
+      terminalReplayBytes,
     };
   };
   return { page, connection, metrics, requests, errors };
@@ -96,7 +121,9 @@ try {
     }
   }
   const afterSwitch = await terminals.metrics();
-  console.log(JSON.stringify({ scenario: "24 terminal switches", taskMs: afterSwitch.taskMs - beforeSwitch.taskMs, heapMiB: afterSwitch.heapMiB, terminalCanvases: afterSwitch.terminalCanvases }));
+  const replayBytes = afterSwitch.terminalReplayBytes - beforeSwitch.terminalReplayBytes;
+  assert.equal(replayBytes, 0, "unchanged terminal tabs must resume without replaying their existing output");
+  console.log(JSON.stringify({ scenario: "24 terminal switches", taskMs: afterSwitch.taskMs - beforeSwitch.taskMs, heapMiB: afterSwitch.heapMiB, terminalCanvases: afterSwitch.terminalCanvases, replayBytes }));
   console.log(JSON.stringify({ scenario: "terminal errors", errors: terminals.errors }));
   await terminals.page.close();
 
@@ -121,5 +148,5 @@ try {
   assert.deepEqual(terminals.errors, []);
 } finally {
   await browser.close();
-  await new Promise((resolve) => server.httpServer.close(resolve));
+  await new Promise((resolve) => server.close(resolve));
 }

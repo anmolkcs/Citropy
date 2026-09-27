@@ -15,7 +15,7 @@ export function Reasoning({ ids, live }: Props) {
   const [long, setLong] = useState(false);
   const body = useRef<HTMLDivElement>(null);
   const press = useRef<{ x: number; y: number } | null>(null);
-  const parts = useApp(useShallow(state => ids.map(id => state.parts[id]).filter((part): part is ReasoningPart => part?.kind === "reasoning" && Boolean(part.text.trim()))));
+  const parts = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ReasoningPart => part?.kind === "reasoning" && Boolean(part.text.trim()))));
   const hasParts = parts.length > 0;
 
   useLayoutEffect(() => {

@@ -32,7 +32,7 @@ export const MessageBlock = memo(function MessageBlock({
 }: Props) {
   const t = useI18n();
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
-  const partKind = useApp((state) => row?.kind === "part" ? state.parts[row.id]?.kind : undefined);
+  const partKind = useApp((state) => row?.kind === "part" ? state.parts.get(row.id)?.kind : undefined);
   const threadId = useApp((state) => state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined);
   const provider = useApp((state) => shell?.provider ?? state.threads[threadId ?? ""]?.provider);
   const threadModel = useApp((state) => state.threads[threadId ?? ""]?.model);

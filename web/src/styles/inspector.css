@@ -60,12 +60,18 @@
   margin-bottom: 1px;
 }
 
+.change-heading {
+  display: flex;
+  align-items: center;
+}
+
 .change-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 7px;
   width: 100%;
+  min-width: 0;
   padding: 6px 7px;
   border-radius: var(--r-sm);
   text-align: left;
@@ -154,6 +160,8 @@
   display: grid;
   place-items: center;
   width: 20px;
+  flex-shrink: 0;
+  margin-right: 7px;
   height: 20px;
   border-radius: var(--r-xs);
   color: var(--text-4);
@@ -164,8 +172,8 @@
     color var(--dur-instant) var(--ease-out);
 }
 
-.change-head:hover .change-action,
-.change-head:focus-within .change-action {
+.change-heading:hover .change-action,
+.change-heading:focus-within .change-action {
   opacity: 1;
 }
 

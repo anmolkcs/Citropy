@@ -176,12 +176,18 @@ main() {
   fi
 
   tmp=$(mktemp -d "${TMPDIR:-/tmp}/citropy-install.XXXXXX")
-
-  say "Downloading $label for $os ($arch)..."
-  curl -fL --retry 3 --retry-delay 1 --retry-connrefused -o "$tmp/$asset" "$BASE/$tag/$asset" ||
-    fail "The download failed. Check that $label has a $os $arch build."
-  curl -fsSL -o "$tmp/SHA256SUMS" "$BASE/$tag/SHA256SUMS" ||
-    fail "Could not download SHA256SUMS for $label."
+  if [ -n "${CITROPY_STAGED_DOWNLOAD:-}" ]; then
+    staged="$CITROPY_STAGED_DOWNLOAD"
+    [ -f "$staged/$asset" ] && [ -f "$staged/SHA256SUMS" ] || fail "The staged release is incomplete. Download it again."
+    ln "$staged/$asset" "$tmp/$asset" 2>/dev/null || cp "$staged/$asset" "$tmp/$asset"
+    cp "$staged/SHA256SUMS" "$tmp/SHA256SUMS"
+  else
+    say "Downloading $label for $os ($arch)..."
+    curl -fL --connect-timeout 15 --max-time 600 --retry 3 --retry-delay 1 --retry-connrefused -o "$tmp/$asset" "$BASE/$tag/$asset" ||
+      fail "The download failed. Check that $label has a $os $arch build."
+    curl -fsSL --connect-timeout 15 --max-time 30 -o "$tmp/SHA256SUMS" "$BASE/$tag/SHA256SUMS" ||
+      fail "Could not download SHA256SUMS for $label."
+  fi
   expected=$(awk -v name="$asset" '$2 == name { print $1 }' "$tmp/SHA256SUMS" | head -n 1)
   [ -n "$expected" ] || fail "SHA256SUMS does not list $asset."
   actual=$(hash_file "$tmp/$asset" | awk '{ print $1 }')

@@ -14,7 +14,7 @@ interface Entry {
 }
 
 const cache = new Map<string, Entry>();
-const pending = new Map<string, Promise<{ type: string; body: Buffer } | undefined>>();
+const pending = new Map<string, { promise: Promise<{ type: string; body: Buffer } | undefined>; controller: AbortController; consumers: number }>();
 let cacheBytes = 0;
 
 function attribute(tag: string, name: string): string | undefined {
@@ -59,13 +59,17 @@ async function download(
   accept: string,
   limit: number,
   timeout: number,
+  signal: AbortSignal,
 ): Promise<{ url: string; type: string; body: Buffer }> {
   const response = await fetch(url, {
     redirect: "follow",
-    signal: AbortSignal.timeout(timeout),
+    signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]),
     headers: { accept, "user-agent": "Citropy" },
   });
-  if (!response.ok) throw new Error("Request failed");
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error("Request failed");
+  }
   return {
     url: response.url,
     type: (response.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase(),
@@ -78,7 +82,8 @@ function isIcon(type: string, url: string): boolean {
   return /\.(ico|png|svg|gif|jpe?g|webp|avif)$/i.test(new URL(url).pathname);
 }
 
-export async function faviconFor(href: string): Promise<{ type: string; body: Buffer } | undefined> {
+export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ type: string; body: Buffer } | undefined> {
+  if (signal?.aborted) return undefined;
   let url: URL;
   try {
     url = new URL(href);
@@ -92,29 +97,58 @@ export async function faviconFor(href: string): Promise<{ type: string; body: Bu
     cache.set(url.origin, cached);
     return cached.body ? { type: cached.type!, body: cached.body } : undefined;
   }
-  const current = pending.get(url.origin);
-  if (current) return current;
-  const request = loadFavicon(url).finally(() => pending.delete(url.origin));
-  pending.set(url.origin, request);
-  return request;
+  let current = pending.get(url.origin);
+  if (!current) {
+    if (pending.size >= 16) return undefined;
+    const controller = new AbortController();
+    const entry = {
+      controller,
+      consumers: 0,
+      promise: loadFavicon(new URL(url.origin), AbortSignal.any([controller.signal, AbortSignal.timeout(6000)])).finally(() => {
+        if (pending.get(url.origin) === entry) pending.delete(url.origin);
+      }),
+    };
+    pending.set(url.origin, entry);
+    current = entry;
+  }
+  const entry = current;
+  entry.consumers++;
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = (result?: { type: string; body: Buffer }) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", abort);
+      if (--entry.consumers === 0 && pending.get(url.origin) === entry) {
+        pending.delete(url.origin);
+        entry.controller.abort();
+      }
+      resolve(result);
+    };
+    const abort = () => finish();
+    signal?.addEventListener("abort", abort, { once: true });
+    entry.promise.then(finish, () => finish());
+  });
 }
 
-async function loadFavicon(url: URL): Promise<{ type: string; body: Buffer } | undefined> {
-  const page = await download(url.href, "text/html,application/xhtml+xml", pageLimit, 5000).catch(() => undefined);
+async function loadFavicon(url: URL, signal: AbortSignal): Promise<{ type: string; body: Buffer } | undefined> {
+  const page = await download(url.href, "text/html,application/xhtml+xml", pageLimit, 2500, signal).catch(() => undefined);
   const candidates = [
     ...new Set([
-      ...(page?.type.includes("html") ? iconLinks(page.body.toString("utf8"), page.url) : []),
+      ...(page?.type.includes("html") ? iconLinks(page.body.toString("utf8"), page.url).slice(0, 3) : []),
       new URL("/favicon.ico", url).href,
     ]),
   ];
   let found: { type: string; body: Buffer } | undefined;
   for (const candidate of candidates) {
-    const icon = await download(candidate, "image/*,*/*;q=0.8", iconLimit, 4000).catch(() => undefined);
+    if (signal.aborted) return undefined;
+    const icon = await download(candidate, "image/*,*/*;q=0.8", iconLimit, 2500, signal).catch(() => undefined);
     if (icon && isIcon(icon.type, icon.url)) {
       found = { type: icon.type, body: icon.body };
       break;
     }
   }
+  if (signal.aborted) return undefined;
   cacheBytes -= cache.get(url.origin)?.body?.length ?? 0;
   cache.delete(url.origin);
   const bytes = found?.body.length ?? 0;
@@ -129,7 +163,12 @@ async function loadFavicon(url: URL): Promise<{ type: string; body: Buffer } | u
 }
 
 export async function serveFavicon(res: ServerResponse, params: URLSearchParams): Promise<void> {
-  const icon = await faviconFor(params.get("url") ?? "").catch(() => undefined);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  res.once("close", abort);
+  const icon = await faviconFor(params.get("url") ?? "", controller.signal).catch(() => undefined);
+  res.off("close", abort);
+  if (res.destroyed) return;
   if (!icon) {
     res.writeHead(404, { "cache-control": "private, max-age=300" }).end();
     return;

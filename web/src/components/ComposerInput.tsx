@@ -55,7 +55,7 @@ export function ComposerInput({
     : mode === "skills" || hasMentions ? "skills" : undefined;
   useLayoutEffect(() => {
     const node = box.current;
-    if (!node) return;
+    if (!node || CSS.supports("field-sizing", "content")) return;
     const editor = node.parentElement!;
     editor.style.minHeight = `${editor.offsetHeight}px`;
     node.style.height = "0px";

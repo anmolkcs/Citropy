@@ -3,7 +3,7 @@ import { chooseFolder } from "../folder-picker.ts";
 import { forgetGit, refreshGit } from "../git-monitor.ts";
 import { closePanel, panelList } from "../panels.ts";
 import { remoteId, workspaceDirectory } from "../remote.ts";
-import { disposeRuntime } from "../runtime.ts";
+import { removeThread } from "./threads.ts";
 import { store } from "../store.ts";
 import * as terminals from "../terminals.ts";
 import type { Routes } from "./types.ts";
@@ -16,7 +16,7 @@ export async function closeProject(id: string): Promise<void> {
     closePanel(panel.id);
   }
   for (const thread of store.threads.values()) {
-    if (thread.projectId === id) disposeRuntime(thread.id);
+    if (thread.projectId === id) await removeThread(thread.id);
   }
   store.closeProject(id);
   forgetGit(id);

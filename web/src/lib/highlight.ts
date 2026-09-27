@@ -73,7 +73,7 @@ let htmlCacheSize = 0;
 
 function rememberHtml(key: string, html: string): void {
   const size = (key.length + html.length) * 2;
-  if (size > HTML_CACHE_LIMIT) return;
+  if (size > HTML_CACHE_LIMIT || htmlCache.has(key)) return;
   while (htmlCacheSize + size > HTML_CACHE_LIMIT) {
     const [oldKey, oldHtml] = htmlCache.entries().next().value!;
     htmlCache.delete(oldKey);

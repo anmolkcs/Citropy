@@ -1,0 +1,201 @@
+.drawing-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  padding: 12px 14px;
+  outline: none;
+}
+.drawing-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.drawing-paper-menu .menu-list {
+  max-height: none;
+}
+.drawing-workspace {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-height: 0;
+}
+.drawing-rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  overflow-y: auto;
+}
+.drawing-tools,
+.drawing-swatches {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--canvas-deep);
+}
+.drawing-tools {
+  flex-direction: column;
+}
+.drawing-tools button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  transition: color var(--dur-instant) var(--ease-out);
+}
+.drawing-tools button:hover,
+.drawing-tools button[aria-pressed="true"] {
+  color: var(--text);
+}
+.drawing-history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+.drawing-history .icon-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.drawing-swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--dur-instant) var(--ease-out);
+}
+.drawing-swatch::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 16%, transparent);
+}
+.drawing-swatch:hover {
+  background: var(--raised);
+}
+.drawing-swatch[aria-pressed="true"],
+.drawing-swatch[data-pressed] {
+  background: var(--raised-2);
+}
+.drawing-swatch-custom::before {
+  background: var(--swatch, conic-gradient(#e5484d, #f5b400, #30a46c, #0090ff, #8e4ec6, #e5484d));
+}
+.drawing-swatch-custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.drawing-swatch-custom:focus-within {
+  box-shadow: var(--field-focus-ring);
+}
+.drawing-size {
+  display: flex;
+  flex: 1 1 120px;
+  align-items: center;
+  gap: 6px;
+  min-width: 110px;
+  max-width: 220px;
+}
+.drawing-size-preview {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+.drawing-size-preview > span {
+  border-radius: 50%;
+}
+.drawing-fill[aria-pressed="true"] {
+  background: var(--raised-2);
+  color: var(--text);
+}
+.drawing-fill:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.drawing-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+}
+.drawing-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.drawing-ink {
+  touch-action: none;
+  cursor: crosshair;
+}
+.drawing-stage:is([data-tool="pen"], [data-tool="highlighter"], [data-tool="eraser"]) .drawing-ink {
+  cursor: none;
+}
+.drawing-stage[data-tool="text"] .drawing-ink {
+  cursor: text;
+}
+.drawing-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 4px;
+  min-height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.drawing-stage:hover .drawing-cursor {
+  opacity: 1;
+}
+.drawing-text-input {
+  position: absolute;
+  min-width: 48px;
+  margin: -4px 0 0 -6px;
+  padding: 4px 6px;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  white-space: pre;
+  resize: none;
+  field-sizing: content;
+}
+.drawing-text-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.drawing-starter-card {
+  padding: 6px 6px 12px;
+}
+.drawing-starter-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 6px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+}
+.drawing-starter-card .panel-starter-label,
+.drawing-starter-card .panel-starter-hint {
+  padding: 0 4px;
+}

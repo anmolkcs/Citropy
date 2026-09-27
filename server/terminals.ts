@@ -34,25 +34,29 @@ function receive(event: TerminalEvent): void {
     session.offset = event.offset;
     session.output = (session.output + data).slice(-200_000);
     shellOutput(`terminal:${event.id}`, data, true);
-    bus.emit({ t: "term.data", termId: event.id, data });
+    bus.emit({ t: "term.data", termId: event.id, data, offset: session.offset, sessionId: session.sessionId });
   } else if (event.type === "activity") {
     Object.assign(session, { busy: event.busy, process: event.process });
     shellActivity(`terminal:${event.id}`, event.busy, event.process);
   } else {
+    if (!session.running) return;
     session.running = false;
     session.busy = false;
     session.process = undefined;
     session.code = event.code;
-    session.output = (session.output + `\r\n[process exited with code ${event.code}]\r\n`).slice(-200_000);
+    const ending = `\r\n[process exited with code ${event.code}]\r\n`;
+    session.output = (session.output + ending).slice(-200_000);
+    if (session.offset !== undefined) session.offset += ending.length;
     endShell(`terminal:${event.id}`, event.code === 0 ? "finished" : "failed");
-    bus.emit({ t: "term.exit", termId: event.id, code: event.code });
+    bus.emit({ t: "term.exit", termId: event.id, code: event.code, offset: session.offset, sessionId: session.sessionId });
   }
 }
 
 function attach(session: TerminalSession, recovered = false): void {
   const previous = sessions.get(session.id);
   sessions.set(session.id, session);
-  if (recovered && previous && previous.output !== session.output) bus.emit({ t: "term.data", termId: session.id, data: session.output, reset: true });
+  if (recovered && previous && (previous.output !== session.output || previous.offset !== session.offset || previous.sessionId !== session.sessionId))
+    bus.emit({ t: "term.data", termId: session.id, data: session.output, reset: true, offset: session.offset, sessionId: session.sessionId });
   if (session.panel) openPanel(session.panel.projectId, "terminal", session.panel.threadId, session.id);
   const panel = session.panel ?? panelList().find(panel => panel.id === session.id);
   if (panel) {
@@ -187,6 +191,21 @@ export async function open(termId: string, cwd: string, cols: number, rows: numb
 export function session(termId: string): TerminalSession | undefined { return sessions.get(termId); }
 
 export function read(termId: string): string { return sessions.get(termId)?.output ?? ""; }
+
+export function replay(termId: string, offset?: number, sessionId?: string): { data: string; reset: boolean; offset?: number; sessionId?: string } {
+  const current = sessions.get(termId);
+  const retained = current?.output ?? "";
+  const end = current?.offset;
+  if (sessionId && sessionId === current?.sessionId && typeof offset === "number" && Number.isSafeInteger(offset)
+    && end !== undefined && offset >= end - retained.length && offset <= end)
+    return { data: retained.slice(retained.length - (end - offset)), reset: false, offset: end, sessionId };
+  return {
+    data: retained,
+    reset: true,
+    offset: end,
+    sessionId: current?.sessionId,
+  };
+}
 
 export async function write(termId: string, data: string): Promise<void> {
   await ensure();

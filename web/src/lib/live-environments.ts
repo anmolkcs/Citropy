@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import type { ClientEvent } from "../../../shared/protocol.ts";
 import { connectionName, environmentId } from "./environment.ts";
 import { useApp, type AppState } from "./store.ts";
@@ -18,8 +18,22 @@ export const ENVIRONMENT_KEYS = [
 
 export type EnvironmentSlice = Pick<AppState, (typeof ENVIRONMENT_KEYS)[number]>;
 
-export function useBackgroundEnvironments(): Record<string, EnvironmentSlice> {
-  return useSyncExternalStore(subscribeBackgroundEnvironments, backgroundEnvironments);
+const BACKGROUND_KEYS = ["connected", "threads", "threadOrder", "projects", "providers", "creatingThread", "home", "searchResult"] as const satisfies readonly (keyof EnvironmentSlice)[];
+type BackgroundMetadata = Pick<EnvironmentSlice, (typeof BACKGROUND_KEYS)[number]>;
+
+export function useBackgroundEnvironments(): Record<string, BackgroundMetadata> {
+  const snapshot = useMemo(() => {
+    let current: Record<string, BackgroundMetadata> = {};
+    return () => {
+      const source = backgroundEnvironments();
+      const ids = Object.keys(source);
+      if (ids.length === Object.keys(current).length && ids.every(id =>
+        current[id] && BACKGROUND_KEYS.every(key => current[id]![key] === source[id]![key]))) return current;
+      current = Object.fromEntries(ids.map(id => [id, Object.fromEntries(BACKGROUND_KEYS.map(key => [key, source[id]![key]]))])) as Record<string, BackgroundMetadata>;
+      return current;
+    };
+  }, []);
+  return useSyncExternalStore(subscribeBackgroundEnvironments, snapshot);
 }
 
 export function environmentSlice(id: string): EnvironmentSlice | undefined {

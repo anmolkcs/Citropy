@@ -59,7 +59,25 @@ export function codexModels(data: CodexModel[]): ModelOption[] {
     }));
 }
 
-export function claudeModels(data: ClaudeModel[]): ModelOption[] {
+interface ClaudeCommand {
+  name: string;
+  argumentHint?: string;
+}
+
+function claudeEfforts(model: ClaudeModel): string[] {
+  return model.supportsEffort ? (model.supportedEffortLevels ?? []) : [];
+}
+
+function claudeSessionOnlyEfforts(data: ClaudeModel[], commands: ClaudeCommand[]): { base: string[]; extra: string[] } {
+  const sessionModel = data.find((model) => model.value === "default");
+  const base = sessionModel ? claudeEfforts(sessionModel) : [];
+  const hint = commands.find((command) => command.name === "effort")?.argumentHint ?? "";
+  const offered = hint.replace(/[<>]/g, "").split("|").filter((level) => level && level !== "auto");
+  return { base, extra: base.length ? offered.filter((level) => !base.includes(level)) : [] };
+}
+
+export function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): ModelOption[] {
+  const sessionOnly = claudeSessionOnlyEfforts(data, commands);
   const models = new Map<string, ModelOption>();
   for (const model of data) {
     const resolved = model.resolvedModel ?? model.value;
@@ -74,6 +92,8 @@ export function claudeModels(data: ClaudeModel[]): ModelOption[] {
     const extended =
       /\[1m\]/i.test(`${resolved} ${model.value}`) ||
       /claude-(?:fable-[5-9]|sonnet-[5-9]|opus-[5-9])/.test(id);
+    const efforts = claudeEfforts(model);
+    const offersSessionOnly = sessionOnly.base.every((level) => efforts.includes(level));
     const contextMax =
       model.contextWindow ??
       (extended ? 1_000_000 : named ? 200_000 : undefined);
@@ -85,7 +105,7 @@ export function claudeModels(data: ClaudeModel[]): ModelOption[] {
       aliases: [
         ...new Set([...(previous?.aliases ?? []), model.value, resolved]),
       ],
-      efforts: model.supportsEffort ? (model.supportedEffortLevels ?? []) : [],
+      efforts: offersSessionOnly ? [...efforts, ...sessionOnly.extra] : efforts,
       defaultEffort: model.defaultEffort,
       isDefault: previous?.isDefault || model.value === "default",
       contextMax:
@@ -136,14 +156,14 @@ export function discoverModels(provider: "codex" | "claude", launch?: import("./
           id?: number;
           type?: string;
           error?: { message?: string };
-          response?: { request_id?: string; subtype?: string; response?: { models: ClaudeModel[] } };
+          response?: { request_id?: string; subtype?: string; response?: { models: ClaudeModel[]; commands?: ClaudeCommand[] } };
           result?: { data: CodexModel[]; nextCursor?: string | null };
         };
         if (provider === "claude") {
           if (message.type !== "control_response" || message.response?.request_id !== "models") return;
           if (message.response.subtype !== "success") throw new Error("Claude model discovery failed");
           if (!message.response.response?.models) throw new Error("Claude returned no models");
-          models.push(...claudeModels(message.response.response.models));
+          models.push(...claudeModels(message.response.response.models, message.response.response.commands));
           finish();
         } else {
           if (message.error) throw new Error(message.error.message ?? "Codex model discovery failed");

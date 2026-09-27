@@ -22,7 +22,7 @@ export function rootThread(threads: Record<string, ThreadMeta>, id: string | nul
 }
 
 export function useThreadTree(threadsByEnvironment: Record<string, Record<string, ThreadMeta>>, environment: string, activeThreadId: string | null): Record<string, ThreadTree> {
-  return useMemo(() => Object.fromEntries(Object.entries(threadsByEnvironment).map(([id, threads]) => {
+  const trees = useMemo(() => Object.fromEntries(Object.entries(threadsByEnvironment).map(([id, threads]) => {
     const childrenByParent = new Map<string, ThreadMeta[]>();
     for (const thread of Object.values(threads)) {
       if (!thread.parentThreadId) continue;
@@ -31,12 +31,18 @@ export function useThreadTree(threadsByEnvironment: Record<string, Record<string
       else childrenByParent.set(thread.parentThreadId, [thread]);
     }
     for (const siblings of childrenByParent.values()) siblings.sort((a, b) => a.createdAt - b.createdAt);
-    const selectedPath = new Set<string>();
-    if (id === environment) ancestry(threads, activeThreadId ? threads[activeThreadId] : undefined, selectedPath);
     const activePaths = new Set<string>();
     for (const thread of Object.values(threads)) {
       if (thread.running || ["thinking", "working", "awaiting", "queued"].includes(thread.status)) ancestry(threads, thread, activePaths);
     }
-    return [id, { childrenByParent, selectedPath, activePaths }];
-  })), [threadsByEnvironment, environment, activeThreadId]);
+    return [id, { childrenByParent, selectedPath: new Set<string>(), activePaths }];
+  })), [threadsByEnvironment]);
+  return useMemo(() => {
+    const tree = trees[environment];
+    if (!tree) return trees;
+    const selectedPath = new Set<string>();
+    const threads = threadsByEnvironment[environment]!;
+    ancestry(threads, activeThreadId ? threads[activeThreadId] : undefined, selectedPath);
+    return { ...trees, [environment]: { ...tree, selectedPath } };
+  }, [trees, threadsByEnvironment, environment, activeThreadId]);
 }

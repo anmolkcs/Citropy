@@ -24,6 +24,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
   const [duration, setDuration] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [active, setActive] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [error, setError] = useState(false);
   useEffect(() => {
     const update = () => setFullscreen(document.fullscreenElement === player.current);
@@ -34,13 +35,35 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
     };
   }, []);
   useEffect(() => {
+    const element = player.current;
+    if (!element) return;
+    let intersecting = false;
+    const update = () => setVisible(!document.hidden && (intersecting || document.fullscreenElement === element));
+    const observer = new IntersectionObserver((entries) => {
+      intersecting = entries.at(-1)?.isIntersecting ?? false;
+      update();
+    });
+    observer.observe(element);
+    document.addEventListener("visibilitychange", update);
+    document.addEventListener("fullscreenchange", update);
+    update();
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", update);
+      document.removeEventListener("fullscreenchange", update);
+    };
+  }, [error]);
+  useEffect(() => {
+    const element = video.current;
+    if (!visible || !element) return;
+    setTime(element.currentTime);
     if (!playing) return;
     let frame = requestAnimationFrame(function follow() {
-      setTime(video.current!.currentTime);
+      setTime(element.currentTime);
       frame = requestAnimationFrame(follow);
     });
     return () => cancelAnimationFrame(frame);
-  }, [playing]);
+  }, [playing, visible, error]);
   const startScrub = () => {
     const element = video.current!;
     scrubbing.current = { resume: !element.paused };
@@ -118,7 +141,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
         onPlay={() => { setPlaying(true); wake(); }}
         onPause={() => { if (!scrubbing.current) setPlaying(false); }}
         onEnded={() => setPlaying(false)}
-        onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
+        onTimeUpdate={(event) => { if (visible) setTime(event.currentTarget.currentTime); }}
         onLoadedMetadata={(event) => {
           setDuration(event.currentTarget.duration);
           onSize?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight);

@@ -88,10 +88,11 @@ export function Conversation() {
     initialOffset: () => viewport.current?.scrollTop ?? rows.length * scaled(180),
     paddingStart: scaled(30),
     overscan: virtualized ? 4 : 40,
-    measureElement: (element) => {
+    measureElement: (element, entry) => {
       const cached = rowHeights.current.get(element);
       if (cached !== undefined && panelMoving()) return cached;
-      const height = element.offsetHeight;
+      const box = entry?.borderBoxSize[0];
+      const height = box ? Math.round(box.blockSize) : element.offsetHeight;
       rowHeights.current.set(element, height);
       return height;
     },
@@ -117,7 +118,8 @@ export function Conversation() {
     for (const animation of activityAnimations.current) animation.cancel();
     activityAnimations.current = [];
     closingActivity.current = undefined;
-  }, []);
+    content.current?.style.removeProperty("min-height");
+  }, [content]);
   const transitionActivity = useCallback((id: string, update: () => void) => {
     const reopening = closingActivity.current === id;
     cancelActivityTransition();
@@ -131,6 +133,8 @@ export function Conversation() {
       const offset = summary()!.getBoundingClientRect().top - canvas.getBoundingClientRect().top;
       const pin = { id };
       pinnedActivity.current = pin;
+      const opening = !reducedMotion && activity?.kind === "activity" && !activity.open;
+      if (opening) content.current!.style.minHeight = `${content.current!.offsetHeight}px`;
       flushSync(update);
       const keepSummaryInPlace = (frames: number, expectedTop: number) => {
         if (pinnedActivity.current !== pin) return;
@@ -145,13 +149,15 @@ export function Conversation() {
         requestAnimationFrame(() => keepSummaryInPlace(frames - 1, top));
       };
       keepSummaryInPlace(12, canvas.scrollTop);
-      if (reducedMotion || activity?.kind !== "activity" || activity.open) return;
+      if (!opening) return;
       const nextRows = selectRows(useApp.getState());
       const entering = renderedRows().filter(element => {
         const row = nextRows[Number(element.dataset.index)];
         return row && !previousKeys.has(row.key) && row.messageId !== undefined && activity.messageIds.includes(row.messageId);
       });
       activityAnimations.current = slideRows(entering, "open");
+      if (!entering.length) content.current!.style.removeProperty("min-height");
+      else activityAnimations.current[0]!.onfinish = () => content.current?.style.removeProperty("min-height");
     };
     if (reducedMotion || activity?.kind !== "activity" || !activity.open) return apply();
     const work = new Set(activity.ids);
@@ -184,8 +190,8 @@ export function Conversation() {
   }, [threadId, followRequest, scrollToBottom]);
 
   useLayoutEffect(() => {
-    if (atBottom) scrollToBottom("instant");
-  }, [uiScale, atBottom, scrollToBottom]);
+    if (following()) scrollToBottom("instant");
+  }, [uiScale, following, scrollToBottom]);
 
   const readSince = useRef(Date.now());
   useLayoutEffect(() => {
@@ -227,7 +233,7 @@ export function Conversation() {
       if (state.shells[searchShellId]?.threadId !== threadId) return;
       for (const id of ids ?? []) {
         partId = state.messages[id]?.partIds.find(id => {
-          const part = state.parts[id];
+          const part = state.parts.get(id);
           return part?.kind === "tool" && `${threadId}:${part.callId}` === searchShellId;
         });
         if (partId) { messageId = id; break; }

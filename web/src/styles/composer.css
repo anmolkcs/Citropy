@@ -200,6 +200,13 @@
   color: var(--text-3);
 }
 
+@supports (field-sizing: content) {
+  .composer-input {
+    field-sizing: content;
+    max-height: min(320px, calc(var(--viewport-height) * 0.55));
+  }
+}
+
 .composer-bar {
   display: flex;
   align-items: center;

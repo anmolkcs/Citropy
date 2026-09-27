@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 import { SshEnvironments, shellQuote } from "../desktop/ssh.mjs";
 
 test("SSH setup installs a missing runtime atomically and reuses it without altering existing Node", async t => {
@@ -24,9 +25,9 @@ test("SSH setup installs a missing runtime atomically and reuses it without alte
   t.mock.method(manager, "runtimeArchive", async () => Buffer.from("incomplete download"));
   await assert.rejects(manager.prepareRuntime(connection, ssh, signal, value => progress.push(value)), /gzip|tar/);
   assert.deepEqual(await readdir(join(home, ".citropy/runtimes")), []);
-  const archivePath = join(directory, "runtime.tar.gz");
-  await manager.command("tar", ["-czf", archivePath, "-C", join(directory, "payload"), packageName]);
-  const archive = await readFile(archivePath);
+  const archivePath = join(directory, "runtime.tar");
+  await manager.command("tar", ["-cf", archivePath, "-C", join(directory, "payload"), packageName]);
+  const archive = gzipSync(await readFile(archivePath), { level: 1 });
   let downloads = 0;
   manager.runtimeArchive = async () => { downloads++; return archive; };
   const runtimes = await Promise.all([

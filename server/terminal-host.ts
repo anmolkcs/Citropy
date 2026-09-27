@@ -1,4 +1,5 @@
 import { spawn, type IPty } from "node-pty";
+import { randomUUID } from "node:crypto";
 import { stopProcess, waitForStoppedProcesses } from "./providers/process.ts";
 import { terminalProcesses } from "./terminal-processes.ts";
 import type { PanelTab } from "../shared/workbench.ts";
@@ -10,6 +11,7 @@ export interface TerminalSession {
   panel?: PanelTab;
   output: string;
   offset?: number;
+  sessionId?: string;
   running: boolean;
   busy?: boolean;
   process?: string;
@@ -88,7 +90,7 @@ export class TerminalHost {
     const env = { ...process.env, ...input.env, TERM: "xterm-256color", COLORTERM: "truecolor", TERM_PROGRAM: "Citropy", CLICOLOR: "1" };
     for (const key of ["NO_COLOR", "FORCE_COLOR", "CLICOLOR_FORCE", "CITROPY_REMOTE_TOKEN", "CITROPY_DESKTOP_TOKEN"]) delete (env as NodeJS.ProcessEnv)[key];
     const pty = spawn(program, args, { cwd: input.cwd, cols: Math.max(20, Math.min(input.cols, 1000)), rows: Math.max(5, Math.min(input.rows, 1000)), env: env as Record<string, string>, name: "xterm-256color" });
-    const session = { id: input.id, cwd: input.cwd, command: input.command, panel: input.panel, output: input.command ? `${input.command}\r\n` : "", offset: input.command ? input.command.length + 2 : 0, running: true, busy: undefined as boolean | undefined, process: undefined as string | undefined, pty: pty as IPty | undefined, pending: "", timer: undefined as NodeJS.Timeout | undefined, blocked: new Set<string>() };
+    const session = { id: input.id, sessionId: randomUUID(), cwd: input.cwd, command: input.command, panel: input.panel, output: input.command ? `${input.command}\r\n` : "", offset: input.command ? input.command.length + 2 : 0, running: true, busy: undefined as boolean | undefined, process: undefined as string | undefined, pty: pty as IPty | undefined, pending: "", timer: undefined as NodeJS.Timeout | undefined, blocked: new Set<string>() };
     this.#sessions.set(input.id, session);
     this.#scheduleActivity();
     const flush = () => {
@@ -118,7 +120,9 @@ export class TerminalHost {
         if (this.#sessions.get(input.id) !== session) return;
         if (session.pending.length) { setTimeout(finish, 20); return; }
         Object.assign(session, { code: exitCode, running: false, busy: false, process: undefined });
-        session.output = (session.output + `\r\n[process exited with code ${exitCode}]\r\n`).slice(-200_000);
+        const ending = `\r\n[process exited with code ${exitCode}]\r\n`;
+        session.output = (session.output + ending).slice(-200_000);
+        session.offset += ending.length;
         this.#emit({ type: "exit", id: input.id, code: exitCode });
       };
       finish();

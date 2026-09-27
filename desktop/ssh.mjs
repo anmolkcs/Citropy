@@ -228,6 +228,7 @@ export class SshEnvironments {
         await cp(join(this.appRoot, "desktop/remote-package-lock.json"), join(payload, "package-lock.json"));
       });
       await cp(join(this.appRoot, "desktop/ssh-bootstrap.mjs"), join(payload, "ssh-bootstrap.mjs"));
+      await cp(join(this.appRoot, "desktop/remote-builds.mjs"), join(payload, "remote-builds.mjs"));
       const hash = createHash("sha256");
       const walk = async relative => {
         for (const entry of (await readdir(join(payload, relative), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
