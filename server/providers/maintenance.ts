@@ -6,6 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { valid, gt } from "semver";
 import { providers } from "./index.ts";
+import { openCodePackage } from "./opencode.ts";
 import { clearCommandCache, commandIdentity, invocation, resolveCommand } from "./binary.ts";
 import { bus } from "../bus.ts";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
@@ -21,9 +22,12 @@ const plans = new Map<
 const packages: Partial<Record<ProviderId, string>> = {
   claude: "@anthropic-ai/claude-code",
   codex: "@openai/codex",
-  opencode: "opencode-ai",
   pi: "@earendil-works/pi-coding-agent",
 };
+function packageFor(provider: ProviderId): string | undefined {
+  return provider === "opencode" ? openCodePackage() : packages[provider];
+}
+
 const versions = new Map<
   ProviderId,
   { time: number; value: Promise<string | undefined> }
@@ -89,7 +93,7 @@ async function nativeUpdaterHelp(binaryPath: string, args: string[]): Promise<st
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   const binaryPath = await executablePath(providers[provider].binary);
   if (!binaryPath) {
-    const packageName = packages[provider];
+    const packageName = packageFor(provider);
     if (packageName) {
       const npm = await executablePath("npm");
       if (!npm) return { install: true, reason: "Install Node.js and npm on this machine, then check again." };
@@ -116,7 +120,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
     };
   }
   const target = await realpath(binaryPath);
-  const packageName = packages[provider];
+  const packageName = packageFor(provider);
   const npmSuffix = `${process.platform === "win32" ? "" : "/lib"}/node_modules/${packageName}/`;
   const npmIndex = target.replace(/\\/g, "/").indexOf(npmSuffix);
   if (npmIndex > 0) {
@@ -323,7 +327,7 @@ async function latestVersion(
         .catch(() => ({}));
       if (settings.autoUpdatesChannel === "stable") channel = "stable";
     }
-    const packageName = packages[provider];
+    const packageName = packageFor(provider);
     if (!packageName) return undefined;
     const response = await fetch(
       `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${channel}`,

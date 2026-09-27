@@ -24,6 +24,7 @@ Each release publishes its section below as the release notes, which the app sho
 ### Fixed
 - OpenCode 2 no longer fails to load its models with "Unrecognized flag: --verbose".
 - Choosing OpenCode 2 uses the separate `opencode2` command when OpenCode 1 is also installed, and early OpenCode 2 beta versions are recognized.
+- The OpenCode update check follows the OpenCode version in use, instead of reporting OpenCode 1 updates for an OpenCode 2 install.
 - Malformed WebSocket frames close the affected connection without crashing the server.
 - Concurrent syntax highlighting no longer corrupts cache accounting.
 - Automatic quota resumption checks the selected provider account and preserves known limits during outages.

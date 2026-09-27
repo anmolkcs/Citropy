@@ -634,10 +634,16 @@ export function openCodeVersionInfo(): ProviderInfo["openCodeVersion"] {
   return { setting, ...(active ? { active } : {}) };
 }
 
+export function openCodePackage(): string {
+  return openCodeVersionInfo()?.active === 2 ? "@opencode/cli" : "opencode-ai";
+}
+
 export const opencodeProvider: Provider = {
   id: "opencode",
   label: "OpenCode",
-  binary: "opencode",
+  get binary() {
+    return selectedLaunch<ProviderLaunch>({}).binary ?? "opencode";
+  },
   supportsPermissionPrompt: true,
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
