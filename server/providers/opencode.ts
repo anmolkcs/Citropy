@@ -592,7 +592,12 @@ export const opencodeProvider: Provider = {
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
   models: [],
-  listModels: (launch) => discoverOpenCodeModels(launch),
+  async listModels(launch) {
+    const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
+    const major = Number(/(\d+)\.\d+\.\d+/.exec(version ?? "")?.[1]);
+    if (major >= 2) throw new Error(`OpenCode ${version} is not supported yet. Citropy works with OpenCode 1.x.`);
+    return discoverOpenCodeModels(launch);
+  },
   async detect(launch) {
     const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
     return { available: Boolean(version), version };
