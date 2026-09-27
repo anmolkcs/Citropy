@@ -178,7 +178,9 @@ main() {
   tmp=$(mktemp -d "${TMPDIR:-/tmp}/citropy-install.XXXXXX")
   if [ -n "${CITROPY_STAGED_DOWNLOAD:-}" ]; then
     staged="$CITROPY_STAGED_DOWNLOAD"
-    [ -f "$staged/$asset" ] && [ -f "$staged/SHA256SUMS" ] || fail "The staged release is incomplete. Download it again."
+    if [ ! -f "$staged/$asset" ] || [ ! -f "$staged/SHA256SUMS" ]; then
+      fail "The staged release is incomplete. Download it again."
+    fi
     ln "$staged/$asset" "$tmp/$asset" 2>/dev/null || cp "$staged/$asset" "$tmp/$asset"
     cp "$staged/SHA256SUMS" "$tmp/SHA256SUMS"
   else

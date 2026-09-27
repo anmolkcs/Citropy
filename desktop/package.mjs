@@ -16,6 +16,7 @@ const run = (command, args, cwd = root) =>
     );
   });
 await run(process.execPath, [
+  "--max-old-space-size=4096",
   join(root, "node_modules/vite/bin/vite.js"),
   "build",
 ]);
