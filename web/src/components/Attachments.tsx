@@ -6,6 +6,7 @@ import { FileIcon } from "./FileIcon.tsx";
 import { Modal } from "./Modal.tsx";
 import { FilePreview } from "./FilePreview.tsx";
 import { ImageViewer } from "./ImageViewer.tsx";
+import { VideoViewer } from "./VideoViewer.tsx";
 import { assetQuery } from "../lib/api.ts";
 import type { Attachment } from "../../../shared/protocol.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -77,6 +78,12 @@ export function Attachments({
         images={images.map(file => ({ src: serverUrl(`/api/assets?${assetQuery(projectId, file.path, threadId, file.id)}`), name: file.label }))}
         index={images.findIndex(file => (file.id ?? file.path) === (preview.id ?? preview.path))}
         onIndexChange={index => setPreview(images[index])}
+        onClose={() => setPreview(undefined)}
+      /> : preview.mime?.startsWith("video/") ? <VideoViewer
+        key="video-preview"
+        src={serverUrl(`/api/assets?${assetQuery(projectId, preview.path, threadId, preview.id)}`)}
+        download={serverUrl(`/api/assets?${assetQuery(projectId, preview.path, threadId, preview.id)}&download=1`)}
+        name={preview.label}
         onClose={() => setPreview(undefined)}
       /> : (
         <Modal

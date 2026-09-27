@@ -19,6 +19,7 @@ import { SidebarFooter } from "./components/SidebarFooter.tsx";
 import { Conversation } from "./components/Conversation.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { Inspector } from "./components/Inspector.tsx";
+import { DevTriggers } from "./components/DevTriggers.tsx";
 import { SlidingPanel } from "./components/SlidingPanel.tsx";
 import { StageBackdrop } from "./components/StageBackdrop.tsx";
 import { Toasts } from "./components/Toasts.tsx";
@@ -351,6 +352,7 @@ export function App() {
       <RemoteFolderDialog />
       <LinkActions />
       <Toasts onOpen={openNotification} />
+      <DevTriggers />
     </div>
   );
 }

@@ -117,6 +117,11 @@
   z-index: -1;
   pointer-events: none;
   background: var(--surface);
+  transition: background-color var(--dur-base) var(--ease-in-out);
+}
+
+.shell[data-backdrop] .composer-shell:has(.composer-wide-tab) .composer-glass {
+  background: color-mix(in srgb, var(--surface-solid) calc(max(var(--ui-alpha), 0.95) * 100%), transparent);
 }
 
 .composer-shell::before {

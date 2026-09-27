@@ -1,3 +1,4 @@
+import { isDevFake, stopFakeShell } from "../lib/dev-triggers.ts";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ExternalLink, Square, Terminal } from "lucide-react";
@@ -63,7 +64,10 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
   const stop = async (shell: ShellEntry) => {
     setPending(shell.id);
     setError(undefined);
-    try { await api("shells/stop", { method: "POST", body: JSON.stringify({ id: shell.id }) }); }
+    try {
+      if (isDevFake(shell.id)) { stopFakeShell(shell.id); return; }
+      await api("shells/stop", { method: "POST", body: JSON.stringify({ id: shell.id }) });
+    }
     catch (error) { setError({ id: shell.id, message: (error as Error).message }); }
     finally { setPending(undefined); }
   };

@@ -49,14 +49,29 @@ function sameThreadMeta(a: ThreadMeta, b: ThreadMeta): boolean {
   return true;
 }
 
+function panelInView(state: AppState, projectId: string, panelId: string): boolean {
+  return state.inspectorOpen && state.activeProjectId === projectId && state.activePanels[projectId] === panelId;
+}
+
+function markPanelUnseen(state: AppState, projectId: string, panelId: string): void {
+  if (panelInView(state, projectId, panelId) || state.unseenPanels[panelId]) return;
+  state.unseenPanels = { ...state.unseenPanels, [panelId]: true };
+}
+
 function applyShellEvent(
   state: AppState,
   event: Extract<ServerEvent, { t: "shell.upsert" } | { t: "shell.remove" }>,
 ): void {
   switch (event.t) {
-    case "shell.upsert":
+    case "shell.upsert": {
+      const previous = state.shells[event.shell.id];
+      const { panelId, projectId } = event.shell;
+      const ended = previous?.status === "running" && event.shell.status !== "running";
+      const idled = previous?.busy && !event.shell.busy;
+      if (panelId && (ended || idled)) markPanelUnseen(state, projectId, panelId);
       state.shells = { ...state.shells, [event.shell.id]: event.shell };
       return;
+    }
     case "shell.remove": {
       const { [event.id]: removed, ...remaining } = state.shells;
       void removed;
@@ -124,11 +139,17 @@ function applyPanelEvent(
           ...state.activePanels,
           [event.panel.projectId]: event.panel.id,
         };
+      if (!exists) markPanelUnseen(state, event.panel.projectId, event.panel.id);
       return;
     }
     case "panel.remove": {
       const removed = state.panels.find((panel) => panel.id === event.id);
       state.panels = state.panels.filter((panel) => panel.id !== event.id);
+      if (state.unseenPanels[event.id]) {
+        const { [event.id]: seen, ...unseen } = state.unseenPanels;
+        void seen;
+        state.unseenPanels = unseen;
+      }
       if (removed && state.activePanels[removed.projectId] === event.id)
         state.activePanels = {
           ...state.activePanels,

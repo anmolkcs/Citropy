@@ -483,3 +483,24 @@
 .shell-error { color: var(--bad); font-size: var(--text-xs); }
 .shell-output-heading { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin-top: 12px; color: var(--text-3); font-size: var(--text-xs); }
 .shell-output { margin: 0; padding: 10px; max-height: 220px; overflow: auto; background: var(--canvas); border-radius: var(--r-sm); font: 11px/1.6 var(--font-terminal); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; overscroll-behavior: contain; }
+.dev-triggers {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 90;
+}
+.dev-triggers-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-md);
+  background: var(--overlay);
+  color: var(--text-3);
+  box-shadow: var(--shadow-md);
+  transition: color var(--dur-instant) ease;
+}
+.dev-triggers-button:hover,
+.dev-triggers-button[aria-expanded="true"] {
+  color: var(--text);
+}

@@ -1,5 +1,6 @@
-import { QuestionPanel } from "./QuestionPanel.tsx";
-import { PermissionPanel } from "./PermissionPanel.tsx";
+import { QuestionForm } from "./QuestionPanel.tsx";
+import { AnimatePresence } from "motion/react";
+import { PermissionRow } from "./PermissionPanel.tsx";
 import { UsageLimitTab } from "./UsageLimitNotice.tsx";
 import { environmentId, environmentSignal } from "../lib/environment.ts";
 import { ComposerInput } from "./ComposerInput.tsx";
@@ -250,8 +251,7 @@ export function Composer({
       >
         <ComposerFrame />
         <div className="composer-tabs">
-          <QuestionPanel />
-          <PermissionPanel />
+          <ComposerRequest />
           <UsageLimitTab threadId={thread.id} />
           <PlanTab threadId={thread.id} />
           <QueueList thread={thread} provider={provider} onEdit={restore} />
@@ -405,4 +405,13 @@ export function Composer({
       </div>
     </div>
   );
+}
+
+function ComposerRequest() {
+  const question = useApp((state) => state.questions.find((request) => request.threadId === state.activeThreadId));
+  const permission = useApp((state) => state.permissions[0]);
+  const permissionFirst = permission && (!question || permission.createdAt < question.createdAt);
+  return <AnimatePresence mode="wait">
+    {permissionFirst ? <PermissionRow key={permission.id} request={permission} /> : question && <QuestionForm key={question.id} request={question} />}
+  </AnimatePresence>;
 }

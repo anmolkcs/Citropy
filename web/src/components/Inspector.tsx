@@ -4,7 +4,7 @@ import { AnimatedText } from "./AnimatedText.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Globe2,
   TerminalSquare,
@@ -85,6 +85,7 @@ export function Inspector({ visible }: { visible: boolean }) {
   const threadId = useApp((state) => state.activeThreadId);
   const panels = useApp((state) => state.panels);
   const activePanels = useApp((state) => state.activePanels);
+  const unseenPanels = useApp((state) => state.unseenPanels);
   const connected = useApp((state) => state.connected);
   const tabStrip = useRef<HTMLDivElement>(null);
   const focusTab = useRef(false);
@@ -118,6 +119,15 @@ export function Inspector({ visible }: { visible: boolean }) {
   const selectedTab = tabs.find(panel => panel.id === activeId);
   if (selectedTab && !visibleTabs.includes(selectedTab)) visibleTabs[visibleTabs.length - 1] = selectedTab;
   const hiddenTabs = tabs.filter(panel => !visibleTabs.includes(panel));
+
+  useEffect(() => {
+    if (!visible || !activeId || !unseenPanels[activeId]) return;
+    useApp.setState((state) => {
+      const { [activeId]: seen, ...unseen } = state.unseenPanels;
+      void seen;
+      return { unseenPanels: unseen };
+    });
+  }, [visible, activeId, unseenPanels]);
 
   useLayoutEffect(() => {
     if (!visible || !tabStrip.current) return;
@@ -193,6 +203,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 className="workbench-tab"
                 key={panel.id}
                 data-active={activeId === panel.id}
+                data-unseen={unseenPanels[panel.id] || undefined}
                 {...tabActions.tabProps(panel)}
               >
                 <button
@@ -207,7 +218,10 @@ export function Inspector({ visible }: { visible: boolean }) {
                   title={title}
                   onClick={() => selectPanel(panel.id)}
                 >
-                  <Icon size={14} className={`panel-icon-${panel.kind}`} />
+                  <span className="unseen-anchor">
+                    <Icon size={14} className={`panel-icon-${panel.kind}`} />
+                    {unseenPanels[panel.id] && <span className="unseen-dot" aria-label={t("New activity")} />}
+                  </span>
                   <AnimatedText className="truncate" text={title} />
                 </button>
                 <button
@@ -256,7 +270,10 @@ export function Inspector({ visible }: { visible: boolean }) {
                 aria-expanded={open}
                 onClick={toggle}
               >
-                <MoreHorizontal size={16} />
+                <span className="unseen-anchor">
+                  <MoreHorizontal size={16} />
+                  {hiddenTabs.some(panel => unseenPanels[panel.id]) && <span className="unseen-dot" aria-label={t("New activity")} />}
+                </span>
               </button>
             )}
           />}

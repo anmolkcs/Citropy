@@ -566,7 +566,7 @@
 }
 .shell[data-backdrop] {
   --panel: color-mix(in srgb, var(--panel-solid) calc(var(--ui-alpha) * 100%), transparent);
-  --overlay: color-mix(in srgb, var(--overlay-solid) calc(var(--ui-alpha) * 100% + 12%), transparent);
+  --overlay: color-mix(in srgb, var(--overlay-solid) calc(max(var(--ui-alpha) + 0.12, 0.95) * 100%), transparent);
   --surface: color-mix(in srgb, var(--surface-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised: color-mix(in srgb, var(--raised-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised-2: color-mix(in srgb, var(--raised-2-solid) calc(var(--ui-alpha) * 100%), transparent);

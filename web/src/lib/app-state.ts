@@ -120,6 +120,7 @@ export interface AppState {
   readingThreadId: string | null;
   panels: PanelTab[];
   activePanels: Record<string, string>;
+  unseenPanels: Record<string, true>;
   editorTerminals: Record<string, { id: string; threadId: string | null; visible: boolean }>;
   browsers: Record<string, BrowserState>;
   computer: ComputerState;
@@ -289,6 +290,7 @@ export const useApp = create<AppState>(() => ({
   readingThreadId: null,
   panels: [],
   activePanels: {},
+  unseenPanels: {},
   editorTerminals: {},
   browsers: {},
   computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },

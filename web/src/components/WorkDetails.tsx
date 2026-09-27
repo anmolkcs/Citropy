@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Working } from "./Working.tsx";
 import { useShallow } from "zustand/react/shallow";
 import type { ToolPart } from "../../../shared/protocol.ts";
@@ -14,6 +15,9 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
   const t = useI18n();
   const showFailedTools = useApp(state => state.showFailedTools);
   const [, setOpen] = useDisclosure(id, "activity");
+  const [shownOpen, setShownOpen] = useState(open);
+  const toggled = shownOpen !== open;
+  if (toggled) setShownOpen(open);
   const tools = useApp(useShallow(state => ids.map(id => state.parts[id]).filter((part): part is ToolPart => part?.kind === "tool")));
   const stats = groupStats(tools);
   const thread = useApp(state => active ? state.threads[state.activeThreadId ?? ""] : undefined);
@@ -50,7 +54,7 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
           {detail && <span className="truncate">{detail}</span>}
         </span>}
       </button>
-      <Collapsible open={!open && (preview?.kind === "text" || latestImages)} className="activity-update-collapse">
+      <Collapsible open={!open && (preview?.kind === "text" || latestImages)} animated={toggled} className="activity-update-collapse">
         {preview?.kind === "text" && <div className="activity-update" role="note" aria-label={t("Latest update")}>
           <span className="activity-caption">{t("Latest update")}</span>
           <Prose text={preview.text} live={active && preview.complete !== true} />

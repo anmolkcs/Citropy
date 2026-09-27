@@ -446,6 +446,7 @@ export class Store {
     const thread = this.#track({
       ...input,
       ...(input.parentThreadId ? { parentMessageId: this.threads.get(input.parentThreadId)?.messages.findLast((message) => message.role === "user")?.id } : {}),
+      ...(input.parentThreadId ? {} : { position: this.#topPosition(input.projectId) }),
       id: uid("thr"),
       createdAt: now,
       updatedAt: now,
@@ -502,10 +503,14 @@ export class Store {
   raiseThread(id: string): void {
     const thread = this.threads.get(id);
     if (!thread || thread.parentThreadId) return;
+    this.patchThread(id, { position: this.#topPosition(thread.projectId, id) });
+  }
+
+  #topPosition(projectId: string, excludeId?: string): number {
     const positions = [...this.threads.values()]
-      .filter((entry) => entry.projectId === thread.projectId && entry.id !== id && !entry.parentThreadId && entry.position !== undefined)
+      .filter((entry) => entry.projectId === projectId && entry.id !== excludeId && !entry.parentThreadId && entry.position !== undefined)
       .map((entry) => entry.position!);
-    this.patchThread(id, { position: Math.min(0, ...positions) - 1 });
+    return Math.min(0, ...positions) - 1;
   }
 
   wakeThreads(): void {

@@ -33,6 +33,7 @@ export function Titlebar({
     activeThreadId ? state.threads[activeThreadId] : undefined,
   );
   const inspectorOpen = useApp((state) => state.inspectorOpen);
+  const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
   const development = useApp((state) => state.development);
   const globalMode = useApp((state) => state.sidebarMode === "global");
 
@@ -118,7 +119,10 @@ export function Titlebar({
             aria-label={t("Toggle inspector")}
             title={t("Toggle inspector")}
           >
-            <PanelRight size={15} />
+            <span className="unseen-anchor">
+              <PanelRight size={15} />
+              {panelActivity && <span className="unseen-dot" aria-label={t("New panel activity")} />}
+            </span>
           </button>
         )}
       </div>

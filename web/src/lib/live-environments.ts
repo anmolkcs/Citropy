@@ -12,7 +12,7 @@ export const ENVIRONMENT_KEYS = [
   "messages", "parts", "reveals", "order", "loaded", "historyBytes",
   "timelineVersions", "disclosures", "git", "permissions", "questions",
   "questionDrafts", "activeProjectId", "activeThreadId", "followRequest",
-  "readingThreadId", "panels", "activePanels", "editorTerminals", "browsers",
+  "readingThreadId", "panels", "activePanels", "unseenPanels", "editorTerminals", "browsers",
   "computer", "toolConnections", "tools",
 ] as const satisfies readonly (keyof AppState)[];
 

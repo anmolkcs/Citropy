@@ -651,3 +651,18 @@
 .inspector[data-expanded="true"] > .panel-resize {
   display: none;
 }
+.unseen-anchor {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.unseen-dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--surface);
+}

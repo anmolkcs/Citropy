@@ -1,3 +1,4 @@
+import { applyFake, isDevFake } from "./dev-triggers.ts";
 import { connectionName, environmentId, environmentSignal, environmentStorage, selectEnvironment } from "./environment.ts";
 import { environmentSlice, sendTo, updateEnvironmentSlice } from "./live-environments.ts";
 import { browseRemoteFolder } from "./remote-folder.ts";
@@ -350,6 +351,7 @@ export function answerPermission(
   id: string,
   decision: "allow" | "allow_always" | "deny",
 ): void {
+  if (isDevFake(id)) { applyFake({ t: "permission.close", id }); return; }
   send({ t: "permission.answer", id, decision });
 }
 

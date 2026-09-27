@@ -1,5 +1,5 @@
+import { applyFake, isDevFake } from "../lib/dev-triggers.ts";
 import { useRef, useState } from "react";
-import { AnimatePresence } from "motion/react";
 import { ArrowRight, ChevronLeft, MessageCircleQuestion } from "lucide-react";
 import type { QuestionRequest } from "../../../shared/questions.ts";
 import { useApp, type AppState } from "../lib/store.ts";
@@ -10,12 +10,7 @@ import "../styles/questions.css";
 
 const emptyDraft: AppState["questionDrafts"][string] = { index: 0, choices: {}, text: {} };
 
-export function QuestionPanel() {
-  const request = useApp(state => state.questions.find(question => question.threadId === state.activeThreadId));
-  return <AnimatePresence>{request && <QuestionForm key={request.id} request={request} />}</AnimatePresence>;
-}
-
-function QuestionForm({ request }: { request: QuestionRequest }) {
+export function QuestionForm({ request }: { request: QuestionRequest }) {
   const t = useI18n();
   const connected = useApp(state => state.connected);
   const draft = useApp(state => state.questionDrafts[request.id] ?? emptyDraft);
@@ -54,6 +49,7 @@ function QuestionForm({ request }: { request: QuestionRequest }) {
     setSubmitting(true);
     setError("");
     try {
+      if (isDevFake(request.id)) { applyFake({ t: "question.close", id: request.id }); return; }
       await api(`threads/question?threadId=${encodeURIComponent(request.threadId)}`, { method: "POST", body: JSON.stringify({ id: request.id, answers: skip ? null : answers }) });
     } catch (failure) {
       setError((failure as Error).message);

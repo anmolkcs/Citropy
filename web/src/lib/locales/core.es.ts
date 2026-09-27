@@ -215,6 +215,8 @@ export const coreEs: Record<string, string> = {
   "time": "vez",
   "times": "veces",
   "Toggle inspector": "Mostrar u ocultar paneles",
+  "New activity": "Actividad nueva",
+  "New panel activity": "Actividad nueva en los paneles",
   "Toggle sidebar": "Mostrar u ocultar barra lateral",
   "tool": "herramienta",
   "tools": "herramientas",

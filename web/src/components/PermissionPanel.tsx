@@ -1,5 +1,4 @@
 import { useId, useState } from "react";
-import { AnimatePresence } from "motion/react";
 import type { PermissionRequest } from "../../../shared/protocol.ts";
 import { answerPermission } from "../lib/actions.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -79,12 +78,7 @@ function Body({ request }: { request: PermissionRequest }) {
   );
 }
 
-export function PermissionPanel() {
-  const request = useApp((state) => state.permissions[0]);
-  return <AnimatePresence>{request && <PermissionRow key={request.id} request={request} />}</AnimatePresence>;
-}
-
-function PermissionRow({ request }: { request: PermissionRequest }) {
+export function PermissionRow({ request }: { request: PermissionRequest }) {
   const t = useI18n();
   const [expanded, setExpanded] = useState(false);
   const waiting = useApp((state) => state.permissions.length - 1);

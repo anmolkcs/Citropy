@@ -81,6 +81,7 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     readingThreadId: null,
     panels: [],
     activePanels: {},
+    unseenPanels: {},
     editorTerminals: {},
     browsers: {},
     computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },

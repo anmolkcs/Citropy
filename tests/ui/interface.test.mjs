@@ -39,7 +39,9 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
   await page.addInitScript((preferences) => {
     for (const [key, value] of Object.entries({ project: "project", thread: "chat", inspector: "0", uiScale: "100", gitPanel: "0", ...preferences })) localStorage.setItem(`citropy.${key}`, value);
   }, preferences);
+  let live;
   await page.routeWebSocket("**/socket*", (socket) => {
+    live = socket;
     socket.onMessage((raw) => {
       const event = JSON.parse(raw);
       sent.push(event);
@@ -54,7 +56,7 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
   });
   await page.goto(url);
   await page.locator(".composer-shell").waitFor();
-  return { page, sent };
+  return { page, sent, push: (event) => live.send(JSON.stringify(event)) };
 }
 
 let fixtures = 0;
@@ -99,6 +101,25 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.waitForTimeout(300);
     assert.ok(await canvas.evaluate((node) => node.scrollHeight - node.scrollTop - node.clientHeight < 2));
     assert.equal(await page.getByRole("button", { name: "Latest", exact: true }).count(), 0);
+  });
+
+  check("text folding into work details while working keeps the chat height steady", async (t) => {
+    const tool = (id, status) => ({ id, kind: "tool", callId: id, name: "Bash", shape: "command", headline: "npm test", input: { command: "npm test" }, status, startedAt: 1 });
+    const { page, push } = await app(t, { messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first", "ok"), text("update", "Checked the first part. ".repeat(12))] }] });
+    await page.locator('[data-part-id="update"]').waitFor();
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const canvas = document.querySelector(".canvas");
+      window.heights = [];
+      const sample = () => { window.heights.push(canvas.scrollHeight); requestAnimationFrame(sample); };
+      requestAnimationFrame(sample);
+    });
+    push({ t: "part.add", threadId: "chat", messageId: "reply", part: tool("second", "running") });
+    await page.locator(".activity-update").waitFor();
+    await page.waitForTimeout(500);
+    const heights = await page.evaluate(() => window.heights);
+    const lowest = heights.indexOf(Math.min(...heights));
+    assert.ok(Math.max(...heights.slice(lowest)) - heights[lowest] < 20, `height grew back after folding: ${heights.join(",")}`);
   });
 
   check("questions, plans, and Git share the composer tabs", async (t) => {
