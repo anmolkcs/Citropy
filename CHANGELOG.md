@@ -2,10 +2,10 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
-## 0.5.0
+## 0.5.1
 
 ### Added
-- OpenCode 2 support. Citropy detects whether OpenCode 1 or 2 is installed and connects the right way, with models, chats, permission prompts, questions, subagents, steering, compaction, slash commands, and writing titles and commit messages. Thanks to @anmolkcs for reporting the broken OpenCode sync (#26).
+- OpenCode 2 support. Citropy detects whether OpenCode 1 or 2 is installed and connects the right way, with models, chats, permission prompts, questions, subagents, steering, compaction, slash commands, and writing titles and commit messages. Thanks to @anmolkcs for reporting the broken OpenCode sync (#26). <3
 - An OpenCode version choice in Settings > Providers, to pick OpenCode 1 or 2 yourself instead of detecting it automatically.
 
 ### Changed
@@ -23,6 +23,7 @@ Each release publishes its section below as the release notes, which the app sho
 
 ### Fixed
 - OpenCode 2 no longer fails to load its models with "Unrecognized flag: --verbose".
+- Choosing OpenCode 2 uses the separate `opencode2` command when OpenCode 1 is also installed, and early OpenCode 2 beta versions are recognized.
 - Malformed WebSocket frames close the affected connection without crashing the server.
 - Concurrent syntax highlighting no longer corrupts cache accounting.
 - Automatic quota resumption checks the selected provider account and preserves known limits during outages.

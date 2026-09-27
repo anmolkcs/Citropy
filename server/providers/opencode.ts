@@ -1,4 +1,4 @@
-import { commandVersion, spawnCommand } from "./binary.ts";
+import { commandVersion, resolveCommand, spawnCommand } from "./binary.ts";
 import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverOpenCodeModels } from "./models.ts";
@@ -65,7 +65,8 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
 }
 
 export async function generateOpenCodeText(cwd: string, model: string, effort: string | undefined, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
-  if (await resolveOpenCodeMajor(launchOptions) === 2) return generateOpenCode2Text(cwd, model, effort, prompt, signal, launchOptions);
+  const resolved = await resolveOpenCode(launchOptions);
+  if (resolved.major === 2) return generateOpenCode2Text(cwd, model, effort, prompt, signal, resolved.launch);
   const [providerID, ...modelParts] = model.split("/");
   if (!providerID || !modelParts.length) throw new Error("Select an OpenCode model with a provider.");
   const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions }, signal, true);
@@ -95,7 +96,8 @@ export async function generateOpenCodeText(cwd: string, model: string, effort: s
 }
 
 export async function discoverOpenCodeCommands(cwd: string): Promise<ProviderCommand[]> {
-  if (await resolveOpenCodeMajor() === 2) return openCode2Commands(cwd);
+  const resolved = await resolveOpenCode();
+  if (resolved.major === 2) return openCode2Commands(cwd, resolved.launch);
   const controller = new AbortController();
   const instance = await launch({ cwd, threadId: "commands", permissionMode: "manual", emit: () => {} }, controller.signal);
   try {
@@ -585,41 +587,50 @@ function mapTool(tool: string): string {
 
 const detectedMajors = new Map<string, OpenCodeMajor>();
 
-function launchKey(launch?: ProviderLaunch): string {
-  return `${launch?.binary ?? "opencode"}\0${JSON.stringify(launch?.environment ?? {})}`;
+function launchKey(launch: ProviderLaunch): string {
+  return `${launch.binary ?? "opencode"}\0${JSON.stringify(launch.environment ?? {})}`;
 }
 
 function majorOf(version: string | undefined): OpenCodeMajor | undefined {
-  const match = /(\d+)\.\d+\.\d+/.exec(version ?? "");
+  if (!version) return undefined;
+  if (/^\S+ v\d/.test(version)) return 2;
+  const match = /^(\d+)\.\d+\.\d+/.exec(version);
   if (!match) return undefined;
   return Number(match[1]) >= 2 ? 2 : 1;
 }
 
-async function detectOpenCode(launch?: ProviderLaunch): Promise<string | undefined> {
-  const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
+function selectedLaunch<T extends ProviderLaunch>(launch: T): T {
+  if (store.openCodeVersion !== 2 || launch.binary || !resolveCommand("opencode2").path) return launch;
+  return { ...launch, binary: "opencode2" };
+}
+
+async function detectOpenCode(launch: ProviderLaunch): Promise<string | undefined> {
+  const version = await commandVersion(launch.binary ?? "opencode", 8000, launch.environment);
   const major = majorOf(version);
   if (major) detectedMajors.set(launchKey(launch), major);
   return version;
 }
 
-async function resolveOpenCodeMajor(launch?: ProviderLaunch): Promise<OpenCodeMajor> {
-  if (store.openCodeVersion !== "auto") return store.openCodeVersion;
-  const version = await detectOpenCode(launch);
-  const major = detectedMajors.get(launchKey(launch));
+async function resolveOpenCode(launch: ProviderLaunch = {}): Promise<{ major: OpenCodeMajor; launch: ProviderLaunch }> {
+  const selected = selectedLaunch(launch);
+  const version = await detectOpenCode(selected);
+  const detected = majorOf(version);
+  const major = store.openCodeVersion === "auto" ? detected : store.openCodeVersion;
   if (!major) throw new Error(`Citropy could not tell which OpenCode version "${version ?? "no output"}" is. Choose OpenCode 1 or 2 in Settings > Providers.`);
-  return major;
+  if (detected && detected !== major) throw new Error(`The ${selected.binary ?? "opencode"} command is OpenCode ${version}, not OpenCode ${major}. Install OpenCode ${major}, or set the OpenCode version to Detect automatically in Settings > Providers.`);
+  return { major, launch: selected };
 }
 
-function startedOpenCodeMajor(launch?: ProviderLaunch): OpenCodeMajor {
-  if (store.openCodeVersion !== "auto") return store.openCodeVersion;
-  const major = detectedMajors.get(launchKey(launch));
+function startedOpenCode<T extends ProviderLaunch>(launch: T): { major: OpenCodeMajor; launch: T } {
+  const selected = selectedLaunch(launch);
+  const major = store.openCodeVersion === "auto" ? detectedMajors.get(launchKey(selected)) : store.openCodeVersion;
   if (!major) throw new Error("Citropy has not detected the OpenCode version yet. Refresh Settings > Providers, or choose OpenCode 1 or 2 there.");
-  return major;
+  return { major, launch: selected };
 }
 
 export function openCodeVersionInfo(): ProviderInfo["openCodeVersion"] {
   const setting = store.openCodeVersion;
-  const active = setting === "auto" ? detectedMajors.get(launchKey()) : setting;
+  const active = setting === "auto" ? detectedMajors.get(launchKey(selectedLaunch({}))) : setting;
   return { setting, ...(active ? { active } : {}) };
 }
 
@@ -632,13 +643,15 @@ export const opencodeProvider: Provider = {
   steerHint: "OpenCode adds it to the run in progress.",
   models: [],
   async listModels(launch) {
-    return await resolveOpenCodeMajor(launch) === 2 ? openCode2Models(launch) : discoverOpenCodeModels(launch);
+    const resolved = await resolveOpenCode(launch);
+    return resolved.major === 2 ? openCode2Models(resolved.launch) : discoverOpenCodeModels(resolved.launch);
   },
   async detect(launch) {
-    const version = await detectOpenCode(launch);
+    const version = await detectOpenCode(selectedLaunch(launch ?? {}));
     return { available: Boolean(version), version };
   },
   start(options) {
-    return startedOpenCodeMajor(options) === 2 ? new OpenCode2Session(options) : new OpenCodeSession(options);
+    const started = startedOpenCode(options);
+    return started.major === 2 ? new OpenCode2Session(started.launch) : new OpenCodeSession(started.launch);
   },
 };
