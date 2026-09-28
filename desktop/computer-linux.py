@@ -532,6 +532,8 @@ def keysym(key):
 
 def act(driver, data, displays):
     """Validate one computer action and run it against the driver."""
+    if getattr(driver, "closed", False):
+        raise RuntimeError("Screen sharing has ended.")
     if not driver.control:
         raise RuntimeError("This session only allows viewing the screen.")
     action = data.get("action")

@@ -259,6 +259,17 @@ class VirtualInputTests(unittest.TestCase):
         self.client.move("screen", 10, 10)
         self.assertTrue(any(event[0] == "zwlr_virtual_pointer_v1" and event[2] == 1 for event in self.server.events))
 
+    def test_failed_input_reports_original_error_not_release_error(self):
+        """A mid-action failure surfaces its cause instead of a release error."""
+        self.start()
+        self.client.move("screen", 10, 10)
+        self.client.button("left", True)
+        self.server.on_key = lambda event: setattr(self.server, "layout_change", True) if event[2] else None
+        with self.assertRaisesRegex(RuntimeError, "layout changed"):
+            self.client.press([0xffe3, ord("a")])
+        self.assertEqual(self.client.pressed, [])
+        self.assertEqual(self.client.buttons, set())
+
     def test_close_releases_drag_button(self):
         """Closing mid-drag releases the held pointer button."""
         self.start()
@@ -365,6 +376,12 @@ class PortalTests(unittest.TestCase):
                 portal.start(False)
             virtual.assert_not_called()
         self.assertTrue(all(call.args[0] is portal.cast for call in portal.request.call_args_list))
+
+    def test_closed_session_rejects_input(self):
+        """No input is dispatched after screen sharing ends."""
+        driver = types.SimpleNamespace(closed=True, control=True)
+        with self.assertRaisesRegex(RuntimeError, "Screen sharing has ended"):
+            computer.act(driver, {"action": "wait", "durationMs": 10}, [])
 
     def test_failed_start_rolls_back_virtual_input_and_capture(self):
         """A start failure closes the compositor connection and half-opened streams."""
