@@ -556,6 +556,7 @@ export const settingsEs: Record<string, string> = {
   "Waiting for the screen…": "Esperando la pantalla…",
   "Wayland · Desktop consent": "Wayland · Consentimiento de escritorio",
   "Wayland desktop portal": "Portal de escritorio Wayland",
+  "Wayland screen sharing and virtual input": "Pantalla compartida y entrada virtual de Wayland",
   "Websites in this browser profile will sign out.": "Se cerrará la sesión de los sitios web de este perfil del navegador.",
   "Width": "Ancho",
   "Work across your desktop": "Trabaja en tu escritorio",

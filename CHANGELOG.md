@@ -6,6 +6,13 @@ Each release publishes its section below as the release notes, which the app sho
 
 ### Added
 - Keyboard shortcuts to open Settings with Ctrl+, and choose a project folder with Ctrl+O, using Cmd on macOS.
+- Computer control on Sway through screen sharing and direct virtual input, without a VNC server.
+
+### Fixed
+- View-only computer sessions can use ScreenCast portals without RemoteDesktop support.
+- Computer tools accept numeric arguments serialized as strings by MCP clients, including pointer coordinates, wait durations, and screenshot widths.
+- Wayland capture releases PipeWire buffers promptly and reports a stalled stream instead of returning an old screenshot as a fresh frame.
+- Screenshots of unchanged Wayland screens keep working instead of timing out on damage-only capture.
 
 ## 0.5.3
 

@@ -207,7 +207,8 @@ function recentFrame(id: string) {
 function inputFor(input: ComputerAction): Record<string, unknown> {
   if (!input || !["move", "click", "drag", "scroll", "type", "press", "wait"].includes(input.action)) throw new Error("Choose a supported computer action.");
   const out: Record<string, unknown> = { action: input.action };
-  if ("frameId" in input) {
+  if (["move", "click", "drag", "scroll"].includes(input.action)) {
+    if (!("frameId" in input)) throw new Error("Provide a screenshot frameId and coordinates.");
     const frame = recentFrame(input.frameId);
     out.displayId = displayHandles.get(frame.displayId);
     out.x = (frame.sourceX ?? 0) + finite(input.x, 0, frame.width - 1, "x coordinate") * frame.sourceWidth / frame.width;
@@ -216,7 +217,7 @@ function inputFor(input: ComputerAction): Record<string, unknown> {
       out.toX = (frame.sourceX ?? 0) + finite(input.toX, 0, frame.width - 1, "target x") * frame.sourceWidth / frame.width;
       out.toY = (frame.sourceY ?? 0) + finite(input.toY, 0, frame.height - 1, "target y") * frame.sourceHeight / frame.height;
     }
-  } else if (["move", "click", "drag", "scroll"].includes(input.action)) throw new Error("Provide a screenshot frameId and coordinates.");
+  }
   if (input.action === "click") {
     if (input.button && !["left", "middle", "right"].includes(input.button)) throw new Error("Choose a mouse button.");
     out.button = input.button ?? "left";

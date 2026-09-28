@@ -214,12 +214,20 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const inTextEntry = (target: EventTarget | null) =>
+      target instanceof HTMLElement &&
+      // Text fields and embedded terminals keep their own keys, including
+      // every contenteditable form via isContentEditable.
+      (target.isContentEditable ||
+        target.closest(".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])") !== null);
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const mod = event.metaKey || event.ctrlKey;
       if (!mod) return;
       const key = event.key.toLowerCase();
       if ((key === "," || key === "o") && !event.altKey && !event.shiftKey) {
+        // Leave text fields and embedded terminals alone; their own keys win.
+        if (inTextEntry(event.target)) return;
         event.preventDefault();
         if (event.repeat) return;
         if (key === ",") openSettings();
