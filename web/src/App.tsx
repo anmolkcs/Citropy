@@ -37,7 +37,7 @@ import {
 } from "./lib/store.ts";
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
-import { createThread } from "./lib/actions.ts";
+import { chooseWorkspace, createThread } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 
@@ -219,7 +219,12 @@ export function App() {
       const mod = event.metaKey || event.ctrlKey;
       if (!mod) return;
       const key = event.key.toLowerCase();
-      if (key === "b") {
+      if ((key === "," || key === "o") && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        if (event.repeat) return;
+        if (key === ",") openSettings();
+        else chooseWorkspace();
+      } else if (key === "b") {
         event.preventDefault();
         if (view === "chat") toggleSidebar();
         else setSectionSidebarOpen((open) => !open);

@@ -6,6 +6,8 @@ How each part of Citropy behaves, for users and contributors. For setup, see the
 
 The interface uses Geist, bundled from `@fontsource-variable/geist` under the SIL Open Font License. Code uses Droid Sans Mono when installed, or the system monospace font. Text size is adjustable in Settings > Appearance.
 
+Press Ctrl+, to open Settings or Ctrl+O to choose a project folder in the current environment. On macOS, use Cmd+, and Cmd+O.
+
 The sidebar navigation can collapse to icons by dragging its footer handle down, or by clicking it. Subagent lists are revealed on hover or keyboard focus and expand when clicked. Completed earlier batches remain in the workspace tab under Earlier subagents.
 
 Conversation categories have shaded headings, and rows put the title first and keep model, branch, and date details below it. Large sidebar lists render nearby rows and retain focused rows during scrolling. Navigation and workspace panels use short transitions, release closed navigation after the transition, and skip motion during resizing or when reduced motion is enabled. Menu animations follow the same preference. Background windows pause CSS animations and the thinking timer; returning shows the elapsed time from the original start.

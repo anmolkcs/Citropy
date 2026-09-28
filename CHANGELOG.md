@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.4
+
+### Added
+- Keyboard shortcuts to open Settings with Ctrl+, and choose a project folder with Ctrl+O, using Cmd on macOS.
+
 ## 0.5.3
 
 ### Fixed
