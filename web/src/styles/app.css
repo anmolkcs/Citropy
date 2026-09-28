@@ -654,7 +654,7 @@
 :root[data-resizing] .backdrop-layers { transition: none; }
 
 .shell[data-backdrop] :is(.topbar, .composer, .git-manager) { background: transparent; }
-.shell[data-backdrop]:has(.section-view) .topbar { background: var(--canvas); }
+.shell[data-backdrop][data-section] .topbar { background: var(--canvas); }
 .shell[data-backdrop] .conversation-viewport::before,
 .shell[data-backdrop] .conversation-viewport::after { content: none; }
 .shell[data-backdrop] .canvas { mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }

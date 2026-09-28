@@ -421,7 +421,7 @@ kbd {
 .file-type-icon[data-tone="pink"] { color: light-dark(#aa438b, #dd90c7); }
 .file-type-icon[data-tone="neutral"] { color: var(--text-3); }
 
-:has(> .experimental-tag) {
+.setting-row strong:has(> .experimental-tag) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

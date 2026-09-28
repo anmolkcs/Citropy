@@ -48,6 +48,7 @@ async function fixture(panels, threads = []) {
     if (url.pathname === "/api/editor/file") return route.fulfill({ json: { text: 'export const greeting = "Hello";\n', revision: "a".repeat(64) } });
     if (url.pathname === "/api/preview") return route.fulfill({ json: { path: "diagram.png", name: "diagram.png", mime: "image/png", size: picture.length } });
     if (url.pathname === "/api/assets") return route.fulfill({ contentType: "image/png", body: picture });
+    if (url.pathname === "/api/agents") return route.fulfill({ json: { agents: [] } });
     return route.fulfill({ json: {} });
   });
   await page.routeWebSocket("**/socket", (socket) => {

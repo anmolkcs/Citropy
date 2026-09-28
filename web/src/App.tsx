@@ -303,6 +303,7 @@ export function App() {
       data-navigation={navigationStyle}
       data-inspector={inspectorOpen && panelsShown}
       data-composer={view === "chat" && hasProject && hasActiveThread}
+      data-section={view !== "chat" || undefined}
       data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
       style={{
         ...Object.fromEntries(
