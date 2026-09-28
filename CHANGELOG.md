@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.3
+
+### Fixed
+- Long conversation titles no longer overlap the sidebar action buttons on touch screens.
+
 ## 0.5.2
 
 ### Added

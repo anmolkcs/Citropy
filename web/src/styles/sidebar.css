@@ -835,7 +835,6 @@
 .rail[data-sidebar-mode="global"] .thread-card:hover .thread-row-actions,
 .rail[data-sidebar-mode="global"] .thread-card:has(:focus-visible) .thread-row-actions,
 .rail[data-sidebar-mode="global"] .thread-card:has(.thread-row-actions [aria-expanded="true"]) .thread-row-actions { transform: translateY(-50%); }
-@media (hover: none) { .rail[data-sidebar-mode="global"] .thread-row-body { padding-right: 82px; } }
 
 .rail-footer {
   display: grid;
@@ -940,6 +939,7 @@
 .rail .global-project-toggle > svg { color: inherit; }
 .rail .global-project-heading:hover .global-project-toggle { color: var(--text); }
 .rail[data-sidebar-mode="global"] .thread-row-body { padding: 6px 8px; }
+@media (hover: none) { .rail[data-sidebar-mode="global"] .thread-row-body { padding-right: var(--thread-actions); } }
 .rail[data-sidebar-mode="global"] .thread-row-title { color: var(--text-2); font-size: var(--text-sm); }
 .rail[data-sidebar-mode="global"] .thread-card[data-active="true"] .thread-row-title,
 .rail[data-sidebar-mode="global"] .thread-card:hover .thread-row-title { color: var(--text); }
