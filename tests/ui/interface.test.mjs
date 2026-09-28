@@ -173,6 +173,37 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await page.locator('.composer-shell').count(), 0);
   });
 
+  check("settings and folder shortcuts stay out of text fields and embedded terminals", async t => {
+    const { page, sent } = await app(t, { messages: history(2), threadPatch: { running: false, status: "idle" } });
+    await settled(page);
+    const chooses = () => sent.filter(event => event.t === "project.choose").length;
+    const box = page.locator(".composer-shell textarea").first();
+    assert.equal(await box.isEnabled(), true);
+    await box.focus();
+    await page.keyboard.press("Control+,");
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(150);
+    assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
+    assert.equal(chooses(), 0);
+    await page.evaluate(() => {
+      const host = document.createElement("div");
+      host.className = "xterm";
+      host.tabIndex = -1;
+      document.body.appendChild(host);
+      host.focus();
+    });
+    await page.keyboard.press("Control+,");
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(150);
+    assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
+    assert.equal(chooses(), 0);
+    await page.evaluate(() => { const focused = document.activeElement; if (focused instanceof HTMLElement) focused.blur(); });
+    await page.keyboard.press("Control+,");
+    await page.getByRole('region', { name: 'Settings', exact: true }).waitFor();
+    await page.keyboard.press("Control+o");
+    await expect(() => chooses() > 0);
+  });
+
   for (const width of [1280, 380]) check(`sidebar movement does not animate tabs within the composer at ${width}px`, async t => {
     const { page } = await app(t, { width, messages: history(8), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
     await settled(page);

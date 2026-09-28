@@ -13,6 +13,7 @@ import threading
 import time
 import uuid
 from itertools import groupby
+from computer_wayland import WaylandInput
 
 
 def number(value, low, high, name):
@@ -66,11 +67,19 @@ def dependencies():
         bus = dbus.SessionBus()
         obj = bus.get_object("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop")
         props = dbus.Interface(obj, "org.freedesktop.DBus.Properties")
-        if int(props.Get("org.freedesktop.portal.RemoteDesktop", "AvailableDeviceTypes")) & 3 != 3:
-            raise RuntimeError("This desktop portal does not offer keyboard and pointer control.")
         if int(props.Get("org.freedesktop.portal.ScreenCast", "AvailableSourceTypes")) & 1 != 1:
             raise RuntimeError("This desktop portal does not offer monitor sharing.")
-        return "wayland-portal"
+        try:
+            if int(props.Get("org.freedesktop.portal.RemoteDesktop", "AvailableDeviceTypes")) & 3 == 3:
+                return "wayland-portal"
+        except dbus.DBusException as error:
+            if error.get_dbus_name() not in ["org.freedesktop.DBus.Error.InvalidArgs", "org.freedesktop.DBus.Error.UnknownInterface", "org.freedesktop.DBus.Error.UnknownProperty"]:
+                raise
+        try:
+            WaylandInput.probe()
+            return "wayland-wlr"
+        except (OSError, RuntimeError):
+            return "wayland-screencast"
     if not os.environ.get("DISPLAY"):
         raise RuntimeError("Sign into a graphical desktop to use computer control.")
     if not shutil.which("xdotool"):
@@ -81,7 +90,7 @@ def dependencies():
 
 
 class Portal:
-    def __init__(self):
+    def __init__(self, backend="wayland-portal"):
         import dbus
         from dbus.mainloop.glib import DBusGMainLoop
         from gi.repository import GLib, Gst
@@ -103,6 +112,8 @@ class Portal:
         self.control = False
         self.closed = False
         self.Gst = Gst
+        self.backend = backend
+        self.virtual = None
 
     def request(self, interface, method, *args, **options):
         token = "citropy_" + uuid.uuid4().hex
@@ -133,34 +144,43 @@ class Portal:
             self.requests.discard(path)
 
     def start(self, control):
+        if control and self.backend == "wayland-screencast":
+            raise RuntimeError("This compositor supports screen sharing only. Use Plan only mode to view it; control requires RemoteDesktop or Wayland virtual input support.")
         self.control = control
-        interface = self.remote if control else self.cast
+        if control and self.backend == "wayland-wlr":
+            self.virtual = WaylandInput()
+        remote_control = control and self.virtual is None
+        interface = self.remote if remote_control else self.cast
         created = self.request(interface, "CreateSession", session_handle_token=self.dbus.String("citropy_" + uuid.uuid4().hex))
         self.session = self.dbus.ObjectPath(str(created["session_handle"]))
         self.bus.add_signal_receiver(self.on_closed, signal_name="Closed", dbus_interface="org.freedesktop.portal.Session", path=str(self.session))
-        if control:
+        if remote_control:
             self.request(self.remote, "SelectDevices", self.session, types=self.dbus.UInt32(3))
         self.request(self.cast, "SelectSources", self.session, types=self.dbus.UInt32(1), multiple=self.dbus.Boolean(True), cursor_mode=self.dbus.UInt32(2))
         result = self.request(interface, "Start", self.session, "")
-        if control and int(result.get("devices", 0)) & 3 != 3:
+        if remote_control and int(result.get("devices", 0)) & 3 != 3:
             raise RuntimeError("Allow both keyboard and pointer control in the desktop sharing dialog.")
         streams = result.get("streams", [])
         if not streams:
             raise RuntimeError("No screen was selected.")
         for index, (node, properties) in enumerate(streams):
             fd = self.cast.OpenPipeWireRemote(self.session, self.dbus.Dictionary({}, signature="sv")).take()
-            pipeline = self.Gst.parse_launch("pipewiresrc name=source do-timestamp=true ! videorate drop-only=true max-rate=5 ! video/x-raw,framerate=5/1 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 drop=true sync=false")
+            # Returning PipeWire's buffers immediately prevents downstream samples
+            # and videorate from exhausting a compositor's small capture pool.
+            pipeline = self.Gst.parse_launch("pipewiresrc name=source do-timestamp=true always-copy=true ! videorate drop-only=true max-rate=5 ! video/x-raw,framerate=5/1 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 drop=true sync=false enable-last-sample=false")
             source = pipeline.get_by_name("source")
             source.set_property("fd", fd)
             source.set_property("path", str(node))
             size = properties.get("logical_size", properties.get("size", [0, 0]))
-            entry = {"id": str(node), "name": "Screen " + str(index + 1), "width": int(size[0]), "height": int(size[1]), "pipeline": pipeline, "sink": pipeline.get_by_name("sink"), "fd": fd, "sample": None}
+            entry = {"id": str(node), "name": "Screen " + str(index + 1), "width": int(size[0]), "height": int(size[1]), "pipeline": pipeline, "sink": pipeline.get_by_name("sink"), "fd": fd}
             position = properties.get("position")
             if position is not None:
                 entry.update(x=int(position[0]), y=int(position[1]))
             self.streams[str(node)] = entry
             pipeline.set_state(self.Gst.State.PLAYING)
             self.sample(entry)
+        if self.virtual:
+            self.virtual.start(list(self.streams.values()))
         return self.displays()
 
     def on_closed(self, *_):
@@ -178,11 +198,8 @@ class Portal:
         if error:
             raise RuntimeError("The screen stream stopped. Start computer use again.")
         sample = entry["sink"].emit("try-pull-sample", 3 * self.Gst.SECOND)
-        if sample is not None:
-            entry["sample"] = sample
-        sample = entry["sample"]
         if sample is None:
-            raise RuntimeError("The desktop did not send a screen image.")
+            raise RuntimeError("The desktop did not deliver a fresh screen image. Stop computer use and share the screen again.")
         info = GstVideo.VideoInfo.new_from_caps(sample.get_caps())
         size = (info.width, info.height)
         if entry.get("capture_size", size) != size:
@@ -194,6 +211,8 @@ class Portal:
         return sample, info
 
     def screenshot(self, display_id, maximum, crop=None):
+        if self.virtual:
+            self.virtual.sync(check_cancelled=False)
         entry = self.streams.get(display_id)
         if not entry:
             raise ValueError("Choose one of the shared screens.")
@@ -208,9 +227,13 @@ class Portal:
             buffer.unmap(mapped)
 
     def move(self, display_id, x, y):
+        if self.virtual:
+            return self.virtual.move(display_id, x, y)
         self.remote.NotifyPointerMotionAbsolute(self.session, self.dbus.Dictionary({}, signature="sv"), self.dbus.UInt32(int(display_id)), float(x), float(y))
 
     def button(self, button, pressed):
+        if self.virtual:
+            return self.virtual.button(button, pressed)
         code = {"left": 272, "right": 273, "middle": 274}[button]
         if pressed:
             self.buttons.add(button)
@@ -226,6 +249,8 @@ class Portal:
             self.pressed.discard(key)
 
     def press(self, keys):
+        if self.virtual:
+            return self.virtual.press([keysym(key) for key in keys])
         held = []
         try:
             for key in keys:
@@ -236,6 +261,8 @@ class Portal:
                 self.key(key, False)
 
     def type(self, text):
+        if self.virtual:
+            return self.virtual.type(text)
         for character in text:
             key = {"\n": 0xff0d, "\t": 0xff09}.get(character, ord(character) if ord(character) <= 0xff else 0x01000000 | ord(character))
             try:
@@ -244,9 +271,14 @@ class Portal:
                 self.key(key, False)
 
     def scroll(self, dx, dy):
+        if self.virtual:
+            return self.virtual.scroll(dx, dy)
         self.remote.NotifyPointerAxis(self.session, self.dbus.Dictionary({"finish": self.dbus.Boolean(True)}, signature="sv"), float(dx), float(dy))
 
     def stop(self):
+        if self.virtual:
+            self.virtual.close()
+            self.virtual = None
         if self.session:
             for key in list(self.pressed):
                 try:
@@ -513,7 +545,16 @@ def act(driver, data, displays):
             raise ValueError("Type between 1 and 4,000 characters without control codes.")
         driver.type(text)
     elif action == "wait":
-        time.sleep(number(data.get("durationMs", 500), 0, 5000, "wait duration") / 1000)
+        duration = number(data.get("durationMs", 500), 0, 5000, "wait duration") / 1000
+        virtual = getattr(driver, "virtual", None)
+        if virtual:
+            end = time.monotonic() + duration
+            while time.monotonic() < end:
+                virtual.check_cancelled()
+                time.sleep(min(0.05, max(0, end - time.monotonic())))
+            virtual.check_cancelled()
+        else:
+            time.sleep(duration)
     elif action != "move":
         raise ValueError("Unknown computer action")
 
@@ -525,7 +566,10 @@ def main():
     acting = False
     backend = dependencies()
     if "--probe" in sys.argv:
-        print(json.dumps({"available": True, "platform": "linux", "backend": backend}), flush=True)
+        result = {"available": True, "platform": "linux", "backend": backend}
+        if backend == "wayland-screencast":
+            result["reason"] = "Screen sharing is available in Plan only mode. Desktop control requires a RemoteDesktop portal or compositor support for Wayland virtual input."
+        print(json.dumps(result), flush=True)
         return
 
     def interrupted(*_):
@@ -536,7 +580,11 @@ def main():
     def pause(*_):
         nonlocal paused
         paused = True
-        if acting:
+        virtual = getattr(driver, "virtual", None)
+        if virtual:
+            # Let a Wayland round trip finish so cancellation cannot split a frame.
+            virtual.cancelled = True
+        elif acting:
             raise InterruptedError("Computer control was paused.")
     signal.signal(signal.SIGUSR1, pause)
     buffer = b""
@@ -561,7 +609,7 @@ def main():
                 if method == "start":
                     if driver:
                         raise ValueError("A computer session is already open.")
-                    driver = Portal() if backend == "wayland-portal" else X11()
+                    driver = Portal(backend) if backend.startswith("wayland-") else X11()
                     displays = driver.start(bool(data.get("control")))
                     result = {"displays": displays, "backend": backend}
                 elif not driver:
@@ -576,9 +624,15 @@ def main():
                         act(driver, data, displays)
                     finally:
                         acting = False
+                        if paused and getattr(driver, "virtual", None):
+                            driver.virtual.release()
                     result = {"ok": True}
                 elif method == "pause":
                     paused = bool(data.get("paused"))
+                    if getattr(driver, "virtual", None):
+                        driver.virtual.cancelled = paused
+                        if paused:
+                            driver.virtual.release()
                     result = {"paused": paused}
                 elif method == "stop":
                     break

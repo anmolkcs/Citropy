@@ -45,6 +45,34 @@ function required(args: Record<string, unknown>, key: string): string {
 const MAX_RUNNING_SUBAGENTS = 4;
 const MAX_SUBAGENT_DEPTH = 3;
 
+// Some MCP clients stringify values inside run_tool's open-ended arguments object.
+// Convert only numeric fields from the computer tool schemas; every other key
+// (text, IDs, frame references) passes through untouched.
+const topLevelNumbers = ["x", "y", "toX", "toY", "deltaX", "deltaY", "count", "durationMs", "maxWidth"];
+const regionNumbers = ["x", "y", "width", "height"];
+
+function coerceNumbers(input: Record<string, unknown>, keys: string[]): void {
+  for (const key of keys) {
+    if (input[key] === undefined) continue;
+    const value = input[key];
+    const number = typeof value === "string" && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value) ? Number(value) : value;
+    if (typeof number !== "number" || !Number.isFinite(number)) throw new Error(`Invalid ${key}: provide a finite number.`);
+    input[key] = number;
+  }
+}
+
+function computerArguments(args: Record<string, unknown>): Record<string, unknown> {
+  const input = { ...args };
+  coerceNumbers(input, topLevelNumbers);
+  if (input.region !== undefined) {
+    if (!input.region || typeof input.region !== "object" || Array.isArray(input.region)) throw new Error("Provide a screen region object.");
+    const region = { ...(input.region as Record<string, unknown>) };
+    coerceNumbers(region, regionNumbers);
+    input.region = region;
+  }
+  return input;
+}
+
 function assertSubagentSlot(parentId: string): void {
   const running = [...store.threads.values()].filter(
     (child) => child.parentThreadId === parentId && child.running,
@@ -177,14 +205,15 @@ export async function callWorkspaceTool(
     case "computer_status": return text({ state: computer.computerState(), capabilities: await computer.computerCapabilities().catch((error) => ({ available: false, reason: error.message })) });
     case "computer_start": return text(await computer.startComputer(threadId));
     case "computer_screenshot": {
+      const input = computerArguments(args);
       const { image, ...frame } = await computer.computerScreenshot(threadId, {
-        displayId: typeof args.displayId === "string" ? args.displayId : undefined,
-        maxWidth: typeof args.maxWidth === "number" ? args.maxWidth : undefined,
-        region: args.region as ComputerRegion | undefined,
+        displayId: typeof input.displayId === "string" ? input.displayId : undefined,
+        maxWidth: input.maxWidth as number | undefined,
+        region: input.region as ComputerRegion | undefined,
       });
       return [...text(frame), { type: "image", data: image, mimeType: "image/jpeg" }];
     }
-    case "computer_action": return text(await computer.computerAction(threadId, args as ComputerAction));
+    case "computer_action": return text(await computer.computerAction(threadId, computerArguments(args) as ComputerAction));
     case "computer_stop": {
       if (computer.computerState().threadId && computer.computerState().threadId !== threadId) throw new Error("This conversation does not own the computer session.");
       return text(await computer.stopComputer());

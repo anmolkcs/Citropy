@@ -30,7 +30,7 @@ export const workspaceTools = ([
   },
   {
     name: "computer_start",
-    description: "Start a computer-use session for this conversation and open the Computer panel. Computer use must be enabled in Settings. On Wayland the user chooses shared screens and grants control through the desktop portal. Plan mode starts a view-only session. One conversation owns the computer at a time. Read computer_help first.",
+    description: "Start a computer-use session for this conversation and open the Computer panel. Computer use must be enabled in Settings. On Wayland the user chooses shared screens through the desktop portal; control uses RemoteDesktop or supported compositor virtual input. Plan mode starts a view-only session. One conversation owns the computer at a time. Read computer_help first.",
     inputSchema: { type: "object", properties: {} },
   },
   {

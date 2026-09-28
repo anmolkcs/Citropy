@@ -7,6 +7,7 @@ asar: false
 npmRebuild: false
 files:
   - desktop/**
+  - '!desktop/**/__pycache__/**'
   - server/**
   - shared/**
   - skills/**
