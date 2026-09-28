@@ -46,9 +46,18 @@ const MAX_RUNNING_SUBAGENTS = 4;
 const MAX_SUBAGENT_DEPTH = 3;
 
 // Some MCP clients stringify values inside run_tool's open-ended arguments object.
-// Convert only numeric fields from the computer tool schemas; every other key
-// (text, IDs, frame references) passes through untouched.
-const topLevelNumbers = ["x", "y", "toX", "toY", "deltaX", "deltaY", "count", "durationMs", "maxWidth"];
+// Convert only numeric fields the selected operation actually uses; every other
+// key (text, IDs, frame references, fields for other actions) passes through
+// untouched for downstream validation to accept or reject.
+const actionNumbers: Record<string, string[]> = {
+  move: ["x", "y"],
+  click: ["x", "y", "count"],
+  drag: ["x", "y", "toX", "toY", "durationMs"],
+  scroll: ["x", "y", "deltaX", "deltaY"],
+  press: [],
+  type: [],
+  wait: ["durationMs"],
+};
 const regionNumbers = ["x", "y", "width", "height"];
 
 function coerceNumbers(input: Record<string, unknown>, keys: string[]): void {
@@ -61,14 +70,18 @@ function coerceNumbers(input: Record<string, unknown>, keys: string[]): void {
   }
 }
 
-function computerArguments(args: Record<string, unknown>): Record<string, unknown> {
+function computerArguments(args: Record<string, unknown>, screenshot: boolean): Record<string, unknown> {
   const input = { ...args };
-  coerceNumbers(input, topLevelNumbers);
-  if (input.region !== undefined) {
-    if (!input.region || typeof input.region !== "object" || Array.isArray(input.region)) throw new Error("Provide a screen region object.");
-    const region = { ...(input.region as Record<string, unknown>) };
-    coerceNumbers(region, regionNumbers);
-    input.region = region;
+  if (screenshot) {
+    if (input.maxWidth !== undefined) coerceNumbers(input, ["maxWidth"]);
+    if (input.region !== undefined) {
+      if (!input.region || typeof input.region !== "object" || Array.isArray(input.region)) throw new Error("Provide a screen region object.");
+      const region = { ...(input.region as Record<string, unknown>) };
+      coerceNumbers(region, regionNumbers);
+      input.region = region;
+    }
+  } else {
+    coerceNumbers(input, typeof input.action === "string" ? actionNumbers[input.action] ?? [] : []);
   }
   return input;
 }
@@ -205,7 +218,7 @@ export async function callWorkspaceTool(
     case "computer_status": return text({ state: computer.computerState(), capabilities: await computer.computerCapabilities().catch((error) => ({ available: false, reason: error.message })) });
     case "computer_start": return text(await computer.startComputer(threadId));
     case "computer_screenshot": {
-      const input = computerArguments(args);
+      const input = computerArguments(args, true);
       const { image, ...frame } = await computer.computerScreenshot(threadId, {
         displayId: typeof input.displayId === "string" ? input.displayId : undefined,
         maxWidth: input.maxWidth as number | undefined,
@@ -213,7 +226,7 @@ export async function callWorkspaceTool(
       });
       return [...text(frame), { type: "image", data: image, mimeType: "image/jpeg" }];
     }
-    case "computer_action": return text(await computer.computerAction(threadId, computerArguments(args) as ComputerAction));
+    case "computer_action": return text(await computer.computerAction(threadId, computerArguments(args, false) as ComputerAction));
     case "computer_stop": {
       if (computer.computerState().threadId && computer.computerState().threadId !== threadId) throw new Error("This conversation does not own the computer session.");
       return text(await computer.stopComputer());

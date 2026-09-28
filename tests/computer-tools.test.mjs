@@ -44,6 +44,9 @@ test("computer MCP calls preserve numeric values from open-ended tool arguments"
   assert.deepEqual(requests.at(-1).params, { action: "wait", durationMs: 500 });
   await call("computer_action", { action: "press", key: "Control+A", frameId: "irrelevant-to-keyboard" });
   assert.deepEqual(requests.at(-1).params, { action: "press", key: "Control+A" });
+  // Fields belonging to other actions are ignored, never validated.
+  await call("computer_action", { action: "press", key: "Enter", x: "unknown", durationMs: "500" });
+  assert.deepEqual(requests.at(-1).params, { action: "press", key: "Enter" });
   await call("computer_action", { action: "type", text: "123" });
   assert.deepEqual(requests.at(-1).params, { action: "type", text: "123" });
   await call("computer_screenshot", { maxWidth: "640", region: { frameId: frame.id, x: "10", y: "20", width: "100", height: "80" } });

@@ -197,6 +197,19 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.waitForTimeout(150);
     assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
     assert.equal(chooses(), 0);
+    await page.evaluate(() => {
+      const note = document.createElement("div");
+      note.setAttribute("contenteditable", "");
+      note.tabIndex = -1;
+      note.textContent = "editable";
+      document.body.appendChild(note);
+      note.focus();
+    });
+    await page.keyboard.press("Control+,");
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(150);
+    assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
+    assert.equal(chooses(), 0);
     await page.evaluate(() => { const focused = document.activeElement; if (focused instanceof HTMLElement) focused.blur(); });
     await page.keyboard.press("Control+,");
     await page.getByRole('region', { name: 'Settings', exact: true }).waitFor();

@@ -215,8 +215,9 @@ export function App() {
 
   useEffect(() => {
     const inTextEntry = (target: EventTarget | null) =>
-      target instanceof Element &&
-      target.closest(".xterm, textarea, select, [contenteditable='true'], input:not([type='checkbox']):not([type='radio'])") !== null;
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        target.closest(".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])") !== null);
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const mod = event.metaKey || event.ctrlKey;
