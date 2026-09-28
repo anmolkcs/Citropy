@@ -67,7 +67,7 @@ test("backend readiness and saved-workspace access do not wait for provider disc
     });
     socket.on("error", reject);
   });
-  assert.deepEqual(hello.snapshot.projects, []);
+  assert.deepEqual(hello.snapshot.projects.map((project) => project.chat), [true]);
   assert.deepEqual(hello.snapshot.providers, []);
   child.send({ t: "finish-discovery" });
   await new Promise((resolve, reject) => {

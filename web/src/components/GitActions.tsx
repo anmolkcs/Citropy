@@ -16,6 +16,7 @@ import { gitActionBusy, type GitActionState } from "../../../shared/assistance.t
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { ComposerTab } from "./composer/ComposerTab.tsx";
+import { LineCounts } from "./LineCounts.tsx";
 
 export function GitActions({ thread }: { thread: ThreadMeta }) {
   const [reviewing, setReviewing] = useState(false);
@@ -112,7 +113,7 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
       <button type="button" className="git-panel-changes" disabled={!connected || !status} onClick={() => { setOpen(false); selectThread(thread.id); useApp.setState({ activeView: "chat", readingThreadId: null }); openWorkbenchPanel("changes"); }} aria-label={t("Review changes")}>
         <FileDiff size={16} />
         <span className="git-panel-change-copy"><strong>{t("Changes")}</strong><small>{status ? status.clean ? t("Working tree is clean.") : t(status.files.length === 1 ? "1 changed file" : "{count} changed files", { count: status.files.length }) : t("Loading Git status…")}</small></span>
-        {(added > 0 || removed > 0) && <span className="git-panel-counts"><span className="added">+{added}</span><span className="removed">-{removed}</span></span>}
+        {(added > 0 || removed > 0) && <LineCounts added={added} removed={removed} />}
         <ChevronRight size={13} />
       </button>
       <div className="git-panel-body">

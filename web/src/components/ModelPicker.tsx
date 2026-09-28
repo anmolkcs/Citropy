@@ -1,11 +1,10 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
-import { AnimatedText } from "./AnimatedText.tsx";
 import { useEffect, useState, type ReactNode, type Ref } from "react";
 import { ArrowRightLeft, Check, ChevronDown, LockKeyhole, Star } from "lucide-react";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { effectiveEffort, selectedModel } from "../../../shared/model-options.ts";
-import { toggleFavoriteModel, useApp } from "../lib/store.ts";
+import { toggleFavoriteModel, useApp, viewportWidth } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
 import { send } from "../lib/socket.ts";
@@ -56,6 +55,8 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const tunedEffort = tune && value ? effectiveEffort(model, tune.settings.effort) : undefined;
   const tuning = customTuning ?? (tune && (() => <ModelTuning key={`${choice?.provider}:${model?.id}`} settings={tune.settings} model={value ? model : undefined} onChange={tune.onChange} only={tune.only} />));
   const automatic = automaticLabel ?? (allowConversation ? t("Use the conversation model") : undefined);
+  const narrow = viewportWidth() <= 600;
+  const rails = Boolean(tuning) && !narrow;
   const name = !choice && automatic ? automatic : modelLabel(choiceModels, choice?.model);
   const favoritesView = browsing === "favorites";
   const catalogs = favoritesView ? available.filter((entry) => !locked || entry.id === locked) : catalog ? [catalog] : [];
@@ -106,16 +107,17 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   </button>;
   return <Menu
     width={340}
-    gutter={tuning ? 50 : 0}
+    gutter={rails ? 50 : 0}
     className="model-picker-menu"
     searchable
     onClose={() => { setTransferring(false); setTarget(undefined); }}
     footer={tuning && <div className="model-picker-footer" inert={transferring && !target}>{tuning(transferring ? target : undefined)}</div>}
     clearOf={menuClearOf}
+    sheet={narrow}
     emptyMessage={favoritesView ? t("Star models to find them here.") : undefined}
     controls={<>
       {onTransfer && transferring && <p className="model-picker-note" role="status">{t("Choose a model for a new agent in this chat. Reading the conversation again uses extra usage.")}</p>}
-      <div className="model-picker-toolbar sliding-selection" data-rail={tuning ? true : undefined}>
+      <div className="model-picker-toolbar sliding-selection" data-rail={rails || undefined}>
         <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} />
         {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · ${t("Provider locked")}`} title={`${catalog.label} · ${t("Provider locked")}`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>
           <ProviderIcon provider={catalog.id} /><LockKeyhole size={11} />
@@ -126,11 +128,11 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
           </button>)}
         </div>}
         <div className="model-picker-actions">
-          {!tuning && transferButton}
+          {!rails && transferButton}
           <button className="model-picker-favorites" type="button" aria-label={t("Favorite models")} title={t("Favorite models")} aria-pressed={favoritesView} onClick={() => setBrowsing(favoritesView ? choice?.provider : "favorites")}><Star size={17} fill={favoritesView ? "currentColor" : "none"} /></button>
         </div>
       </div>
-      {tuning && transferButton && <div className="model-picker-side-end">{transferButton}</div>}
+      {rails && transferButton && <div className="model-picker-side-end">{transferButton}</div>}
       {catalog?.modelsError && <p className="model-picker-note" role="status">{t("Models · refresh unavailable")}</p>}
     </>}
     items={[
@@ -163,7 +165,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       onClick={() => { if (!open) { setBrowsing(choice?.provider); setTransferring(false); setTarget(undefined); if (connected) send({ t: "providers.refresh" }); } toggle(); }}
     >
       {choice && <ProviderIcon provider={choice.provider} />}
-      <AnimatedText className="truncate" text={name} />
+      <span className="truncate">{name}</span>
       {detail ?? (tunedEffort && <span className="model-picker-effort">{effortLabel(tunedEffort)}</span>)}
       <ChevronDown size={12} />
     </button>}

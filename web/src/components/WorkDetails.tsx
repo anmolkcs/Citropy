@@ -62,15 +62,9 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
         <span id={`activity-count-${id}`} className="activity-count">
           {tools.length > 0 && <span className="reason-count">{tools.length} {t(tools.length === 1 ? "tool" : "tools")}</span>}
           {showFailedTools && stats.failed > 0 && <span className="group-failed"><AlertTriangle size={11} aria-hidden="true" />{t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}</span>}
-          <motion.span
-            className="activity-chevron"
-            aria-hidden="true"
-            initial={false}
-            animate={{ width: ids.length ? 12 : 0, opacity: ids.length ? 1 : 0, x: ids.length ? 0 : -6 }}
-            transition={{ duration: reducedMotion ? 0 : 0.24, ease: [0.2, 0, 0, 1] }}
-          >
+          {ids.length > 0 && <span className="activity-chevron" aria-hidden="true">
             <ChevronDown size={12} className="group-chevron" />
-          </motion.span>
+          </span>}
         </span>
         {!open && active && latest && Icon && <span className="activity-action" title={`${latest.name}: ${latest.headline}`}>
           <Icon size={13} aria-hidden="true" />

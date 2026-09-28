@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Folder, Globe2, Save } from "lucide-react";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
@@ -13,7 +13,8 @@ import { ModelPicker } from "./ModelPicker.tsx";
 
 export function ProjectSettings() {
   const t = useI18n();
-  const projects = useApp((state) => state.projects);
+  const allProjects = useApp((state) => state.projects);
+  const projects = useMemo(() => allProjects.filter((project) => !project.chat), [allProjects]);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const [selected, setSelected] = useState(activeProjectId ?? projects[0]?.id);
   const project = projects.find((entry) => entry.id === selected) ?? projects[0];

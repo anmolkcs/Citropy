@@ -1,7 +1,6 @@
 export const environmentsEs: Record<string, string> = {
   "Environments": "Entornos",
   "Load workspaces": "Cargar espacios de trabajo",
-  "Choose this computer or an SSH host for your workspaces.": "Elige este equipo o un servidor SSH para tus espacios de trabajo.",
   "Connect over SSH": "Conectar por SSH",
   "Connect over SSH…": "Conectar por SSH…",
   "Work with files, Git, providers, and shells on another machine.": "Trabaja con archivos, Git, proveedores y terminales en otro equipo.",

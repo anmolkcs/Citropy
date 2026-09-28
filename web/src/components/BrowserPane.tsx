@@ -3,9 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   RotateCw,
-  Globe2,
   ArrowUpRight,
-  Monitor,
   AlertCircle,
   Check,
   Link,
@@ -18,6 +16,20 @@ import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { copyText } from "../lib/copy-text.ts";
+
+function covers(overlay: Element, bounds: DOMRect): boolean {
+  if (overlay.matches('dialog:modal, [aria-modal="true"]')) return true;
+  const box = overlay.getBoundingClientRect();
+  return box.width > 0 && box.height > 0 && box.left < bounds.right && box.right > bounds.left && box.top < bounds.bottom && box.bottom > bounds.top;
+}
+
+function movingAncestor(element: Element): boolean {
+  return document.getAnimations().some((animation) => {
+    const target = (animation.effect as KeyframeEffect | null)?.target;
+    return animation.playState === "running" && target instanceof Element && target.contains(element);
+  });
+}
 
 export function BrowserPane({
   panel,
@@ -62,6 +74,12 @@ export function BrowserPane({
       }),
     [panel.id],
   );
+  const latest = useRef(state);
+  latest.current = state;
+  const reposition = useRef<() => void>(undefined);
+  useEffect(() => {
+    reposition.current?.();
+  }, [state?.url, state?.dialog]);
   useEffect(() => {
     const desktop = window.citropyDesktop;
     const element = screen.current;
@@ -76,11 +94,13 @@ export function BrowserPane({
     const overlays =
       'dialog[open], [role="menu"], [role="dialog"], [aria-modal="true"]';
     const update = () => {
+      const current = latest.current;
       const bounds = element.getBoundingClientRect();
-      const overlay = document.querySelector(overlays);
+      const overlay = [...document.querySelectorAll(overlays)].some((node) => covers(node, bounds));
       const visible =
-        !state.dialog &&
-        state.url !== "about:blank" &&
+        Boolean(current) &&
+        !current!.dialog &&
+        current!.url !== "about:blank" &&
         !overlay &&
         bounds.width > 0 &&
         bounds.height > 0;
@@ -101,9 +121,11 @@ export function BrowserPane({
       frame = requestAnimationFrame(() => {
         frame = 0;
         update();
+        if (movingAncestor(element)) schedule();
       });
     };
     update();
+    reposition.current = schedule;
     const resize = new ResizeObserver(schedule);
     resize.observe(element);
     const observer = new MutationObserver((records) => {
@@ -132,6 +154,7 @@ export function BrowserPane({
       observer.disconnect();
       window.removeEventListener("resize", schedule);
       cancelAnimationFrame(frame);
+      reposition.current = undefined;
       desktop.browserBounds(panel.id, null, false);
     };
   }, [
@@ -139,8 +162,6 @@ export function BrowserPane({
     connected,
     panel.id,
     Boolean(state),
-    state?.url,
-    state?.dialog,
     uiScale,
   ]);
 
@@ -214,7 +235,7 @@ export function BrowserPane({
               aria-label={t(copied ? "Copied" : "Copy link")}
               title={t(copied ? "Copied" : "Copy link")}
               onClick={() =>
-                void navigator.clipboard.writeText(state.url).then(() => {
+                void copyText(state.url).then(() => {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1500);
                 }, reportError)
@@ -280,7 +301,6 @@ export function BrowserPane({
       <div className="browser-screen" ref={screen} aria-label={t("Browser page")}>
         {!native ? (
           <div className="browser-start">
-            <Monitor size={34} />
             <h3>{t("Continue in Citropy desktop")}</h3>
             <p>{" "}{t("The desktop app runs the browser directly, with normal scrolling, typing, and tabs shared with your provider.")}{" "}</p>
             <button
@@ -293,7 +313,6 @@ export function BrowserPane({
           </div>
         ) : !state ? (
           <div className="browser-start">
-            <Globe2 size={34} />
             <h3>{t("Opening browser…")}</h3>
             <p>{t("Preparing a browser for this workspace.")}</p>
           </div>
@@ -312,8 +331,6 @@ export function BrowserPane({
             )}
             {state.url === "about:blank" && (
               <div className="browser-start">
-                <Globe2 size={34} />
-                <h3>{t("Browse alongside your work")}</h3>
                 <p>{t("Enter an address above, or ask your provider to open a page.")}</p>
               </div>
             )}

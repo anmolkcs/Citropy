@@ -8,6 +8,7 @@ import type { FilePatch } from "../../../shared/protocol.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { scaled } from "../lib/store.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
+import { LineCounts } from "./LineCounts.tsx";
 
 export type GitSelection =
   | { kind: "file"; path: string; staged: boolean }
@@ -130,10 +131,7 @@ export function GitReview({
                           <ChevronRight size={13} className="git-patch-chevron" />
                           <FileIcon path={patch.path} />
                           <span>{patch.path}</span>
-                          <span className="diff-stat">
-                            <span className="diff-plus">+{patch.added}</span>
-                            <span className="diff-minus">-{patch.removed}</span>
-                          </span>
+                          <LineCounts added={patch.added} removed={patch.removed} />
                       </button>
                       {open && (patch.hunks.length ? (
                         <DiffView key={patch.path} patch={patch} showHeader={false} limit={160} expanded={expanded.has(patch.path)} onExpand={() => setExpanded((previous) => new Set(previous).add(patch.path))} />

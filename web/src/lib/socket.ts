@@ -4,6 +4,7 @@ import { rejectResponses, resolveResponse, trackRequest } from "./requests.ts";
 import { ENVIRONMENT_KEYS, type EnvironmentSlice } from "./live-environments.ts";
 import type { EnvironmentState } from "../../../shared/environments.ts";
 import type { ClientEvent, ServerEvent } from "../../../shared/protocol.ts";
+import { randomId } from "./random-id.ts";
 
 type TermListener = (event: Extract<ServerEvent, { t: "term.data" } | { t: "term.exit" }>) => void;
 type PreparedConnection = { socket: WebSocket; events: ServerEvent[] };
@@ -381,4 +382,4 @@ export function waitUntilConnected(signal: AbortSignal): Promise<void> {
 
 if (import.meta.hot) import.meta.hot.dispose(() => { for (const connection of [...connections.values()]) close(connection); });
 
-export function requestId(): string { return `req_${crypto.randomUUID()}`; }
+export function requestId(): string { return `req_${randomId()}`; }

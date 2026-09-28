@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
+  AppWindow,
   Bell,
   BookOpen,
   FolderCog,
-  AppWindow,
   Globe,
   MousePointerClick,
   Palette,
@@ -13,12 +13,12 @@ import {
   Server,
   SlidersHorizontal,
   Workflow,
+  type LucideIcon,
 } from "lucide-react";
 import { isRemote, useEnvironments } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
 import { useApp, viewportWidth } from "../lib/store.ts";
-import { AnimatedText } from "./AnimatedText.tsx";
 import { AppearanceSettings } from "./AppearanceSettings.tsx";
 import { ApplicationSettings } from "./ApplicationSettings.tsx";
 import { AssistanceSettings } from "./AssistanceSettings.tsx";
@@ -35,19 +35,19 @@ import { SkillsSettings } from "./SkillsSettings.tsx";
 
 const GROUPS = ["Preferences", "Workspaces", "Agents", "Tools", "System"] as const;
 
-const sections: { name: string; group: typeof GROUPS[number]; icon: typeof Activity; description: string }[] = [
-  { name: "General", group: "Preferences", icon: SlidersHorizontal, description: "Set up your conversation workspace." },
-  { name: "Appearance", group: "Preferences", icon: Palette, description: "Choose how Citropy looks." },
-  { name: "Notifications", group: "Preferences", icon: Bell, description: "Choose how Citropy lets you know when work is done." },
-  { name: "Projects", group: "Workspaces", icon: FolderCog, description: "Manage global defaults and folder overrides." },
-  { name: "Environments", group: "Workspaces", icon: Server, description: "Choose this computer or an SSH host for your workspaces." },
-  { name: "Providers", group: "Agents", icon: Workflow, description: "Choose which providers you use in Citropy." },
-  { name: "AI assistance", group: "Agents", icon: PencilLine, description: "Choose models for conversation titles and commit messages." },
-  { name: "Skills", group: "Agents", icon: BookOpen, description: "Browse and manage the skills available to your providers." },
-  { name: "Browser", group: "Tools", icon: Globe, description: "Manage browser profiles, saved logins, and site data." },
-  { name: "Computer use", group: "Tools", icon: MousePointerClick, description: "Share screens and control native desktop applications." },
-  { name: "Resources", group: "System", icon: Activity, description: "Inspect memory, processor use, running processes, and saved logs." },
-  { name: "Application", group: "System", icon: AppWindow, description: "Manage the desktop app and updates." },
+const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon }[] = [
+  { name: "General", group: "Preferences", icon: SlidersHorizontal },
+  { name: "Appearance", group: "Preferences", icon: Palette },
+  { name: "Notifications", group: "Preferences", icon: Bell },
+  { name: "Projects", group: "Workspaces", icon: FolderCog },
+  { name: "Environments", group: "Workspaces", icon: Server },
+  { name: "Providers", group: "Agents", icon: Workflow },
+  { name: "AI assistance", group: "Agents", icon: PencilLine },
+  { name: "Skills", group: "Agents", icon: BookOpen },
+  { name: "Browser", group: "Tools", icon: Globe },
+  { name: "Computer use", group: "Tools", icon: MousePointerClick },
+  { name: "Resources", group: "System", icon: Activity },
+  { name: "Application", group: "System", icon: AppWindow },
 ];
 
 export function Settings({
@@ -68,10 +68,6 @@ export function Settings({
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
   const connected = useApp((state) => state.connected);
-
-  const selectedSection =
-    sections.find((entry) => entry.name === section) ?? sections[0]!;
-  const SectionIcon = selectedSection.icon;
 
   return (
     <section className="section-view" aria-label={t("Settings")}>
@@ -109,10 +105,8 @@ export function Settings({
                   className="settings-title"
                   data-settings-section={section.toLowerCase()}
                 >
-                  <span className="settings-title-icon" aria-hidden="true"><SectionIcon size={19} /></span>
-                  <AnimatedText text={t(section)} />
+                  {t(section)}
                 </h1>
-                <p><AnimatedText text={t(selectedSection.description)} /></p>
               </div>
               {section === "Providers" && (
                 <button

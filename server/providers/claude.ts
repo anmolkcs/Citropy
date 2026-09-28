@@ -6,7 +6,7 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { onJson, onLines } from "../lines.ts";
-import { permissionToolName } from "../permissions.ts";
+import { ANSWER_WAIT_MS, permissionToolName } from "../permissions.ts";
 import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
@@ -75,6 +75,10 @@ function contentOf(content: unknown): { text: string; images: Array<{ mime: stri
 
 class ClaudeSession implements AgentSession {
   #child: ChildProcessWithoutNullStreams;
+
+  get pid(): number | undefined {
+    return this.#child.pid;
+  }
   #emit: (event: AgentEvent) => void;
   #turn = 0;
   #disposed = false;
@@ -124,11 +128,12 @@ class ClaudeSession implements AgentSession {
       "--mcp-config",
       JSON.stringify({
         mcpServers: {
-          ...(options.mcp ? { citropy: { type: "http", ...options.mcp } } : {}),
+          ...(options.mcp ? { citropy: { type: "http", ...options.mcp, timeout: ANSWER_WAIT_MS + 60_000, request_timeout_ms: ANSWER_WAIT_MS + 60_000 } } : {}),
         },
       }),
     ];
     if (options.mcp) args.push("--permission-prompt-tool", permissionToolName, "--allowedTools", "mcp__citropy__ask_user");
+    if (options.chat) args.push("--tools", "Read,Glob,Grep,WebSearch,WebFetch", "--strict-mcp-config");
     if (options.effort) args.push("--effort", options.effort);
     if (options.model)
       args.push(

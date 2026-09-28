@@ -19,7 +19,7 @@ function fixture(t) {
   return { activity, attached: () => children.has(view), active: () => active, destroy: () => { destroyed = true; } };
 }
 
-test("idle browsers detach after tool grace and return without losing their contents", async t => {
+test("idle browsers detach after tool grace and stay active while presented", async t => {
   const { activity, attached, active } = fixture(t);
   assert.equal(attached(), false);
   await activity.run(async () => {
@@ -33,10 +33,13 @@ test("idle browsers detach after tool grace and return without losing their cont
   assert.equal(attached(), false);
   assert.equal(active(), false);
   activity.present(true);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(attached(), true);
-  assert.equal(active(), false);
+  assert.equal(active(), true);
   activity.present(false);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(attached(), false);
+  assert.equal(active(), false);
   await activity.run(async () => assert.equal(attached(), true));
 });
 
@@ -52,6 +55,16 @@ test("overlapping and long browser tools stay active until the final operation s
   await pending;
   t.mock.timers.tick(30_000);
   assert.equal(attached(), false);
+});
+
+test("a presented browser stays active after tools go idle", async t => {
+  const { activity, attached, active } = fixture(t);
+  activity.present(true);
+  await activity.run(async () => {});
+  t.mock.timers.tick(30_000);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attached(), true);
+  assert.equal(active(), true);
 });
 
 test("closed browsers cannot be revived by pending tools or idle timers", async t => {

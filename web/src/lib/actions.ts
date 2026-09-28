@@ -26,6 +26,7 @@ import type {
 } from "../../../shared/protocol.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
 import { movePanelTab } from "../../../shared/workbench.ts";
+import { randomId } from "./random-id.ts";
 
 export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
   const desktop = window.citropyDesktop ?? window.loomDesktop;
@@ -69,7 +70,7 @@ export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
     selectPanel(existing.id);
     return;
   }
-  const id = crypto.randomUUID();
+  const id = randomId();
   useApp.setState({
     inspectorOpen: true,
     activePanels: { ...state.activePanels, [state.activeProjectId]: id },
@@ -100,7 +101,7 @@ export function openEditorTerminal(filesId: string, create = false): void {
         panel.projectId === files.projectId &&
         (panel.threadId ?? null) === state.activeThreadId,
       );
-  const id = existing?.id ?? (create ? undefined : previous) ?? crypto.randomUUID();
+  const id = existing?.id ?? (create ? undefined : previous) ?? randomId();
   setEditorTerminal(filesId, id);
   if (!existing)
     send({

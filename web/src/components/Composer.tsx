@@ -64,6 +64,7 @@ export function Composer({
   );
   const connected = useApp((state) => state.connected);
   const providers = useApp((state) => state.providers);
+  const chat = useApp((state) => Boolean(thread && state.projects.some((project) => project.id === thread.projectId && project.chat)));
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
   const gitThread = useApp((state) => {
     let selected = thread;
@@ -159,6 +160,7 @@ export function Composer({
     onSkills,
     modelButton,
     permissionButton,
+    chat,
   });
 
   const started = hasMessages || (!loaded && Boolean(thread && (thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length)));
@@ -185,9 +187,9 @@ export function Composer({
     <UsageLimitTab threadId={thread.id} />
     <PlanTab threadId={thread.id} />
     <QueueList thread={thread} provider={provider} onEdit={restore} />
-    {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
+    {gitThread && !chat && <GitActions key={gitThread.id} thread={gitThread} />}
     <RunningShells onOpen={onShell} />
-  </>, [thread, provider, restore, gitThread, onShell]);
+  </>, [thread, provider, restore, gitThread, onShell, chat]);
   const settingsBar = useMemo(() => thread && <>
     <ModelPicker
       value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
@@ -213,12 +215,12 @@ export function Composer({
         ...provider.instances.map(entry => ({ value: entry.id, label: entry.name, disabled: !entry.available })),
       ]} /> : null}
 
-    <PermissionMenu
+    {!chat && <PermissionMenu
       thread={configuredThread!}
       disabled={!connected || sending || transferring}
       buttonRef={permissionButton}
-    />
-  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal, t]);
+    />}
+  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal, chat, t]);
 
   const submit = async () => {
     const text = value.trim();

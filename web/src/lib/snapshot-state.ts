@@ -1,6 +1,6 @@
 import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { ServerEvent } from "../../../shared/protocol.ts";
-import type { AppState } from "./app-state.ts";
+import { modeProjects, type AppState } from "./app-state.ts";
 import { restoreSnapshotNotifications } from "./notification-state.ts";
 
 type Snapshot = Extract<ServerEvent, { t: "hello" }>["snapshot"];
@@ -76,11 +76,12 @@ function restoreWorkspace(state: AppState, focused: boolean): void {
       state.projects.some((project) => project.id === id),
     ),
   );
+  const projects = modeProjects(state);
   if (
     !state.activeProjectId ||
-    !state.projects.some((p) => p.id === state.activeProjectId)
+    !projects.some((p) => p.id === state.activeProjectId)
   ) {
-    state.activeProjectId = state.projects[0]?.id ?? null;
+    state.activeProjectId = projects[0]?.id ?? null;
   }
   if (state.activeThreadId && !state.threads[state.activeThreadId])
     state.activeThreadId = null;

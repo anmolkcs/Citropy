@@ -143,17 +143,8 @@ export function GitHub({
       <div className="github-main">
         <header className="github-heading">
           <div className="github-heading-copy">
-            <span className="github-eyebrow">GITHUB</span>
             <h1>{global ? section : repo || section}</h1>
-            <p>
-              {global
-                ? section === "Repositories"
-                  ? t("Your repositories and the projects you contribute to.")
-                  : section === "Notifications"
-                    ? t("Updates that need your attention across GitHub.")
-                    : t("Your GitHub connection on this computer.")
-                : repository.data?.description || section}
-            </p>
+            {!global && repository.data?.description && <p>{repository.data.description}</p>}
           </div>
           {!global && repository.data && (
             <div className="github-repo-actions">

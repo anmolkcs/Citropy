@@ -4,9 +4,9 @@
 .workbench-heading {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   min-width: 0;
-  padding: 8px;
+  padding: var(--space-8);
   color: var(--text-3);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -46,7 +46,7 @@
   --selection-fill: var(--raised);
   display: flex;
   align-items: stretch;
-  gap: 4px;
+  gap: var(--space-4);
   flex: 1;
   min-height: 32px;
   padding: 0;
@@ -58,7 +58,7 @@
   flex: 0 1 160px;
   min-width: 48px;
   max-width: 205px;
-  padding: 0 3px;
+  padding: 0 var(--space-4);
   container: workspace-tab / inline-size;
   color: var(--text-3);
   border-radius: var(--r-sm);
@@ -96,11 +96,11 @@
 .workbench-tab > [role="tab"] {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   flex: 1;
   min-width: 0;
   height: 32px;
-  padding: 0 4px;
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
 }
 .workbench-tab svg {
@@ -156,21 +156,15 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  gap: 12px;
-  padding: 32px;
+  gap: var(--space-12);
+  padding: var(--space-32);
   text-align: center;
   color: var(--text-3);
 }
-.workbench-empty > svg,
-.browser-start > svg {
-  color: var(--text-4);
-  margin-bottom: 6px;
-}
-.workbench-empty h3,
 .browser-start h3 {
   margin: 0;
   color: var(--text-2);
-  font-size: 16px;
+  font-size: var(--text-lg);
   font-weight: 500;
 }
 .workbench-empty p,
@@ -191,8 +185,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 9px 8px;
+  gap: var(--space-4);
+  padding: var(--space-10) var(--space-8);
   background: var(--panel);
 }
 .browser-navigation {
@@ -220,7 +214,7 @@
 .browser-address input {
   width: 100%;
   min-width: 0;
-  padding: 5px 8px;
+  padding: var(--space-6) var(--space-8);
   background: transparent;
   color: var(--text);
   outline: none;
@@ -259,7 +253,7 @@
   box-shadow: 0 0 0 1px var(--line-strong);
 }
 .browser-frame > .browser-start {
-  padding: 16px;
+  padding: var(--space-16);
 }
 .browser-cover {
   display: block;
@@ -271,16 +265,17 @@
 .browser-footer {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 7px 12px;
+  gap: var(--space-12);
+  white-space: nowrap;
+  padding: var(--space-8) var(--space-12);
   color: var(--text-4);
   font-size: var(--text-xs);
   background: var(--panel);
 }
 .browser-footer > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .browser-viewport {
   background: var(--panel);
@@ -289,17 +284,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
-  padding: 4px 8px;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
 }
 .browser-viewport-trigger {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-8);
   min-height: 28px;
-  padding: 4px 6px;
+  padding: var(--space-4) var(--space-6);
   border-radius: var(--r-sm);
   font-size: var(--text-xs);
+  white-space: nowrap;
 }
 .browser-viewport-trigger:hover:not(:disabled),
 .browser-viewport-trigger[aria-expanded="true"] {
@@ -311,18 +308,18 @@
 }
 .browser-viewport-custom {
   display: grid;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
   font-size: var(--text-xs);
 }
 .browser-viewport-fields {
   display: flex;
   align-items: end;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .browser-viewport-fields label {
   display: grid;
-  gap: 5px;
+  gap: var(--space-6);
   flex: 1;
   min-width: 0;
   color: var(--text-3);
@@ -331,7 +328,7 @@
   min-width: 0;
   width: 100%;
   height: 32px;
-  padding: 6px 8px;
+  padding: var(--space-6) var(--space-8);
   border: 0;
   border-radius: var(--r-sm);
   background: var(--raised);
@@ -345,9 +342,9 @@
 .browser-mode {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   margin-left: auto;
-  padding: 0 6px;
+  padding: 0 var(--space-6);
   font-size: var(--text-xs);
   color: var(--text-2);
   white-space: nowrap;
@@ -355,13 +352,13 @@
 .browser-viewport-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .browser-notice {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  padding: 9px 12px;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-12);
   background: var(--raised);
   font-size: var(--text-xs);
   color: var(--text-2);
@@ -371,7 +368,7 @@
   flex: none;
 }
 .browser-dialog {
-  padding: 16px;
+  padding: var(--space-16);
   font-size: var(--text-sm);
   background: var(--raised);
 }
@@ -381,8 +378,8 @@
 .browser-dialog > div {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
 }
 .browser-dialog input {
   width: 100%;
@@ -392,7 +389,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  padding: 8px 4px 4px 10px;
+  padding: var(--space-8) var(--space-4) var(--space-4) var(--space-10);
   background: var(--code-bg);
 }
 .terminal-pane .term {
@@ -403,13 +400,13 @@
 .subagents-pane,
 .tools-pane {
   height: 100%;
-  padding: 20px 16px;
+  padding: var(--space-20) var(--space-16);
 }
 .panel-section-heading {
   display: flex;
   align-items: center;
-  gap: 11px;
-  margin-bottom: 18px;
+  gap: var(--space-12);
+  margin-bottom: var(--space-20);
 }
 .panel-section-heading > svg {
   flex: none;
@@ -420,27 +417,27 @@
   font-weight: 500;
 }
 .panel-section-heading p {
-  margin: 3px 0 0;
+  margin: var(--space-4) 0 0;
   color: var(--text-4);
   font-size: var(--text-xs);
 }
 .panel-quiet-empty {
-  padding: 24px 0;
+  padding: var(--space-24) 0;
   color: var(--text-3);
   font-size: var(--text-sm);
   line-height: 1.7;
 }
 .panel-quiet-empty p {
   color: var(--text-2);
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-6);
 }
 .subagent-item {
-  padding: 14px 0;
+  padding: var(--space-16) 0;
 }
 .subagent-item-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   font-size: var(--text-sm);
 }
 .subagent-item-head strong {
@@ -452,14 +449,14 @@
 .subagent-item p {
   color: var(--text-4);
   font-size: var(--text-xs);
-  margin: 6px 0 12px 25px;
+  margin: var(--space-6) 0 var(--space-12) var(--space-24);
 }
 .subagent-item-footer,
 .subagent-item-footer > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .subagent-item-footer > span {
   color: var(--text-3);
@@ -472,7 +469,7 @@
 .tools-status {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-4);
   margin-left: auto;
   font-size: var(--text-xs);
   color: var(--text-3);
@@ -488,11 +485,11 @@
 .tools-search {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-10);
   border: 0;
   border-radius: var(--r-sm);
-  margin: 18px 0;
+  margin: var(--space-20) 0;
   color: var(--text-4);
   background: var(--raised);
 }
@@ -504,7 +501,7 @@
   font-size: var(--text-xs);
 }
 .tool-definition {
-  padding: 12px 0;
+  padding: var(--space-12) 0;
 }
 .tool-definition summary {
   cursor: default;
@@ -520,18 +517,18 @@
   font-size: var(--text-xs);
   line-height: 1.6;
   color: var(--text-3);
-  margin: 12px 0 0;
+  margin: var(--space-12) 0 0;
 }
 .thread-children-list {
-  margin: 2px 8px 12px 15px;
-  padding-left: 7px;
+  margin: var(--space-2) var(--space-8) var(--space-12) var(--space-16);
+  padding-left: var(--space-8);
 }
 .thread-child {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   width: 100%;
-  padding: 8px 6px;
+  padding: var(--space-8) var(--space-6);
   text-align: left;
   font-size: var(--text-xs);
   color: var(--text-3);
@@ -581,8 +578,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
+  gap: var(--space-12);
+  padding: var(--space-10) 0;
   font-size: var(--text-xs);
   color: var(--text-3);
 }
@@ -595,15 +592,15 @@
   color: var(--ok);
 }
 .subagent-history {
-  margin-top: 20px;
-  padding-top: 12px;
+  margin-top: var(--space-20);
+  padding-top: var(--space-12);
 }
 .subagent-history-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   width: 100%;
-  padding: 8px 0 14px;
+  padding: var(--space-8) 0 var(--space-16);
   font-size: var(--text-sm);
   color: var(--text-3);
 }
@@ -612,7 +609,7 @@
   text-align: left;
 }
 .thread-children .thread-children-list {
-  margin: 0 0 0 8px;
+  margin: 0 0 0 var(--space-8);
 }
 .shell-body .sliding-panel[data-side="right"]:has(> .inspector[data-expanded="true"]) {
   position: absolute;
@@ -647,7 +644,7 @@
 .panel-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
 }
 .attach-to-chat {
   margin-left: auto;
@@ -663,13 +660,13 @@
 }
 .panel-segmented {
   display: inline-flex;
-  gap: 2px;
-  padding: 3px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   border-radius: var(--r-md);
   background: var(--canvas-deep);
 }
 .panel-segmented button {
-  padding: 4px 11px;
+  padding: var(--space-4) var(--space-12);
   border-radius: var(--r-sm);
   color: var(--text-3);
   font-size: var(--text-xs);
@@ -682,7 +679,7 @@
 }
 .panel-starter {
   height: 100%;
-  padding: 10px 2px 16px;
+  padding: var(--space-10) var(--space-2) var(--space-16);
 }
 .panel-starter-heading h3 {
   margin: 0;
@@ -691,7 +688,7 @@
 }
 .panel-starter-heading p {
   max-width: 44ch;
-  margin: 6px 0 0;
+  margin: var(--space-6) 0 0;
   color: var(--text-3);
   font-size: var(--text-sm);
   line-height: 1.55;
@@ -699,14 +696,14 @@
 .panel-starter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
-  margin-top: 18px;
+  gap: var(--space-8);
+  margin-top: var(--space-20);
 }
 .panel-starter-card {
   display: grid;
   align-content: start;
-  gap: 3px;
-  padding: 12px;
+  gap: var(--space-4);
+  padding: var(--space-12);
   border-radius: var(--r-lg);
   background: var(--raised);
   text-align: left;

@@ -94,8 +94,9 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
         onPointerDown={onDragStart} onClick={event => { if (!consumeDrag(event)) group.toggle(); }}
       >
-        {pending || connecting ? <PixelLoader size={16} /> : <Icon size={16} strokeWidth={1.75} />}
+        {pending || connecting ? <PixelLoader size={16} /> : group.icon !== Folder && <Icon size={16} strokeWidth={1.75} />}
         <span className="truncate">{group.label}</span>
+        <ChevronRight size={12} className="global-project-chevron" />
         {activity && <span className="thread-status" data-status={activity.status} role="img" aria-label={t(activity.label)} title={t(activity.label)}>
           <ThreadPulse status={activity.status} />
         </span>}

@@ -65,6 +65,7 @@ export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutra
 export const SCHEMES = ["dark", "light"] as const;
 export type Scheme = typeof SCHEMES[number];
 export type SidebarMode = "workspaces" | "global";
+export type AppMode = "code" | "chat";
 export type NavigationStyle = "strip" | "bar";
 export const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
 export type StageBackground = typeof STAGE_BACKGROUNDS[number];
@@ -132,6 +133,8 @@ export interface AppState {
   gitPanelOpen: boolean;
   sidebarOpen: boolean;
   sidebarMode: SidebarMode;
+  appMode: AppMode;
+  otherModeSelection: { projectId: string | null; threadId: string | null } | null;
   navigationStyle: NavigationStyle;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
@@ -154,6 +157,10 @@ export interface AppState {
   uiSounds: boolean;
   uiAlertSounds: boolean;
   uiSoundVolume: number;
+}
+
+export function modeProjects(state: Pick<AppState, "projects" | "appMode">): Project[] {
+  return state.projects.filter((project) => Boolean(project.chat) === (state.appMode === "chat"));
 }
 
 function oneOf<T extends string>(options: readonly T[], value: string, fallback: T): T {
@@ -179,11 +186,12 @@ function readFlag(key: string, fallback: boolean): boolean {
   return value === null ? fallback : value === "1";
 }
 
-const storedScale = Number(readPref("citropy.uiScale", "100"));
+export const DEFAULT_UI_SCALE = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches ? 100 : 90;
+const storedScale = Number(readPref("citropy.uiScale", String(DEFAULT_UI_SCALE)));
 const initialScale =
   Number.isFinite(storedScale) && storedScale >= 75 && storedScale <= 150
     ? storedScale
-    : 100;
+    : DEFAULT_UI_SCALE;
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 const storedDim = Number(readPref("citropy.backgroundDim", "68"));
@@ -311,7 +319,9 @@ export const useApp = create<AppState>(() => ({
       window.innerWidth / (initialScale / 100) > 720,
   ),
   sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "global") === "workspaces" ? "workspaces" : "global",
-  navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "strip") === "bar" ? "bar" : "strip",
+  appMode: readPref<AppMode>("citropy.appMode", "code") === "chat" ? "chat" : "code",
+  otherModeSelection: null,
+  navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "bar") === "strip" ? "strip" : "bar",
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,

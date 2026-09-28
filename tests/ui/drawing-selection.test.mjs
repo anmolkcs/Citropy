@@ -20,7 +20,7 @@ async function openDrawing(t, saved) {
   page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await browser.close(); await server.close(); assert.deepEqual(errors, []); });
   const seed = saved ? `localStorage.setItem(${JSON.stringify(KEY)}, ${JSON.stringify(JSON.stringify(saved))});` : `localStorage.removeItem(${JSON.stringify(KEY)});`;
-  const html = await server.transformIndexHtml("/drawing-fixture.html", `<!doctype html><html><body style="margin:0"><div id="fixture" style="height:100vh"></div><script type="module">
+  const html = await server.transformIndexHtml("/drawing-fixture.html", `<!doctype html><html><body style="margin:0"><div id="fixture" style="height:100vh"></div><script>localStorage.setItem("citropy.uiScale", "100");</script><script type="module">
     import React from 'react';
     import { createRoot } from 'react-dom/client';
     import { DrawingPane } from '/web/src/components/drawing/DrawingPane.tsx';

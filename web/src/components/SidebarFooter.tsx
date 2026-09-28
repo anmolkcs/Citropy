@@ -1,13 +1,12 @@
 import { useI18n } from "../lib/i18n.ts";
-import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { useRef, useState, type CSSProperties } from "react";
 import { GitBranch, Github, Settings, BarChart3 } from "lucide-react";
 
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
+import { AgentsPanel } from "./AgentsPanel.tsx";
+import { LocalSharing } from "./LocalSharing.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
-
-const FADE_MS = 90;
-const RESIZE_MS = 200;
+import { useApp } from "../lib/store.ts";
 
 export function SidebarFooter({
   onGit,
@@ -26,31 +25,19 @@ export function SidebarFooter({
   const [compact, setCompact] = useState(
     () => localStorage.getItem("citropy.compactNavigation") !== "0",
   );
-  const [fading, setFading] = useState(false);
-  const target = useRef(compact);
-  const timers = useRef<number[]>([]);
   const drag = useRef<number | undefined>(undefined);
   const moved = useRef(false);
-  const reducedMotion = useReducedMotion();
   const usagePeek = useUsagePeek("top");
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const chat = useApp((state) => state.appMode === "chat");
   const change = (value: boolean) => {
-    target.current = value;
+    setCompact(value);
     localStorage.setItem("citropy.compactNavigation", value ? "1" : "0");
-    if (reducedMotion) {
-      setCompact(value);
-      return;
-    }
-    timers.current.forEach(clearTimeout);
-    setFading(true);
-    timers.current = [
-      window.setTimeout(() => setCompact(value), FADE_MS),
-      window.setTimeout(() => setFading(false), FADE_MS + RESIZE_MS),
-    ];
   };
   const actions = [
-    { name: "Source control", icon: GitBranch, run: onGit, tone: "git" },
-    { name: "GitHub", icon: Github, run: onGitHub, tone: "github" },
+    ...(chat ? [] : [
+      { name: "Source control", icon: GitBranch, run: onGit, tone: "git" },
+      { name: "GitHub", icon: Github, run: onGitHub, tone: "github" },
+    ]),
     { name: "Usage", icon: BarChart3, run: onUsage, tone: "usage" },
     { name: "Settings", icon: Settings, run: onSettings, tone: "settings" },
   ];
@@ -72,7 +59,7 @@ export function SidebarFooter({
           const distance = event.clientY - drag.current;
           if (Math.abs(distance) >= 20) {
             moved.current = true;
-            if (target.current !== distance > 0) change(distance > 0);
+            if (compact !== distance > 0) change(distance > 0);
           }
         }}
         onPointerUp={() => {
@@ -83,11 +70,11 @@ export function SidebarFooter({
           moved.current = true;
         }}
         onClick={() => {
-          if (!moved.current) change(!target.current);
+          if (!moved.current) change(!compact);
           moved.current = false;
         }}
       />
-      <nav className="navigation-actions" data-fading={fading || undefined} aria-label={t("Workspace navigation")}>
+      <nav className="navigation-actions" style={{ "--actions": actions.length } as CSSProperties} aria-label={t("Workspace navigation")}>
         {actions.map(({ name, icon: Icon, run, tone }) => (
           <button
             type="button"
@@ -106,6 +93,8 @@ export function SidebarFooter({
           </button>
         ))}
         <span className="navigation-update-divider" aria-hidden="true" />
+        <LocalSharing variant="rail" />
+        <AgentsPanel variant="rail" />
         <AppUpdateControl />
       </nav>
       {usagePeek.card}

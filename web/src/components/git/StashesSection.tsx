@@ -78,7 +78,6 @@ export function StashesSection({
       </header>
       {!data.hasCommits ? (
         <EmptyState
-          icon={Archive}
             title={t("Make a first commit to use stashes")}
           action={reviewChanges}
         >
@@ -86,7 +85,6 @@ export function StashesSection({
         </EmptyState>
       ) : !data.stashes.length ? (
         <EmptyState
-          icon={Archive}
           title={t("No work set aside")}
           action={
             files.length ? (
@@ -190,7 +188,7 @@ export function StashesSection({
                 />
               </>
             ) : (
-              <EmptyState icon={Archive} title={t("Review saved work")}>
+              <EmptyState title={t("Review saved work")}>
                 <p>{" "}{t("Select a stash to inspect its file changes before applying it.")}{" "}</p>
               </EmptyState>
             )}

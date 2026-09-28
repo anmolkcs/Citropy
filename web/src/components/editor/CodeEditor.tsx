@@ -188,7 +188,7 @@ export function CodeEditor({
           onClick={() => instance.current?.trigger("toolbar", "editor.action.marker.nextInFiles", null)}
           title={t("Go to next problem")}
         >
-          {t("{count} problems", { count: problems })}
+          {t(problems === 1 ? "{count} problem" : "{count} problems", { count: problems })}
         </button>
       )}
       {menu && instance.current && (

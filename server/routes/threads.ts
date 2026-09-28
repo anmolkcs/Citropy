@@ -156,6 +156,8 @@ export const threadRoutes: Routes = {
   "thread.config": async (event, send) => {
     const thread = store.threads.get(event.id);
     if (!thread) throw new Error("Conversation not found");
+    if (store.projects.get(thread.projectId)?.chat && event.permissionMode && event.permissionMode !== "manual")
+      throw new Error("Chat always asks before acting.");
     const selection = nextTurnSettings(thread);
     const { changedProvider, changedInstance, instanceId, settings } = resolveConfig(thread, event);
     const changedModel = changedProvider || changedInstance || settings.model !== thread.model;

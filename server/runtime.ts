@@ -71,6 +71,7 @@ export class ThreadRuntime {
   #autoTitle: string | undefined;
   #providerTitled = false;
   #transcript: ThreadTranscript;
+  #sessionStarted = 0;
 
   constructor(thread: Thread) {
     this.#thread = thread;
@@ -92,6 +93,10 @@ export class ThreadRuntime {
       shell.threadId === this.id && !shell.panelId &&
       (shell.status === "running" || shell.status === "stopping"),
     );
+  }
+
+  get session(): { started: number; pid?: number } | undefined {
+    return this.#session ? { started: this.#sessionStarted, pid: this.#session.pid } : undefined;
   }
 
   get turnActive(): boolean {
@@ -516,6 +521,7 @@ export class ThreadRuntime {
     if (!project) throw new Error(`thread ${this.#thread.id} has no project`);
     if (models.length) store.patchThread(this.#thread.id, modelSettings(models, this.#thread));
     const generation = ++this.#sessionGeneration;
+    this.#sessionStarted = Date.now();
     this.#session = provider.start({
       binary: instance?.binary,
       environment: instance?.environment,
@@ -528,6 +534,7 @@ export class ThreadRuntime {
       fastMode: this.#thread.fastMode,
       fastModeTier: models.find((model) => model.id === this.#thread.model)?.fastModeTier,
       permissionMode: this.#thread.permissionMode,
+      chat: project.chat,
       externalId: this.#thread.externalId,
       usage: { ...this.#thread.usage },
       emit: (event) => {
@@ -897,6 +904,59 @@ export function closeIdleSessions(now = Date.now()): void {
     runtime.dispose(true);
     runtimes.delete(id);
   }
+}
+
+export interface LiveAgent {
+  threadId: string;
+  parentThreadId?: string;
+  title: string;
+  projectId: string;
+  projectName: string;
+  provider: string;
+  model?: string;
+  status: "working" | "waiting" | "idle";
+  started: number;
+  lastActive: number;
+  pid?: number;
+}
+
+function childrenBusy(threadId: string): boolean {
+  return [...store.threads.values()].some((child) => child.parentThreadId === threadId && (child.running || child.status === "awaiting" || runtimes.get(child.id)?.busy));
+}
+
+export function liveAgents(): LiveAgent[] {
+  const agents: LiveAgent[] = [];
+  for (const [id, runtime] of runtimes) {
+    const session = runtime.session;
+    const thread = store.threads.get(id);
+    if (!session || !thread) continue;
+    const busy = runtime.busy || childrenBusy(id);
+    agents.push({
+      threadId: id,
+      ...(thread.parentThreadId ? { parentThreadId: thread.parentThreadId } : {}),
+      title: thread.title,
+      projectId: thread.projectId,
+      projectName: store.projects.get(thread.projectId)?.name ?? "",
+      provider: thread.provider,
+      ...(thread.model ? { model: thread.model } : {}),
+      status: thread.status === "awaiting" ? "waiting" : busy ? "working" : "idle",
+      started: session.started,
+      lastActive: thread.updatedAt,
+      ...(session.pid ? { pid: session.pid } : {}),
+    });
+  }
+  return agents.sort((a, b) => b.lastActive - a.lastActive);
+}
+
+export function turnOffAgent(threadId: string): void {
+  if (!runtimes.get(threadId)?.session) throw new Error("That agent is no longer running.");
+  disposeRuntime(threadId);
+}
+
+export function turnOffIdleAgents(): number {
+  const idle = liveAgents().filter((agent) => agent.status === "idle").map((agent) => agent.threadId);
+  for (const threadId of idle) disposeRuntime(threadId);
+  return idle.length;
 }
 
 export function reloadProviderSessions(providerIds: Set<string>): void {

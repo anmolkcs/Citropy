@@ -1,6 +1,5 @@
 import { flushSync } from "react-dom";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
-import { AnimatedText } from "./AnimatedText.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -242,7 +241,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                     <Icon size={14} className={`panel-icon-${panel.kind}`} />
                     {unseenPanels[panel.id] && <span className="unseen-dot" aria-label={t("New activity")} />}
                   </span>
-                  <AnimatedText className="truncate" text={title} />
+                  <span className="truncate">{title}</span>
                 </button>
                 <button
                   type="button"
@@ -378,8 +377,6 @@ export function Inspector({ visible }: { visible: boolean }) {
         })}
         {tabs.length === 0 && (
           <div className="workbench-empty">
-            <Files size={28} />
-            <h3>{t("Room for your work")}</h3>
             <p>{t("Open files, a terminal, or a browser alongside the conversation.")}</p>
             <button
               type="button"

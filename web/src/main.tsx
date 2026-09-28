@@ -23,6 +23,7 @@ import "./styles/environments.css";
 import { initializeEnvironment } from "./lib/environment.ts";
 import { applyReleaseDefaults } from "./lib/release-defaults.ts";
 import { applyCustomColor } from "./lib/custom-theme.ts";
+import { followVisualViewport } from "./lib/visual-viewport.ts";
 
 async function start() {
   if (/Mac|iPhone|iPad/.test(navigator.platform)) {
@@ -34,6 +35,7 @@ async function start() {
       "--font-mono", 'Consolas, "Courier New", monospace',
     );
   }
+  followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
   const [{ App }, { connect, logClientError }, { useApp }, { loadSpanish }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/translations.ts")]);

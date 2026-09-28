@@ -41,9 +41,10 @@ export type BrowserAction =
   | { action: "navigate"; url: string }
   | { action: "back" | "forward" | "reload" | "stop" | "snapshot" }
   | {
-      action: "click";
+      action: "click" | "hover";
       x?: number;
       y?: number;
+      ref?: string;
       selector?: string;
       role?: string;
       name?: string;
@@ -51,12 +52,19 @@ export type BrowserAction =
   | {
       action: "type";
       text: string;
+      ref?: string;
       selector?: string;
       role?: string;
       name?: string;
     }
+  | { action: "wait"; selector?: string; text?: string; timeout?: number }
+  | { action: "upload"; paths: string[]; ref?: string; selector?: string; role?: string; name?: string }
+  | { action: "select"; option: string; ref?: string; selector?: string; role?: string; name?: string }
+  | { action: "emulate"; colorScheme?: "light" | "dark" | "none"; reducedMotion?: "reduce" | "no-preference" | "none" }
   | { action: "press"; key: string }
-  | { action: "scroll"; x: number; y: number }
+  | { action: "scroll"; x: number; y: number; ref?: string; selector?: string; role?: string; name?: string }
+  | { action: "swipe"; x: number; y: number; toX: number; toY: number; duration?: number }
+  | { action: "evaluate"; expression: string }
   | { action: "resize"; width: number; height: number; mobile?: boolean }
   | { action: "dialog"; accept: boolean; text?: string };
 

@@ -10,9 +10,12 @@ import {
   Suspense,
   useDeferredValue,
   useEffect,
+  useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
 } from "react";
+import { useDrawerGestures } from "./lib/use-drawer-gesture.ts";
 import { Titlebar } from "./components/Titlebar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { NavigationStrip } from "./components/NavigationStrip.tsx";
@@ -29,9 +32,11 @@ import { RemoteFolderDialog } from "./components/RemoteFolderDialog.tsx";
 import type { NotificationTarget } from "../../shared/protocol.ts";
 import { Welcome } from "./components/Welcome.tsx";
 import {
+  modeProjects,
   useApp,
   viewportWidth,
   selectThread,
+  showProjectMode,
   toggleInspector,
   toggleSidebar,
 } from "./lib/store.ts";
@@ -40,6 +45,14 @@ import { useUiSounds } from "./lib/use-ui-sounds.ts";
 import { chooseWorkspace, createThread } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
+
+const INSPECTOR_MIN_WIDTH = 260;
+const CONVERSATION_MIN_WIDTH = 360;
+
+const subscribeResize = (onChange: () => void) => {
+  window.addEventListener("resize", onChange);
+  return () => window.removeEventListener("resize", onChange);
+};
 
 const screens = {
   github: () => import("./components/github/GitHub.tsx"),
@@ -80,7 +93,8 @@ export function App() {
   const newThreadProvider = useApp((state) => state.newThreadProvider);
   const language = useApp((state) => state.language);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
-  const navigationStyle = useApp((state) => state.navigationStyle);
+  const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= 720);
+  const navigationStyle = useApp((state) => narrow ? "strip" : state.navigationStyle);
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelWidths = useApp((state) => state.panelWidths);
@@ -101,8 +115,38 @@ export function App() {
         !thread.parentThreadId && !thread.archived && !thread.snoozedUntil;
     });
   });
-  const hasProject = useApp((state) => state.projects.length > 0);
+  const hasProject = useApp((state) => modeProjects(state).length > 0);
+  const chatMode = useApp((state) => state.appMode === "chat");
+  const panelsShown = view === "chat" && !chatMode;
   const navigationOpen = view === "chat" ? sidebarOpen : sectionSidebarOpen;
+  const shellBody = useRef<HTMLDivElement>(null);
+  useDrawerGestures(shellBody, {
+    left: {
+      enabled: true,
+      open: navigationOpen,
+      setOpen: (open) => {
+        if (view !== "chat") setSectionSidebarOpen(open);
+        else if (useApp.getState().sidebarOpen !== open) toggleSidebar();
+      },
+    },
+    right: {
+      enabled: panelsShown && hasProject,
+      open: panelsShown && inspectorOpen,
+      setOpen: (open) => { if (useApp.getState().inspectorOpen !== open) toggleInspector(); },
+    },
+  });
+  const openPanels = useRef({ sidebarOpen, inspectorOpen });
+  useEffect(() => {
+    const previous = openPanels.current;
+    openPanels.current = { sidebarOpen, inspectorOpen };
+    if (!panelsShown || !sidebarOpen || !inspectorOpen || viewportWidth() <= 720) return;
+    const shell = shellBody.current!.parentElement!;
+    const strip = parseFloat(getComputedStyle(shell).paddingLeft);
+    const rail = shell.querySelector<HTMLElement>(".rail")!.offsetWidth;
+    if (strip + rail + INSPECTOR_MIN_WIDTH + CONVERSATION_MIN_WIDTH <= shell.clientWidth) return;
+    if (previous.inspectorOpen && !previous.sidebarOpen) useApp.setState({ inspectorOpen: false });
+    else useApp.setState({ sidebarOpen: false });
+  }, [panelsShown, sidebarOpen, inspectorOpen]);
   useUiSounds();
 
   useEffect(() => {
@@ -163,6 +207,7 @@ export function App() {
 
   const openNotification = (target: NotificationTarget) => {
     if (target.view === "settings") setSettingsSection(target.section ?? "General");
+    if (target.projectId) showProjectMode(target.projectId);
     const state = useApp.getState();
     if (
       target.projectId &&
@@ -191,6 +236,7 @@ export function App() {
   useEffect(
     () =>
       window.citropyDesktop?.onBrowserSelect((panel) => {
+        showProjectMode(panel.projectId);
         setView("chat");
         useApp.setState((state) => ({
           activeProjectId: panel.projectId,
@@ -236,7 +282,7 @@ export function App() {
         event.preventDefault();
         if (view === "chat") toggleSidebar();
         else setSectionSidebarOpen((open) => !open);
-      } else if (key === "j") {
+      } else if (key === "j" && useApp.getState().appMode === "code") {
         event.preventDefault();
         setView("chat");
         toggleInspector();
@@ -255,7 +301,7 @@ export function App() {
       className="shell"
       data-sidebar={navigationOpen}
       data-navigation={navigationStyle}
-      data-inspector={inspectorOpen && view === "chat"}
+      data-inspector={inspectorOpen && panelsShown}
       data-composer={view === "chat" && hasProject && hasActiveThread}
       data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
       style={{
@@ -273,10 +319,10 @@ export function App() {
       {navigationStyle === "strip" && <NavigationStrip
         activeView={view}
         onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
-        onGit={() => openView("git")}
-        onGitHub={() => openView("github")}
-        onSettings={openSettings}
-        onUsage={() => openView("usage")}
+        onGit={() => (view === "git" ? toggleNavigation() : openView("git"))}
+        onGitHub={() => (view === "github" ? toggleNavigation() : openView("github"))}
+        onSettings={() => (view === "settings" ? toggleNavigation() : openSettings())}
+        onUsage={() => (view === "usage" ? toggleNavigation() : openView("usage"))}
       />}
       <Titlebar
         onNotification={openNotification}
@@ -286,11 +332,14 @@ export function App() {
         onToggleSidebar={toggleNavigation}
       />
       <RemoteConnectionBanner />
-      <div className="shell-body">
-        {navigationOpen && (
+      <div className="shell-body" ref={shellBody}>
+        {(
           <button
             className="sidebar-scrim"
             type="button"
+            data-open={navigationOpen}
+            tabIndex={navigationOpen ? undefined : -1}
+            aria-hidden={!navigationOpen || undefined}
             aria-label={t("Close navigation")}
             onClick={toggleNavigation}
           />
@@ -358,8 +407,8 @@ export function App() {
             )}
           </Suspense>
         </main>
-        {hasProject && <SlidingPanel open={inspectorOpen && view === "chat"} side="right" keepMounted>
-          <Inspector key={environment} visible={inspectorOpen && view === "chat"} />
+        {hasProject && !chatMode && <SlidingPanel open={inspectorOpen && panelsShown} side="right" keepMounted>
+          <Inspector key={environment} visible={inspectorOpen && panelsShown} />
         </SlidingPanel>}
       </div>
       <AnimatePresence>{newThreadProvider && (

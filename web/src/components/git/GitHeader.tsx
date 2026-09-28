@@ -1,4 +1,4 @@
-import { FolderGit2, GitBranch, RefreshCw } from "lucide-react";
+import { GitBranch, RefreshCw } from "lucide-react";
 import { shortPath } from "../../lib/format.ts";
 import { useI18n } from "../../lib/i18n.ts";
 import { workingLabels, type Section } from "./labels.ts";
@@ -35,7 +35,6 @@ export function GitHeader({
   return (
     <header className="git-header">
       <div className="git-heading">
-        <FolderGit2 size={24} strokeWidth={1.6} />
         <div>
           <h1>{t(section)}</h1>
           <p role="status" title={path}>

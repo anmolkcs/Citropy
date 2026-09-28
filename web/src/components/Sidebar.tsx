@@ -10,6 +10,7 @@ import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { MessageSquarePlus, Search } from "./icons.ts";
 import { ResizeHandle } from "./ResizeHandle.tsx";
+import { ModeSwitch } from "./ModeSwitch.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
@@ -45,11 +46,13 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   const connected = useApp((state) => state.connected);
   const creatingThread = useApp((state) => state.creatingThread);
   const uiScale = useApp((state) => state.uiScale);
-  const globalMode = useApp((state) => state.sidebarMode === "global");
+  const chatMode = useApp((state) => state.appMode === "chat");
+  const globalMode = useApp((state) => state.sidebarMode === "global" && state.appMode === "code");
   const { activeId: environment, connections } = useEnvironments();
   const background = useBackgroundEnvironments();
   const catalog = useWorkspaceCatalog();
-  const [allProjects, setAllProjects] = useState(false);
+  const [allProjectsChecked, setAllProjects] = useState(false);
+  const allProjects = allProjectsChecked && !chatMode;
   const [query, setQuery] = useState("");
   const [focusedRow, setFocusedRow] = useState<string>();
   const viewport = useRef<HTMLDivElement>(null);
@@ -62,11 +65,14 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     [environment, threadMap],
     ...Object.entries(background).filter(([, slice]) => slice.connected).map(([id, slice]) => [id, slice.threads]),
   ] as [string, Record<string, ThreadMeta>][]), [environment, threadMap, background]);
+  const chatProjectIds = useMemo(() => new Set([...projects, ...Object.values(background).flatMap((slice) => slice.projects)]
+    .filter((project) => project.chat).map((project) => project.id)), [projects, background]);
+  const shown = (thread: ThreadMeta) => chatMode || !chatProjectIds.has(thread.projectId);
   const threads = useMemo((): SidebarThread[] => {
     if (query.trim()) return (matches ?? []).flatMap((match): SidebarThread[] => {
       if (!globalMode && match.environment !== environment) return [];
       const thread = threadsByEnvironment[match.environment]?.[match.threadId];
-      return thread ? [{ thread, environment: match.environment }] : [];
+      return thread && shown(thread) ? [{ thread, environment: match.environment }] : [];
     });
     if (!globalMode) return order.flatMap((id): SidebarThread[] => {
       const thread = threadMap[id];
@@ -74,12 +80,12 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     });
     return Object.entries(threadsByEnvironment).filter(([id]) => id !== environment || connected).flatMap(([id, map]): SidebarThread[] => {
       const ids = id === environment ? order : background[id]!.threadOrder;
-      return ids.flatMap((threadId): SidebarThread[] => map[threadId] ? [{ thread: map[threadId]!, environment: id }] : []);
+      return ids.flatMap((threadId): SidebarThread[] => map[threadId] && shown(map[threadId]) ? [{ thread: map[threadId]!, environment: id }] : []);
     });
-  }, [query, matches, globalMode, environment, connected, threadsByEnvironment, order, threadMap, activeProjectId, background]);
+  }, [query, matches, globalMode, environment, connected, threadsByEnvironment, order, threadMap, activeProjectId, background, chatMode, chatProjectIds]);
   const activeRoot = rootThread(threadMap, activeThreadId);
   const projectSets = useMemo(() => Object.fromEntries(["local", ...connections.map(connection => connection.id)].map(id =>
-    [id, id === environment && connected ? projects : background[id]?.connected ? background[id].projects : catalog[id]?.projects ?? []],
+    [id, (id === environment && connected ? projects : background[id]?.connected ? background[id].projects : catalog[id]?.projects ?? []).filter((project) => !project.chat)],
   )), [environment, connections, connected, projects, background, catalog]);
   const { orderedProjects, moveProject, moveProjectBy } = useProjectOrder(projectSets);
   const environments = useMemo(() => ["local", ...connections.map((connection) => connection.id)].flatMap((id): EnvironmentFolders[] => {
@@ -245,7 +251,8 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         : t("No matching conversations.");
 
   return (
-    <aside className="rail" data-sidebar-mode={globalMode ? "global" : "workspaces"} aria-label={t("Conversations")}>
+    <aside className="rail" data-sidebar-mode={globalMode ? "global" : "workspaces"} data-app-mode={chatMode ? "chat" : "code"} aria-label={t("Conversations")}>
+      <div className="rail-mode"><ModeSwitch /></div>
       <div className="thread-toolbar">
         <label className="thread-search">
           <Search size={16} aria-hidden="true" />
@@ -268,7 +275,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         </button>}
         {globalMode && <WorkspaceSelector addOnly />}
       </div>
-      {query.trim() && !globalMode && (
+      {query.trim() && !globalMode && !chatMode && (
         <label className="search-scope">
           <input type="checkbox" checked={allProjects} onChange={(event) => setAllProjects(event.target.checked)} />
           {t("All workspaces")}

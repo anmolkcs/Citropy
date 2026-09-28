@@ -17,6 +17,7 @@ const piThinkingLevels = ["off", "minimal", "low", "medium", "high", "xhigh", "m
 
 const approvalExtension = fileURLToPath(new URL("./pi-approval.mjs", import.meta.url));
 const toolsExtension = fileURLToPath(new URL("./pi-tools.mjs", import.meta.url));
+const CHAT_TOOLS = ["read", "grep", "find", "ls"];
 const citropyTools = [workspaceTools.find(tool => tool.name === "ask_user")!, ...discoveryTools];
 
 function modelId(model: RecordValue | undefined): string | undefined {
@@ -80,6 +81,10 @@ async function discoverPiModels(launch?: ProviderLaunch): Promise<ModelOption[]>
 
 class PiSession implements AgentSession {
   #child: ChildProcessWithoutNullStreams;
+
+  get pid(): number | undefined {
+    return this.#child.pid;
+  }
   #options: StartOptions;
   #ready: Promise<void>;
   #pending = new Map<string, { resolve: (value: RecordValue) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
@@ -99,7 +104,9 @@ class PiSession implements AgentSession {
     if (options.externalId) args.push("--session", options.externalId);
     if (options.model) args.push("--model", options.model);
     if (options.effort) args.push("--thinking", options.effort);
-    this.#child = startPi(args, options.cwd, options.permissionMode, options.mcp, options);
+    if (options.chat) args.push("--tools", [...CHAT_TOOLS, ...citropyTools.map(tool => tool.name)].join(","));
+    const approvalMode = options.chat ? "bypass" : options.permissionMode;
+    this.#child = startPi(args, options.cwd, approvalMode, options.mcp, options);
     onJson(this.#child.stdout, value => { void this.#receive(value as RecordValue); });
     this.#child.stderr.on("data", chunk => { this.#stderr = `${this.#stderr}${chunk}`.slice(-4000); });
     this.#child.on("error", error => this.#fail(error.message));

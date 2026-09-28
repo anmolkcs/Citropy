@@ -10,6 +10,7 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { useTouchInput } from "../lib/use-touch-input.ts";
 import { Check, ChevronRight } from "./icons.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 
@@ -43,6 +44,7 @@ interface Props {
   controls?: ReactNode;
   footer?: ReactNode;
   clearOf?: string;
+  sheet?: boolean;
   span?: string;
   width?: number;
   gutter?: number;
@@ -67,6 +69,7 @@ export function Menu({
   controls,
   footer,
   clearOf,
+  sheet = false,
   span,
   width = 232,
   gutter = 0,
@@ -81,6 +84,8 @@ export function Menu({
 }: Props) {
   const t = useI18n();
   const reducedMotion = useReducedMotion();
+  const touch = useTouchInput();
+  const focusTarget = touch ? ".menu-item" : ".menu-search, .menu-item";
   const uiScale = useApp((state) => state.uiScale);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(Boolean(anchor));
@@ -126,6 +131,15 @@ export function Menu({
       const bounds = spanned ?? (anchor ?? (inline ? wrap.current?.firstElementChild : wrap.current))?.getBoundingClientRect();
       if (!bounds) return;
       const scale = uiScale / 100;
+      if (sheet) {
+        const viewport = innerHeight / scale;
+        element.dataset.sheet = "";
+        element.style.width = `${scaled(viewportWidth())}px`;
+        element.style.left = "0px";
+        element.style.maxHeight = `${scaled(viewport - 48)}px`;
+        element.style.top = `${scaled(viewport - element.offsetHeight / scale)}px`;
+        return;
+      }
       const clearance = clearOf ? wrap.current?.closest(clearOf)?.getBoundingClientRect() : undefined;
       const anchorLeft = (clearance?.left ?? bounds.left) / scale;
       const menuWidth = Math.min(spanned ? spanned.width / scale : inline ? Math.max(width, bounds.width / scale) : width, viewportWidth() - 24 - 2 * gutter);
@@ -147,7 +161,7 @@ export function Menu({
       element.style.top = `${scaled(upwards ? top / scale - Math.min(height, available) - 6 : bottom / scale + 6)}px`;
     };
     position();
-    if (searchable) {
+    if (searchable && !touch) {
       element.querySelector<HTMLInputElement>(".menu-search")?.focus({ preventScroll: true });
     } else {
       const selected = menu.current?.querySelector<HTMLButtonElement>(
@@ -177,7 +191,7 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, gutter, align, searchable, uiScale, anchor, clearOf, span, inline]);
+  }, [open, width, gutter, align, searchable, touch, uiScale, anchor, clearOf, sheet, span, inline]);
 
   useEffect(() => {
     if (!open) return;
@@ -202,8 +216,8 @@ export function Menu({
 
   useLayoutEffect(() => {
     if (open && document.activeElement === document.body)
-      menu.current?.querySelector<HTMLElement>(".menu-search, .menu-item")?.focus({ preventScroll: true });
-  }, [open, items]);
+      menu.current?.querySelector<HTMLElement>(focusTarget)?.focus({ preventScroll: true });
+  }, [open, items, focusTarget]);
 
   return (
     <div
@@ -211,6 +225,7 @@ export function Menu({
       style={anchor || inline ? { display: "contents" } : undefined}
       ref={wrap}
       onBlur={(event) => {
+        if (touch && !event.relatedTarget) return;
         if (!event.currentTarget.contains(event.relatedTarget) && !inConfirmation(event.relatedTarget)) setOpen(false);
       }}
     >
@@ -227,9 +242,9 @@ export function Menu({
             tabIndex={-1}
             aria-labelledby={anchor ? undefined : id}
             aria-label={anchor ? header : undefined}
-            initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.985 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.985, pointerEvents: "none" }}
+            initial={{ opacity: 0, scale: reducedMotion || sheet ? 1 : 0.985, y: sheet && !reducedMotion ? 48 : 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: reducedMotion || sheet ? 1 : 0.985, y: sheet && !reducedMotion ? 48 : 0, pointerEvents: "none" }}
             transition={{ duration: reducedMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
             onKeyDown={(event) => {
               if (event.target instanceof HTMLSelectElement) return;

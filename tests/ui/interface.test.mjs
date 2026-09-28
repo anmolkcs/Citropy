@@ -58,6 +58,7 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
   });
   await page.route("**/api/**", (route) => {
     const request = route.request();
+    if (new URL(request.url()).pathname === "/api/agents") return route.fulfill({ json: { agents: [] } });
     return route.fulfill({ json: request.method() === "POST" ? { ok: true } : [] });
   });
   await beforeNavigate?.(page);
@@ -480,7 +481,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await page.getByRole("button", { name: "Work details", exact: true }).waitFor();
       await page.waitForFunction(() => {
         const arrow = document.querySelector(".activity-chevron");
-        return getComputedStyle(arrow).opacity === "1" && arrow.getBoundingClientRect().width === 12;
+        return arrow?.getBoundingClientRect().width === 12;
       });
       await settled(page);
       const frames = await page.evaluate(() => {

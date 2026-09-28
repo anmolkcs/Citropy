@@ -249,7 +249,7 @@ export function ProviderSettings() {
                   </span>
                   <small>
                     {provider.enabled
-                      ? t("{count} models", { count: provider.models.length })
+                      ? t(provider.models.length === 1 ? "{count} model" : "{count} models", { count: provider.models.length })
                       : t("Not in new threads")}
                   </small>
                 </div>
@@ -398,7 +398,7 @@ export function ProviderSettings() {
               <div className="provider-instances">
                 <div className="provider-instances-heading"><strong>{t("Accounts")}</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><Plus size={14} />{t("Add account")}</button></div>
                 {provider.instances?.map(entry => <div className="provider-instance-row" key={entry.id}>
-                  <span><strong>{entry.name}</strong><small>{entry.available ? t("{count} models", { count: entry.models.length }) : t("CLI unavailable")}</small></span>
+                  <span><strong>{entry.name}</strong><small>{entry.available ? t(entry.models.length === 1 ? "{count} model" : "{count} models", { count: entry.models.length }) : t("CLI unavailable")}</small></span>
                   <button type="button" className="btn" disabled={!connected || switching || !instances.some(value => value.id === entry.id)} onClick={() => setInstanceEditor({ provider, instance: instances.find(value => value.id === entry.id) })}>{t("Edit")}</button>
                   <button type="button" className="btn" aria-label={t("Remove {name}", { name: entry.name })} disabled={!connected || switching} onClick={() => void (async () => {
                     if (!await confirmAction({ title: t("Remove {name}?", { name: entry.name }), description: t("Conversations and writing settings using this account must be removed first."), label: t("Remove"), danger: true })) return;

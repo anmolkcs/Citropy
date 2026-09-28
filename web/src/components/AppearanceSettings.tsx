@@ -18,7 +18,7 @@ import {
   useApp,
   type SidebarMode,
 } from "../lib/store.ts";
-import { SCHEMES, THEMES, type NavigationStyle, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { DEFAULT_UI_SCALE, SCHEMES, THEMES, type NavigationStyle, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { OptionStrip } from "./OptionStrip.tsx";
 import { Range } from "./Range.tsx";
@@ -151,9 +151,9 @@ export function AppearanceSettings() {
           <span>{t("Compact")}</span>
           <button
             type="button"
-            onClick={() => setUiScale(100)}
-            disabled={uiScale === 100}
-          >{" "}{t("Reset to 100%")}{" "}</button>
+            onClick={() => setUiScale(DEFAULT_UI_SCALE)}
+            disabled={uiScale === DEFAULT_UI_SCALE}
+          >{" "}{t("Reset to default")}{" "}</button>
           <span>{t("Larger")}</span>
         </div>
       </div>

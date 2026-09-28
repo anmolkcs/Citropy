@@ -16,10 +16,28 @@
   --font-mono: "Droid Sans Mono", monospace;
   --font-terminal: monospace;
 
+  --text-2xs: 11px;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 14px;
   --text-body: 15px;
+  --text-lg: 17px;
+  --text-title: 20px;
+  --text-display: 28px;
+
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
 
   --r-xs: 5px;
   --r-sm: 7px;
@@ -37,31 +55,31 @@
 
 :root:not([data-scheme="light"]) {
   color-scheme: dark;
-  --canvas: #1e1e1e;
-  --canvas-deep: #191919;
-  --panel-solid: #242424;
-  --raised-solid: #2c2c2c;
-  --raised-2-solid: #363636;
-  --overlay-solid: #242424;
-  --surface-solid: #2c2c2c;
+  --canvas: #1f1e1d;
+  --canvas-deep: #1a1918;
+  --panel-solid: #262624;
+  --raised-solid: #2e2d2b;
+  --raised-2-solid: #383734;
+  --overlay-solid: #262624;
+  --surface-solid: #2e2d2b;
   --surface-shadow: none;
 
-  --line: rgba(255, 255, 255, 0.065);
-  --line-strong: rgba(255, 255, 255, 0.11);
-  --tree-line: #323232;
-  --line-bright: rgba(255, 255, 255, 0.16);
+  --line: rgba(255, 250, 240, 0.065);
+  --line-strong: rgba(255, 250, 240, 0.11);
+  --tree-line: #34332f;
+  --line-bright: rgba(255, 250, 240, 0.16);
 
-  --text: #eeeeee;
-  --text-2: #c2c2c2;
-  --text-3: #a0a0a0;
-  --text-4: #999999;
+  --text: #eeede9;
+  --text-2: #c3c1bb;
+  --text-3: #a3a09a;
+  --text-4: #9b9891;
 
-  --accent-base: #e5e5e5;
-  --on-accent: #202020;
-  --accent-hover-base: #ffffff;
+  --accent-base: #e8e6e1;
+  --on-accent: #1f1e1d;
+  --accent-hover-base: #faf9f5;
   --accent-soft: rgba(255, 255, 255, 0.06);
   --accent-line: rgba(255, 255, 255, 0.25);
-  --accent-text-base: #e5e5e5;
+  --accent-text-base: #e8e6e1;
 
   --brand: #f4d34e;
   --on-brand: #171717;
@@ -93,7 +111,7 @@
   --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.32);
   --shadow-lg: 0 14px 40px -16px rgba(0, 0, 0, 0.36);
 
-  --code-bg: #191919;
+  --code-bg: #1a1918;
 }
 
 :root:not([data-scheme="light"])[data-theme="orange"] {
@@ -330,31 +348,31 @@
 
 :root[data-scheme="light"] {
   color-scheme: light;
-  --canvas: #f9f9f8;
-  --canvas-deep: #f1f1f0;
-  --panel-solid: #f4f4f3;
-  --raised-solid: #ececeb;
-  --raised-2-solid: #e2e2e1;
+  --canvas: #faf9f5;
+  --canvas-deep: #f2f0ea;
+  --panel-solid: #f5f4ef;
+  --raised-solid: #edebe4;
+  --raised-2-solid: #e3e0d8;
   --overlay-solid: #ffffff;
   --surface-solid: #ffffff;
   --surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px -6px rgba(0, 0, 0, 0.1);
 
   --line: rgba(0, 0, 0, 0.07);
   --line-strong: rgba(0, 0, 0, 0.11);
-  --tree-line: #d8d8d6;
+  --tree-line: #d9d6ce;
   --line-bright: rgba(0, 0, 0, 0.18);
 
-  --text: #1c1c1c;
-  --text-2: #474747;
-  --text-3: #6d6d6d;
-  --text-4: #8f8f8f;
+  --text: #1f1e1d;
+  --text-2: #4a4843;
+  --text-3: #6f6c65;
+  --text-4: #918d85;
 
-  --accent-base: #1c1c1c;
+  --accent-base: #1f1e1d;
   --on-accent: #ffffff;
   --accent-hover-base: #000000;
   --accent-soft: rgba(0, 0, 0, 0.045);
   --accent-line: rgba(0, 0, 0, 0.2);
-  --accent-text-base: #1c1c1c;
+  --accent-text-base: #1f1e1d;
 
   --brand: #b89d37;
   --on-brand: #171717;
@@ -386,7 +404,7 @@
   --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 24px -10px rgba(0, 0, 0, 0.16);
   --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.04), 0 16px 40px -14px rgba(0, 0, 0, 0.22);
 
-  --code-bg: #f2f2f1;
+  --code-bg: #f3f1eb;
 }
 
 :root[data-scheme="light"][data-theme="orange"] {

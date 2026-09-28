@@ -1,59 +1,59 @@
 .computer-pane {
   height: 100%;
-  padding: 18px;
+  padding: var(--space-20);
   min-width: 0;
 }
 .computer-heading,
 .computer-support {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
 }
 .computer-heading > div,
 .computer-support > div { min-width: 0; flex: 1; }
-.computer-heading h3 { font-size: 15px; font-weight: 600; }
-.computer-heading p { margin: 5px 0 0; color: var(--text-3); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.computer-heading h3 { font-size: var(--text-body); font-weight: 600; }
+.computer-heading p { margin: var(--space-6) 0 0; color: var(--text-3); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .computer-state { color: var(--ok); font-size: var(--text-xs); flex: none; }
 .computer-state[data-paused="true"] { color: var(--heat); }
-.computer-welcome { display: flex; flex-direction: column; align-items: center; padding: 54px 10px 36px; gap: 18px; text-align: center; }
-.computer-welcome h3 { font-size: 18px; font-weight: 600; }
+.computer-welcome { display: flex; flex-direction: column; align-items: center; padding: var(--space-48) var(--space-10) var(--space-40); gap: var(--space-20); text-align: center; }
+.computer-welcome h3 { font-size: var(--text-lg); font-weight: 600; }
 .computer-welcome p { max-width: 340px; line-height: 1.7; font-size: var(--text-base); color: var(--text-3); margin: 0; }
 .computer-welcome small { color: var(--text-4); font-size: var(--text-xs); line-height: 1.6; }
-.computer-controls { display: flex; align-items: center; gap: 5px; margin: 22px 0 10px; }
-.computer-controls .select { min-width: 0; flex: 1; padding: 8px; border-radius: var(--r-sm); background: var(--raised); border: 0; font-size: var(--text-xs); }
-.computer-sharing-status { display: flex; align-items: flex-start; gap: 9px; padding: 12px 0; }
-.computer-sharing-status > span { flex: none; width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: var(--web-icon); }
+.computer-controls { display: flex; align-items: center; gap: var(--space-6); margin: var(--space-24) 0 var(--space-10); }
+.computer-controls .select { min-width: 0; flex: 1; padding: var(--space-8); border-radius: var(--r-sm); background: var(--raised); border: 0; font-size: var(--text-xs); }
+.computer-sharing-status { display: flex; align-items: flex-start; gap: var(--space-10); padding: var(--space-12) 0; }
+.computer-sharing-status > span { flex: none; width: 7px; height: 7px; margin-top: var(--space-6); border-radius: 50%; background: var(--ok); }
 .computer-sharing-status[data-paused="true"] > span { background: var(--text-3); }
 .computer-sharing-status strong { display: block; font-size: var(--text-sm); font-weight: 500; }
-.computer-sharing-status small { display: block; margin-top: 3px; color: var(--text-3); font-size: var(--text-xs); }
+.computer-sharing-status small { display: block; margin-top: var(--space-4); color: var(--text-3); font-size: var(--text-xs); }
 .computer-preview { display: flex; align-items: center; justify-content: center; overflow: hidden; background: #080808; border: 0; border-radius: var(--r-md); min-height: 160px; }
 .computer-preview img { display: block; width: auto; max-width: 100%; height: auto; max-height: calc(var(--viewport-height) - 300px); object-fit: contain; user-select: none; }
 .computer-preview[data-interactive="true"] {
-  box-shadow: 0 0 8px color-mix(in srgb, var(--web-icon) 35%, transparent); }
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 35%, transparent); }
 .computer-preview[data-interactive="true"] img { cursor: crosshair; touch-action: none; }
 .computer-preview:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--field-focus-color); }
-.computer-capturing { display: flex; gap: 10px; align-items: center; color: var(--text-3); font-size: var(--text-sm); padding: 45px 10px; }
-.computer-preview-caption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; font-size: var(--text-xs); color: var(--text-4); }
-.computer-preview-caption button { display: inline-flex; gap: 5px; align-items: center; padding: 4px; color: var(--text-3); }
-.computer-preview-caption button[data-active="true"] { color: var(--web-icon); }
-.computer-session-controls { display: flex; gap: 8px; margin-top: 12px; }
+.computer-capturing { display: flex; gap: var(--space-10); align-items: center; color: var(--text-3); font-size: var(--text-sm); padding: var(--space-48) var(--space-10); }
+.computer-preview-caption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8); padding: var(--space-10) 0; font-size: var(--text-xs); color: var(--text-4); }
+.computer-preview-caption button { display: inline-flex; gap: var(--space-6); align-items: center; padding: var(--space-4); color: var(--text-3); }
+.computer-preview-caption button[data-active="true"] { color: var(--ok); }
+.computer-session-controls { display: flex; gap: var(--space-8); margin-top: var(--space-12); }
 .computer-session-controls .btn { flex: 1; justify-content: center; font-size: var(--text-sm); }
 .computer-stop { color: var(--bad); background: var(--bad-soft); }
-.computer-session-note { color: var(--text-4); font-size: var(--text-xs); line-height: 1.7; margin: 12px 0 22px; }
-.computer-activity { margin-top: 24px; padding-top: 18px; }
-.computer-activity h4 { font-size: var(--text-xs); font-weight: 500; color: var(--text-3); margin-bottom: 14px; }
-.computer-activity-row { display: flex; align-items: flex-start; gap: 9px; padding: 10px 0; font-size: var(--text-sm); }
-.computer-activity-row > svg { margin-top: 2px; flex: none; }
+.computer-session-note { color: var(--text-4); font-size: var(--text-xs); line-height: 1.7; margin: var(--space-12) 0 var(--space-24); }
+.computer-activity { margin-top: var(--space-24); padding-top: var(--space-20); }
+.computer-activity h4 { font-size: var(--text-xs); font-weight: 500; color: var(--text-3); margin-bottom: var(--space-16); }
+.computer-activity-row { display: flex; align-items: flex-start; gap: var(--space-10); padding: var(--space-10) 0; font-size: var(--text-sm); }
+.computer-activity-row > svg { margin-top: var(--space-2); flex: none; }
 .computer-activity-row > span { min-width: 0; flex: 1; }
-.computer-activity-row small { display: block; margin-top: 4px; font-size: var(--text-xs); color: var(--text-3); overflow-wrap: anywhere; }
+.computer-activity-row small { display: block; margin-top: var(--space-4); font-size: var(--text-xs); color: var(--text-3); overflow-wrap: anywhere; }
 .computer-activity-row time { color: var(--text-4); font-size: var(--text-xs); flex: none; }
-.computer-indicator { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 0; border-radius: var(--r-sm); color: var(--web-icon); font-size: var(--text-xs); background: color-mix(in srgb, var(--web-icon) 10%, var(--panel)); }
+.computer-indicator { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-8) var(--space-10); border: 0; border-radius: var(--r-sm); color: var(--ok); font-size: var(--text-xs); background: color-mix(in srgb, var(--ok) 10%, var(--panel)); }
 .computer-indicator:hover { background: var(--raised); }
-.computer-support { padding: 6px 0 24px; }
+.computer-support { padding: var(--space-6) 0 var(--space-24); }
 .computer-support strong { font-size: var(--text-body); }
-.computer-support p { color: var(--text-3); font-size: var(--text-sm); line-height: 1.7; margin-top: 8px; }
-.computer-pane .feature-error { display: flex; gap: 8px; font-size: var(--text-xs); line-height: 1.6; }
-.computer-pane .feature-error svg { flex: none; margin-top: 2px; }
+.computer-support p { color: var(--text-3); font-size: var(--text-sm); line-height: 1.7; margin-top: var(--space-8); }
+.computer-pane .feature-error { display: flex; gap: var(--space-8); font-size: var(--text-xs); line-height: 1.6; }
+.computer-pane .feature-error svg { flex: none; margin-top: var(--space-2); }
 @media (max-width: 1000px) {
   .computer-indicator span { display: none; }
   .computer-session-controls { flex-wrap: wrap; }

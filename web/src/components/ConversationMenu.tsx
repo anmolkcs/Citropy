@@ -15,13 +15,13 @@ import {
   ArrowDown,
   RefreshCw,
 } from "lucide-react";
-import { Menu } from "./Menu.tsx";
+import { Menu, type MenuItem } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
 import { SnoozeMenu } from "./SnoozeMenu.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
-import { useApp, confirmAction } from "../lib/store.ts";
+import { useApp, confirmAction, viewportWidth } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 
 export async function organizeConversation(id: string, patch: object, environment?: string) {
@@ -35,10 +35,12 @@ export function ConversationMenu({
   thread,
   environment,
   onMove,
+  rowActions = [],
 }: {
   thread: ThreadMeta;
   environment?: string;
   onMove?: (direction: number) => void;
+  rowActions?: MenuItem[];
 }) {
   const t = useI18n();
   const projects = useApp(state => state.projects);
@@ -91,6 +93,7 @@ export function ConversationMenu({
         align="end"
         width={230}
         span=".thread-card"
+        sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
           ...(project?.isGit ? [{ id: "worktree", label: t("Continue in new worktree…"), icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
@@ -164,6 +167,7 @@ export function ConversationMenu({
                 },
               ]
             : []),
+          ...rowActions,
         ]}
         trigger={({ id, open, toggle }) => (
           <button

@@ -13,6 +13,8 @@ import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
 import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
 import { browserActivity } from "./browser-activity.mjs";
+import { formatTree } from "./browser-snapshot.mjs";
+import { createPointer } from "./browser-pointer.mjs";
 import { computerRequest, connectComputerEvents, stopComputer } from "./computer.mjs";
 import {
   app,
@@ -29,8 +31,8 @@ import {
 } from "electron";
 import { WebSocket } from "ws";
 import { fileURLToPath } from "node:url";
-import { join, resolve, sep } from "node:path";
-import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants } from "node:fs";
+import { basename, join, resolve, sep } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants, existsSync } from "node:fs";
 import { migrateDesktopData } from "./migrate-data.mjs";
 
 const development = !app.isPackaged && process.env.CITROPY_DEVELOPMENT === "1";
@@ -174,28 +176,61 @@ function publish(tab) {
     emit({ t: "browser.state", browser: state(tab) });
 }
 
-function cdp(tab, method, params = {}) {
+function cdp(tab, method, params = {}, sessionId) {
   const debuggerApi = tab.view.webContents.debugger;
   if (!debuggerApi.isAttached()) debuggerApi.attach("1.3");
-  return debuggerApi.sendCommand(method, params);
+  return sessionId ? debuggerApi.sendCommand(method, params, sessionId) : debuggerApi.sendCommand(method, params);
+}
+
+function nodeParams(node) {
+  const { session: _, frameId: __, ...params } = node;
+  return params;
+}
+
+async function elementBox(tab, node, { scroll = true, quad = "content" } = {}) {
+  if (scroll) await cdp(tab, "DOM.scrollIntoViewIfNeeded", nodeParams(node), node.session);
+  const { model } = await cdp(tab, "DOM.getBoxModel", nodeParams(node), node.session);
+  const points = model[quad];
+  const xs = [points[0], points[2], points[4], points[6]];
+  const ys = [points[1], points[3], points[5], points[7]];
+  let offsetX = 0;
+  let offsetY = 0;
+  if (node.frameId) {
+    const owner = await cdp(tab, "DOM.getFrameOwner", { frameId: node.frameId });
+    const frame = (await cdp(tab, "DOM.getBoxModel", { backendNodeId: owner.backendNodeId })).model.content;
+    offsetX = frame[0];
+    offsetY = frame[1];
+  }
+  return { left: Math.min(...xs) + offsetX, top: Math.min(...ys) + offsetY, right: Math.max(...xs) + offsetX, bottom: Math.max(...ys) + offsetY };
+}
+
+const centre = (box) => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
+
+function parkedBounds() {
+  const [width, height] = window.getContentSize();
+  return { x: width - 1, y: height - 1, width: 1, height: 1 };
 }
 
 function applyViewport(tab) {
   const { width, height, mobile } = tab.state;
   const bounds = tab.bounds;
-  const scale = Math.min(1, bounds.width / width, bounds.height / height);
+  const fitted = Math.min(1, bounds.width / width, bounds.height / height);
+  const scale = tab.visible ? fitted : tab.scale >= 0.05 ? tab.scale : 1;
   const displayWidth = Math.max(1, Math.round(width * scale));
   const displayHeight = Math.max(1, Math.round(height * scale));
   tab.scale = scale;
-  tab.view.setBounds({
-    x: tab.visible
-      ? bounds.x + Math.round((bounds.width - displayWidth) / 2)
-      : window.getContentSize()[0] + 20,
+  const next = tab.visible ? {
+    x: bounds.x + Math.round((bounds.width - displayWidth) / 2),
     y: bounds.y + Math.round((bounds.height - displayHeight) / 2),
     width: displayWidth,
     height: displayHeight,
-  });
-  tab.layout = cdp(tab, "Emulation.setDeviceMetricsOverride", {
+  } : parkedBounds();
+  const current = tab.view.getBounds();
+  if (current.x !== next.x || current.y !== next.y || current.width !== next.width || current.height !== next.height) tab.view.setBounds(next);
+  const metrics = JSON.stringify([width, height, Boolean(mobile), scale]);
+  if (metrics === tab.metrics && tab.layout) return tab.layout;
+  tab.metrics = metrics;
+  tab.layout = cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams = {
     width,
     height,
     screenWidth: width,
@@ -215,12 +250,6 @@ async function applyMobileMode(tab) {
   const mobile = Boolean(tab.state.mobile);
   const chrome = process.versions.chrome;
   const major = chrome.split(".")[0];
-  if (mobile)
-    await cdp(tab, "Network.enable", {
-      maxTotalBufferSize: 0,
-      maxResourceBufferSize: 0,
-      maxPostDataSize: 0,
-    });
   await cdp(tab, "Emulation.setUserAgentOverride", mobile ? {
     userAgent: `Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Mobile Safari/537.36`,
     platform: "Linux armv8l",
@@ -243,7 +272,6 @@ async function applyMobileMode(tab) {
       "Sec-CH-UA-Platform": '"Android"',
     } : {},
   });
-  if (!mobile) await cdp(tab, "Network.disable");
   await cdp(tab, "Emulation.setTouchEmulationEnabled", {
     enabled: mobile,
     maxTouchPoints: mobile ? 5 : 1,
@@ -254,32 +282,48 @@ async function applyMobileMode(tab) {
   });
 }
 
-async function present(tab) {
+async function prepareTab(tab) {
   if (environments?.activeId !== "local" && environments?.activeId) throw new Error("Switch to Local to use desktop browser tools.");
-  if (tab.visible && window.isVisible() && !window.isMinimized()) return tab.layout;
-  await frontendReady;
-  if (window.isMinimized()) window.restore();
-  if (!window.isVisible()) window.show();
-  window.webContents.send("browser:select", {
-    id: tab.state.id,
-    projectId: tab.state.projectId,
-    threadId: tab.state.threadId,
-  });
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (tab.visible) return tab.layout;
-    await new Promise((resolve) => setTimeout(resolve, 30));
+  await tab.layout;
+}
+
+async function behindCover(tab, work) {
+  if (!tab.visible || !window.isVisible() || window.isMinimized()) return work();
+  const id = tab.state.id;
+  const still = (await capture(tab, 1))?.toDataURL();
+  if (!still) return work();
+  window.webContents.send("browser:cover", id, still);
+  await window.webContents.executeJavaScript(`new Promise((resolve) => {
+    const started = performance.now();
+    const check = () => {
+      const image = document.querySelector(".browser-cover");
+      if ((image?.complete && image.naturalWidth) || performance.now() - started > 300) requestAnimationFrame(() => requestAnimationFrame(resolve));
+      else requestAnimationFrame(check);
+    };
+    check();
+  })`).catch(() => {});
+  const shown = tab.view.getBounds();
+  tab.view.setBounds({ ...shown, x: window.getContentSize()[0] + 20 });
+  try {
+    return await work();
+  } finally {
+    if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(() => {});
+    await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(() => {});
+    if (tab.visible) {
+      tab.view.setBounds(shown);
+      await new Promise((resolve) => setTimeout(resolve, 34));
+      if (tab.visible) window.webContents.send("browser:cover", id, undefined);
+    }
   }
-  throw new Error(
-    "Close the open menu or dialog to continue using the browser.",
-  );
 }
 
 async function capture(tab, attempts = 3) {
   for (let attempt = 0; attempt < attempts; attempt++) {
     let timer;
     try {
+      const { width, height } = tab.view.getBounds();
       return await Promise.race([
-        tab.view.webContents.capturePage(),
+        tab.view.webContents.capturePage({ x: 0, y: 0, width, height }),
         new Promise((_, reject) => {
           timer = setTimeout(
             () => reject(new Error("Screenshot timed out")),
@@ -302,6 +346,7 @@ async function open(input) {
   const profile = browserProfile(input.projectId, input.profileId);
   input = { ...input, profileId: profile.id, profileName: profile.name };
   const browserSession = session.fromPartition(profile.partition);
+  watchDownloads(browserSession);
   browserSession.setPermissionRequestHandler((_, __, callback) =>
     callback(false),
   );
@@ -317,15 +362,13 @@ async function open(input) {
     },
   });
   view.setBackgroundColor("#151515");
-  view.setBounds({
-    x: window.getContentSize()[0] + 20,
-    y: 0,
-    width: input.width || 1920,
-    height: input.height || 1080,
-  });
+  view.setBounds(parkedBounds());
   const tab = {
     view,
-    activity: browserActivity(view, window.contentView, enabled => cdp(tab, "Emulation.setFocusEmulationEnabled", { enabled })),
+    activity: browserActivity(view, window.contentView, enabled => {
+      view.webContents.setBackgroundThrottling(!enabled);
+      return cdp(tab, "Emulation.setFocusEmulationEnabled", { enabled });
+    }),
     visible: false,
     presentation: 0,
     bounds: view.getBounds(),
@@ -337,7 +380,19 @@ async function open(input) {
       error: undefined,
       dialog: undefined,
     },
+    logs: [],
+    requests: new Map(),
+    frames: new Map(),
+    frameCount: 0,
+    pointer: undefined,
+    media: { colorScheme: "", reducedMotion: "" },
   };
+  tab.pointer = createPointer(
+    (method, params) => cdp(tab, method, params),
+    () => tab.visible && window.isVisible() && !window.isMinimized(),
+    () => Boolean(tab.state.mobile),
+    () => tab.scale ?? 1,
+  );
   tabs.set(input.id, tab);
   const content = view.webContents;
   content.setZoomFactor(1);
@@ -374,7 +429,9 @@ async function open(input) {
   });
   content.setWindowOpenHandler(({ url }) => {
     try {
-      emit({ t: "browser.popup", parentId: input.id, url: address(url) });
+      const opened = address(url);
+      emit({ t: "browser.popup", parentId: input.id, url: opened });
+      tab.logs.push({ time: Date.now(), kind: "tab", level: "info", text: `Opened ${opened} in a new tab` });
     } catch {}
     return { action: "deny" };
   });
@@ -389,6 +446,18 @@ async function open(input) {
     }
   });
   content.debugger.on("message", (_, method, params) => {
+    collectLog(tab, method, params);
+    if (method === "Target.attachedToTarget" && params.targetInfo.type === "iframe") {
+      const key = `f${++tab.frameCount}`;
+      tab.frames.set(key, { sessionId: params.sessionId, targetId: params.targetInfo.targetId });
+      for (const [domain, options] of [["Runtime.enable", {}], ["Log.enable", {}], ["Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0, maxPostDataSize: 0 }], ["Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }]])
+        void cdp(tab, domain, options, params.sessionId).catch(() => {});
+      return;
+    }
+    if (method === "Target.detachedFromTarget") {
+      for (const [key, value] of tab.frames) if (value.sessionId === params.sessionId) tab.frames.delete(key);
+      return;
+    }
     if (method === "Page.javascriptDialogOpening")
       tab.state.dialog = { type: params.type, message: params.message };
     else if (method === "Page.javascriptDialogClosed")
@@ -397,6 +466,14 @@ async function open(input) {
     publish(tab);
   });
   await content.loadURL("about:blank");
+  await Promise.all([
+    cdp(tab, "Runtime.enable"),
+    cdp(tab, "Log.enable"),
+    cdp(tab, "Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0, maxPostDataSize: 0 }),
+  ]);
+  await cdp(tab, "Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
+  await cdp(tab, "DOM.enable");
+  await cdp(tab, "Overlay.enable");
   return tab.activity.run(async () => {
     await applyViewport(tab);
     await applyMobileMode(tab);
@@ -412,6 +489,17 @@ async function open(input) {
 }
 
 async function target(tab, input) {
+  if (input.ref !== undefined) {
+    const [key, id] = String(input.ref).includes(".") ? String(input.ref).split(".") : [undefined, String(input.ref)];
+    const backendNodeId = Number(id);
+    const frame = key ? tab.frames.get(key) : undefined;
+    if (!Number.isInteger(backendNodeId) || (key && !frame)) throw new Error("Use a ref from the latest snapshot");
+    const node = { backendNodeId, ...(frame ? { session: frame.sessionId, frameId: frame.targetId } : {}) };
+    await cdp(tab, "DOM.describeNode", { backendNodeId }, node.session).catch(() => {
+      throw new Error("That element is no longer on the page. Take a new snapshot for current refs.");
+    });
+    return node;
+  }
   if (input.selector) {
     const result = await cdp(tab, "Runtime.evaluate", {
       expression: `(() => { const nodes = document.querySelectorAll(${JSON.stringify(input.selector)}); if (nodes.length !== 1) throw new Error('The selector must match exactly one element'); return nodes[0]; })()`,
@@ -446,14 +534,12 @@ async function click(tab, input) {
   const node = await target(tab, input);
   let x = input.x;
   let y = input.y;
-  if (node) {
-    await cdp(tab, "DOM.scrollIntoViewIfNeeded", node);
-    const { model } = await cdp(tab, "DOM.getBoxModel", node);
-    x = (model.content[0] + model.content[4]) / 2;
-    y = (model.content[1] + model.content[5]) / 2;
-  }
+  const box = node ? await elementBox(tab, node) : undefined;
+  if (box) ({ x, y } = centre(box));
   if (!Number.isFinite(x) || !Number.isFinite(y))
     throw new Error("Choose an element or valid click coordinates");
+  await tab.pointer.moveTo(x, y);
+  await tab.pointer.press(box);
   x *= tab.scale;
   y *= tab.scale;
   if (tab.state.mobile) {
@@ -473,6 +559,7 @@ async function click(tab, input) {
       });
     }
   } else {
+    await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
     await cdp(tab, "Input.dispatchMouseEvent", {
       type: "mousePressed",
       x,
@@ -488,7 +575,204 @@ async function click(tab, input) {
       clickCount: 1,
     });
   }
+  await tab.pointer.release();
   return node;
+}
+
+const watchedSessions = new WeakSet();
+
+function uniquePath(directory, name) {
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const extension = dot > 0 ? name.slice(dot) : "";
+  for (let index = 0; ; index++) {
+    const candidate = join(directory, index ? `${stem} (${index})${extension}` : name);
+    if (!existsSync(candidate)) return candidate;
+  }
+}
+
+function watchDownloads(browserSession) {
+  if (watchedSessions.has(browserSession)) return;
+  watchedSessions.add(browserSession);
+  browserSession.on("will-download", (_, item, contents) => {
+    const tab = [...tabs.values()].find((entry) => entry.view.webContents === contents);
+    const directory = join(app.getPath("downloads"), "Citropy");
+    mkdirSync(directory, { recursive: true });
+    const path = uniquePath(directory, basename(item.getFilename()) || "download");
+    item.setSavePath(path);
+    item.once("done", (_, outcome) => {
+      if (!tab) return;
+      tab.logs.push(outcome === "completed"
+        ? { time: Date.now(), kind: "download", level: "info", text: `Downloaded ${item.getURL()} to ${path} (${item.getReceivedBytes()} bytes)` }
+        : { time: Date.now(), kind: "download", level: "error", text: `Download ${outcome}: ${item.getURL()}` });
+    });
+  });
+}
+
+function remoteText(value) {
+  if (value.type === "string") return value.value;
+  if ("value" in value) return JSON.stringify(value.value);
+  return value.unserializableValue ?? value.description ?? value.type;
+}
+
+function collectLog(tab, method, params) {
+  const add = (kind, level, text) => {
+    tab.logs.push({ time: Date.now(), kind, level, text: String(text).slice(0, 2000) });
+    if (tab.logs.length > 300) tab.logs.splice(0, tab.logs.length - 300);
+  };
+  if (method === "Runtime.consoleAPICalled") {
+    const args = params.args.map(remoteText);
+    const styles = typeof args[0] === "string" ? (args[0].match(/%c/g) ?? []).length : 0;
+    const message = [String(args[0] ?? "").replaceAll("%c", ""), ...args.slice(1 + styles)].join(" ").trim();
+    if (!message.startsWith("Electron Security Warning")) add("console", params.type, message);
+  }
+  else if (method === "Runtime.exceptionThrown") add("exception", "error", params.exceptionDetails.exception?.description ?? params.exceptionDetails.text);
+  else if (method === "Log.entryAdded" && params.entry.source !== "network" && ["error", "warning"].includes(params.entry.level)) add("browser", params.entry.level, `${params.entry.text}${params.entry.url ? ` (${params.entry.url})` : ""}`);
+  else if (method === "Network.requestWillBeSent") {
+    tab.requests.set(params.requestId, params.request.url);
+    if (tab.requests.size > 500) tab.requests.delete(tab.requests.keys().next().value);
+  } else if (method === "Network.responseReceived" && params.response.status >= 400) add("network", "error", `${params.response.status} ${params.response.url}`);
+  else if (method === "Network.loadingFailed" && !params.canceled) add("network", "error", `${params.errorText} ${tab.requests.get(params.requestId) ?? ""}`.trim());
+}
+
+async function hover(tab, input) {
+  const node = await target(tab, input);
+  let x = input.x;
+  let y = input.y;
+  if (node) ({ x, y } = centre(await elementBox(tab, node)));
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Choose an element or valid hover coordinates");
+  await tab.pointer.moveTo(x, y);
+  await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", x: x * tab.scale, y: y * tab.scale });
+  await tab.pointer.release();
+}
+
+async function waitFor(tab, input) {
+  const timeout = input.timeout ?? 5000;
+  if (!Number.isFinite(timeout) || timeout < 0 || timeout > 30000) throw new Error("Use a wait timeout from 0 to 30000 milliseconds");
+  if (input.selector === undefined && input.text === undefined) {
+    await new Promise((resolve) => setTimeout(resolve, timeout));
+    return `Waited ${timeout} ms`;
+  }
+  const condition = input.selector !== undefined
+    ? `(() => { const node = document.querySelector(${JSON.stringify(String(input.selector))}); if (!node) return false; const box = node.getBoundingClientRect(); return box.width > 0 && box.height > 0 && getComputedStyle(node).visibility !== "hidden"; })()`
+    : `Boolean(document.body && document.body.innerText.includes(${JSON.stringify(String(input.text))}))`;
+  const started = Date.now();
+  for (;;) {
+    const { result, exceptionDetails } = await cdp(tab, "Runtime.evaluate", { expression: condition, returnByValue: true });
+    if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? "Invalid selector");
+    if (result.value === true) return `Found after ${Date.now() - started} ms`;
+    if (Date.now() - started >= timeout) throw new Error(`Timed out after ${timeout} ms waiting for ${input.selector !== undefined ? `selector ${input.selector}` : `text "${input.text}"`}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+const mediaValues = { colorScheme: ["light", "dark"], reducedMotion: ["reduce", "no-preference"] };
+
+async function emulate(tab, input) {
+  for (const key of Object.keys(mediaValues)) {
+    const value = input[key];
+    if (value === undefined) continue;
+    if (value !== "none" && !mediaValues[key].includes(value)) throw new Error(`${key} must be ${mediaValues[key].join(", ")} or none`);
+    tab.media[key] = value === "none" ? "" : value;
+  }
+  await cdp(tab, "Emulation.setEmulatedMedia", { features: [
+    { name: "prefers-color-scheme", value: tab.media.colorScheme },
+    { name: "prefers-reduced-motion", value: tab.media.reducedMotion },
+  ] });
+  return `Emulating color scheme ${tab.media.colorScheme || "system"} and reduced motion ${tab.media.reducedMotion || "system"}`;
+}
+
+async function withFrames(tab, nodes) {
+  const all = [...nodes];
+  const queue = [...nodes];
+  while (queue.length) {
+    const node = queue.shift();
+    if (node.role?.value !== "Iframe" || !node.backendDOMNodeId) continue;
+    const frameId = (await cdp(tab, "DOM.describeNode", { backendNodeId: node.backendDOMNodeId }, node.session).catch(() => undefined))?.node?.frameId;
+    if (!frameId) continue;
+    let inner = (await cdp(tab, "Accessibility.getFullAXTree", { frameId }, node.session).catch(() => undefined))?.nodes;
+    let frame;
+    if (!inner?.length || inner.length === 1) {
+      const entry = [...tab.frames].find(([, value]) => value.targetId === frameId);
+      if (entry) {
+        frame = { key: entry[0], sessionId: entry[1].sessionId };
+        inner = (await cdp(tab, "Accessibility.getFullAXTree", {}, frame.sessionId).catch(() => undefined))?.nodes;
+      }
+    }
+    if (!inner?.length) continue;
+    const session = frame?.sessionId ?? node.session;
+    const refPrefix = frame ? `${frame.key}.` : node.refPrefix ?? "";
+    const renamed = inner.map((entry) => ({
+      ...entry,
+      nodeId: `${frameId}:${entry.nodeId}`,
+      ...(entry.parentId ? { parentId: `${frameId}:${entry.parentId}` } : {}),
+      childIds: (entry.childIds ?? []).map((id) => `${frameId}:${id}`),
+      ...(entry.backendDOMNodeId && refPrefix ? { ref: `${refPrefix}${entry.backendDOMNodeId}` } : {}),
+      ...(session ? { session, refPrefix } : {}),
+    }));
+    const root = renamed.find((entry) => !entry.parentId) ?? renamed[0];
+    node.childIds = [...(node.childIds ?? []), root.nodeId];
+    all.push(...renamed);
+    queue.push(...renamed);
+  }
+  return all;
+}
+
+async function swipe(tab, input) {
+  const values = [input.x, input.y, input.toX, input.toY];
+  if (!values.every(Number.isFinite)) throw new Error("A swipe needs x, y, toX and toY coordinates");
+  const duration = input.duration ?? 300;
+  if (!Number.isFinite(duration) || duration < 0 || duration > 5000) throw new Error("Use a swipe duration from 0 to 5000 milliseconds");
+  const [x, y, toX, toY] = values.map((value) => value * tab.scale);
+  const steps = Math.max(2, Math.round(duration / 16));
+  const point = (step) => ({ x: x + ((toX - x) * step) / steps, y: y + ((toY - y) * step) / steps });
+  const drawn = (step) => ({ x: input.x + ((input.toX - input.x) * step) / steps, y: input.y + ((input.toY - input.y) * step) / steps });
+  const pause = async (step) => {
+    if (step !== undefined) await tab.pointer.drawAt(drawn(step).x, drawn(step).y, true);
+    await new Promise((resolve) => setTimeout(resolve, duration / steps));
+  };
+  await tab.pointer.moveTo(input.x, input.y);
+  if (tab.state.mobile) {
+    await cdp(tab, "Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point(0)] });
+    for (let step = 1; step <= steps; step++) {
+      await pause(step);
+      await cdp(tab, "Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [point(step)] });
+    }
+    await cdp(tab, "Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await tab.pointer.release();
+    return;
+  }
+  const content = tab.view.webContents;
+  let dragData;
+  const intercept = (_, method, params) => { if (method === "Input.dragIntercepted") dragData = params.data; };
+  content.debugger.on("message", intercept);
+  await cdp(tab, "Input.setInterceptDrags", { enabled: true });
+  try {
+    await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", ...point(0), button: "none", buttons: 0 });
+    await pause();
+    await cdp(tab, "Input.dispatchMouseEvent", { type: "mousePressed", ...point(0), button: "left", buttons: 1, clickCount: 1 });
+    for (let step = 1; step <= steps; step++) {
+      await pause(step);
+      await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", ...point(step), button: "left", buttons: 1 });
+    }
+    if (dragData)
+      for (const type of ["dragEnter", "dragOver", "drop"])
+        await cdp(tab, "Input.dispatchDragEvent", { type, x: input.toX, y: input.toY, data: dragData });
+    await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseReleased", ...point(steps), button: "left", buttons: 0, clickCount: 1 });
+  } finally {
+    content.debugger.off("message", intercept);
+    await cdp(tab, "Input.setInterceptDrags", { enabled: false });
+    await tab.pointer.release();
+  }
+  return dragData ? `Dragged ${dragData.items?.map((item) => item.mimeType).join(", ") || "content"} and dropped it at the end point` : undefined;
+}
+
+async function evaluate(tab, expression) {
+  if (typeof expression !== "string" || !expression.trim() || expression.length > 20000) throw new Error("Provide a JavaScript expression to evaluate");
+  const { result, exceptionDetails } = await cdp(tab, "Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true, timeout: 10000, userGesture: false });
+  if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text ?? "The expression failed");
+  const value = JSON.stringify(result.value ?? null);
+  return value.length > 20000 ? `${value.slice(0, 20000)}… (truncated)` : value;
 }
 
 async function closeTopLayer(tab) {
@@ -514,8 +798,14 @@ async function performAction(tab, input) {
     throw new Error(
       `Respond to the browser dialog first: ${tab.state.dialog.message}`,
     );
-  if (["click", "type", "press", "scroll"].includes(input.action))
-    await present(tab);
+  if (["click", "type", "press", "scroll", "swipe", "hover"].includes(input.action))
+    await prepareTab(tab);
+  let result;
+  const since = Date.now();
+  let navigationStarted = false;
+  const startedLoading = () => { navigationStarted = true; };
+  content.on("did-start-loading", startedLoading);
+  try {
   switch (input.action) {
     case "navigate":
       await content.loadURL(address(input.url)).catch((error) => {
@@ -540,21 +830,41 @@ async function performAction(tab, input) {
     case "click":
       await click(tab, input);
       break;
+    case "swipe":
+      result = await swipe(tab, input);
+      break;
+    case "hover":
+      await hover(tab, input);
+      break;
+    case "wait":
+      result = await waitFor(tab, input);
+      break;
+    case "emulate":
+      result = await emulate(tab, input);
+      break;
+    case "evaluate":
+      result = await evaluate(tab, input.expression);
+      break;
     case "type": {
       if (typeof input.text !== "string" || input.text.length > 100000)
         throw new Error("Invalid browser text");
-      if (input.selector || input.role) {
+      if (input.ref !== undefined || input.selector || input.role) {
         const node = await click(tab, input);
         const object = node.objectId
           ? node
-          : (await cdp(tab, "DOM.resolveNode", node)).object;
+          : (await cdp(tab, "DOM.resolveNode", nodeParams(node), node.session)).object;
         await cdp(tab, "Runtime.callFunctionOn", {
           objectId: object.objectId,
           functionDeclaration:
             "function(){ if (typeof this.select === 'function') this.select(); else if (this.isContentEditable) { const range = document.createRange(); range.selectNodeContents(this); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); } }",
-        });
+        }, node.session);
       }
-      await cdp(tab, "Input.insertText", { text: input.text });
+      if (tab.pointer.watched() && input.text.length <= 200)
+        for (const character of input.text) {
+          await cdp(tab, "Input.insertText", { text: character });
+          await new Promise((resolve) => setTimeout(resolve, 18));
+        }
+      else await cdp(tab, "Input.insertText", { text: input.text });
       break;
     }
     case "press": {
@@ -630,13 +940,56 @@ async function performAction(tab, input) {
     case "scroll": {
       if (!Number.isFinite(input.x) || !Number.isFinite(input.y))
         throw new Error("Invalid scroll distance");
+      let point = { x: tab.state.width / 2, y: tab.state.height / 2 };
+      const node = await target(tab, input);
+      if (node) {
+        const middle = centre(await elementBox(tab, node, { scroll: false }));
+        point = {
+          x: Math.min(Math.max(middle.x, 1), tab.state.width - 1),
+          y: Math.min(Math.max(middle.y, 1), tab.state.height - 1),
+        };
+      }
+      await tab.pointer.moveTo(point.x, point.y);
       await cdp(tab, "Input.dispatchMouseEvent", {
         type: "mouseWheel",
-        x: 20,
-        y: 20,
+        x: point.x * tab.scale,
+        y: point.y * tab.scale,
         deltaX: input.x,
         deltaY: input.y,
       });
+      await tab.pointer.release();
+      break;
+    }
+    case "select": {
+      if (typeof input.option !== "string" || !input.option) throw new Error("Provide the option value or visible text to select");
+      const node = await target(tab, input);
+      if (!node) throw new Error("Choose the dropdown by ref or selector");
+      const box = await elementBox(tab, node);
+      await tab.pointer.moveTo(centre(box).x, centre(box).y);
+      await tab.pointer.press(box);
+      await tab.pointer.release();
+      const object = node.objectId ? node : (await cdp(tab, "DOM.resolveNode", nodeParams(node), node.session)).object;
+      const { result: picked, exceptionDetails } = await cdp(tab, "Runtime.callFunctionOn", {
+        objectId: object.objectId,
+        arguments: [{ value: input.option }],
+        returnByValue: true,
+        functionDeclaration: "function(choice) { if (!(this instanceof HTMLSelectElement)) throw new Error('That element is not a dropdown'); const option = [...this.options].find((entry) => entry.value === choice) ?? [...this.options].find((entry) => entry.text.trim() === choice.trim()); if (!option) throw new Error('No option matches ' + choice + '. Options: ' + [...this.options].map((entry) => entry.text.trim()).join(', ')); this.value = option.value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); return option.text.trim(); }",
+      }, node.session);
+      if (exceptionDetails) throw new Error(exceptionDetails.exception?.description?.split("\n")[0].replace(/^Error: /, "") ?? "Could not select that option");
+      result = `Selected ${picked.value}`;
+      break;
+    }
+    case "upload": {
+      if (!Array.isArray(input.paths) || !input.paths.length || input.paths.some((path) => typeof path !== "string"))
+        throw new Error("Provide the files to upload");
+      const node = await target(tab, input);
+      if (!node) throw new Error("Choose the file input by ref or selector");
+      const box = await elementBox(tab, node);
+      await tab.pointer.moveTo(centre(box).x, centre(box).y);
+      await tab.pointer.press(box);
+      await tab.pointer.release();
+      await cdp(tab, "DOM.setFileInputFiles", { files: input.paths, ...nodeParams(node) }, node.session);
+      result = `Selected ${input.paths.length} file${input.paths.length === 1 ? "" : "s"}`;
       break;
     }
     case "resize": {
@@ -677,8 +1030,30 @@ async function performAction(tab, input) {
     default:
       throw new Error("Unknown browser action");
   }
+  if (["click", "type", "press", "swipe", "upload", "scroll", "select"].includes(input.action)) await settle(tab, () => navigationStarted);
+  } finally {
+    content.off("did-start-loading", startedLoading);
+  }
+  await tab.pointer.release();
   publish(tab);
-  return state(tab);
+  const events = tab.logs.filter((entry) => entry.time >= since);
+  return { ...state(tab), ...(result === undefined ? {} : { result }), ...(events.length ? { events } : {}) };
+}
+
+async function settle(tab, navigationStarted) {
+  const content = tab.view.webContents;
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  if (!navigationStarted() && !content.isLoadingMainFrame()) return;
+  if (!content.isLoadingMainFrame()) return;
+  await new Promise((resolve) => {
+    const timer = setTimeout(done, 10000);
+    function done() {
+      clearTimeout(timer);
+      content.off("did-stop-loading", done);
+      resolve();
+    }
+    content.once("did-stop-loading", done);
+  });
 }
 
 async function action(tab, input) {
@@ -749,34 +1124,65 @@ async function request(method, params) {
   }
   if (method === "browser.action" && params.input.action === "dialog") return action(tab, params.input);
   if (method === "browser.action") return tab.activity.run(() => action(tab, params.input));
+  if (method === "browser.logs") {
+    const entries = tab.logs.slice();
+    if (params.clear !== false) tab.logs.length = 0;
+    return entries;
+  }
   if (method === "browser.snapshot") return tab.activity.run(async () => {
-    if (tab.view.webContents.getURL() !== "about:blank") await present(tab);
-    const { nodes } = await cdp(tab, "Accessibility.getFullAXTree");
-    const lines = nodes
-      .filter((node) => !node.ignored)
-      .map(
-        (node) =>
-          `${node.role?.value ?? ""} ${JSON.stringify(node.name?.value ?? "")}${node.value ? ` value=${JSON.stringify(node.value.value)}` : ""}`,
-      );
+    await prepareTab(tab);
+    let scope;
+    if (params.selector !== undefined) {
+      scope = await target(tab, { selector: params.selector });
+      const { node } = await cdp(tab, "DOM.describeNode", scope);
+      scope = { ...scope, backendNodeId: node.backendNodeId };
+    } else if (params.ref !== undefined) scope = await target(tab, { ref: params.ref });
+    const scopeRef = scope && (scope.session ? `${[...tab.frames].find(([, value]) => value.sessionId === scope.session)?.[0]}.${scope.backendNodeId}` : scope.backendNodeId);
+    const nodes = params.tree === false ? [] : await withFrames(tab, (await cdp(tab, "Accessibility.getFullAXTree")).nodes);
+    const lines = formatTree(nodes, scopeRef);
     let image;
     if (params.screenshot === true) {
       const { cssVisualViewport } = await cdp(tab, "Page.getLayoutMetrics");
-      image = await cdp(tab, "Page.captureScreenshot", {
-        format: "jpeg",
-        quality: 80,
-        fromSurface: true,
-        captureBeyondViewport: true,
-        clip: {
-          x: cssVisualViewport.pageX,
-          y: cssVisualViewport.pageY,
-          width: tab.state.width / cssVisualViewport.scale,
-          height: tab.state.height / cssVisualViewport.scale,
-          scale: cssVisualViewport.scale,
-        },
-      }).then((result) => result.data).catch(() => undefined);
+      let clip = {
+        x: cssVisualViewport.pageX,
+        y: cssVisualViewport.pageY,
+        width: tab.state.width / cssVisualViewport.scale,
+        height: tab.state.height / cssVisualViewport.scale,
+      };
+      if (scope) {
+        const box = await elementBox(tab, scope, { quad: "border" });
+        const metrics = await cdp(tab, "Page.getLayoutMetrics");
+        clip = {
+          x: box.left + metrics.cssVisualViewport.pageX,
+          y: box.top + metrics.cssVisualViewport.pageY,
+          width: Math.max(1, box.right - box.left),
+          height: Math.max(1, box.bottom - box.top),
+        };
+      } else if (params.fullPage === true) {
+        const { cssContentSize } = await cdp(tab, "Page.getLayoutMetrics");
+        clip = { x: 0, y: 0, width: cssContentSize.width, height: Math.min(cssContentSize.height, 16000) };
+      }
+      image = await behindCover(tab, async () => {
+        await tab.pointer.hide();
+        try {
+          return await cdp(tab, "Page.captureScreenshot", {
+            format: "jpeg",
+            quality: 80,
+            fromSurface: true,
+            captureBeyondViewport: Boolean(scope) || params.fullPage === true,
+            clip: { ...clip, scale: cssVisualViewport.scale },
+          }).then((result) => result.data).catch(() => undefined);
+        } finally {
+          await tab.pointer.release();
+        }
+      });
     }
+    const body = lines.join("\n");
+    const limit = 28000;
+    const tree = body.length > limit ? `${body.slice(0, limit)}\n… truncated. Snapshot a selector or ref to see the rest.` : body;
+    const errors = tab.logs.filter((entry) => entry.level === "error").length;
     return {
-      text: `${tab.view.webContents.getTitle()}\n${tab.view.webContents.getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions.\n\n${lines.join("\n").slice(0, 28000)}`,
+      text: `${tab.view.webContents.getTitle()}\n${tab.view.webContents.getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions. Use [ref=N] values with browser_action ref.${errors ? ` ${errors} unread error${errors === 1 ? "" : "s"} in browser_logs.` : ""}\n\n${tree}`,
       image,
     };
   });
@@ -883,7 +1289,7 @@ app
         if (id !== "local") for (const tab of tabs.values()) {
           tab.presentation++;
           tab.visible = false;
-          tab.view.setBounds({ ...tab.view.getBounds(), x: window.getContentSize()[0] + 20 });
+          tab.view.setBounds(parkedBounds());
           tab.activity.present(false);
         }
         return state;
@@ -1049,10 +1455,7 @@ app
       else if (command === "reload") {
         for (const tab of tabs.values()) {
           tab.visible = false;
-          tab.view.setBounds({
-            ...tab.view.getBounds(),
-            x: window.getContentSize()[0] + 20,
-          });
+          tab.view.setBounds(parkedBounds());
           tab.activity.present(false);
         }
         window.webContents.reload();
@@ -1162,10 +1565,7 @@ app
           for (const other of tabs.values())
             if (other !== tab) {
               other.visible = false;
-              other.view.setBounds({
-                ...other.view.getBounds(),
-                x: width + 20,
-              });
+              void applyViewport(other).catch(() => {});
               other.activity.present(false);
             }
           window.webContents.send("browser:cover", id, undefined);
@@ -1177,13 +1577,11 @@ app
           )
             return;
           window.webContents.send("browser:cover", id, image);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          if (tab.view.webContents.isDestroyed() || tab.presentation !== presentation) return;
         }
         tab.visible = Boolean(visible);
-        if (!visible)
-          tab.view.setBounds({
-            ...tab.view.getBounds(),
-            x: window.getContentSize()[0] + 20,
-          });
+        if (!visible) void applyViewport(tab).catch(() => {});
         tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
         publish(tab);
       },

@@ -9,6 +9,7 @@ import * as terminals from "../terminals.ts";
 import type { Routes } from "./types.ts";
 
 export async function closeProject(id: string): Promise<void> {
+  if (store.projects.get(id)?.chat) throw new Error("Chat can't be closed.");
   for (const panel of panelList()) {
     if (panel.projectId !== id) continue;
     await terminals.close(panel.id);

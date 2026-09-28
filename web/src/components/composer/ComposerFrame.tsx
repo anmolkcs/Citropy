@@ -48,7 +48,7 @@ export function ComposerFrame() {
     let geometry = "";
     const draw = () => {
       const fillet = parseFloat(getComputedStyle(tabList).paddingLeft);
-      const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-wide-tab")].map((tab) => {
+      const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-wide-tab")].filter((tab) => tab.offsetParent).map((tab) => {
         const style = getComputedStyle(tab);
         const transform = new DOMMatrixReadOnly(style.transform);
         const offset = offsetWithin(tab, shell);

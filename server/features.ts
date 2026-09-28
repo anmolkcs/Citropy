@@ -1,4 +1,6 @@
 import { listImportableSessions, importSession } from "./session-import.ts";
+import { descendants, processTable } from "./process-table.ts";
+import { createPairing, LAN_DEVICE_HEADER, openFirewall, removeDevice, setSharing, sharingState } from "./lan-sharing.ts";
 import { nodeRuntimeStatus, installNodeRuntime } from "./node-runtime.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
@@ -11,7 +13,7 @@ import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./shells.ts";
 import { dev, developmentOrigin } from "./config.ts";
 import { desktopRequest } from "./desktop.ts";
-import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime } from "./runtime.ts";
+import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime, liveAgents, turnOffAgent, turnOffIdleAgents } from "./runtime.ts";
 import { assertWorkspaceIdle, restoreCheckpoint, redoCheckpoint, forkConversation, reviewChanges } from "./checkpoints.ts";
 import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
@@ -111,6 +113,11 @@ function settings(
   return out;
 }
 
+function editableWorkspace(projectId: string, threadId?: string): string {
+  if (store.projects.get(projectId)?.chat) throw new Error("Files in Chat are view only.");
+  return workspacePath(projectId, threadId);
+}
+
 export async function handleFeatures(
   req: IncomingMessage,
   res: ServerResponse,
@@ -119,7 +126,7 @@ export async function handleFeatures(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (
-    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|runtimes|shells)(\/|$)/.test(
+    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|runtimes|shells|sharing|agents)(\/|$)/.test(
       url.pathname,
     )
   )
@@ -155,17 +162,49 @@ export async function handleFeatures(
       .end(JSON.stringify(value));
   };
   try {
-    if (url.pathname === "/api/editor/search" && req.method === "GET") {
+    if (url.pathname.startsWith("/api/sharing") && req.headers[LAN_DEVICE_HEADER])
+      throw new Error("Manage local sharing from the computer running Citropy.");
+    if (url.pathname === "/api/agents" && req.method === "GET") {
+      const agents = liveAgents();
+      if (url.searchParams.get("usage") !== "1") respond({ agents });
+      else {
+        const table = await processTable();
+        respond({
+          agents: agents.map((agent) => {
+            if (!agent.pid || !table.length) return agent;
+            const tree = descendants(table, [agent.pid]);
+            const entries = table.filter((entry) => tree.has(entry.pid));
+            return { ...agent, memory: entries.reduce((sum, entry) => sum + entry.memory, 0), cpu: entries.reduce((sum, entry) => sum + entry.cpu, 0), processes: entries.length };
+          }),
+        });
+      }
+    } else if (url.pathname === "/api/agents/turn-off" && req.method === "POST") {
+      turnOffAgent(url.searchParams.get("threadId") ?? "");
+      respond({ agents: liveAgents() });
+    } else if (url.pathname === "/api/agents/turn-off-idle" && req.method === "POST") {
+      const count = turnOffIdleAgents();
+      respond({ count, agents: liveAgents() });
+    } else if (url.pathname === "/api/sharing" && req.method === "GET") {
+      respond(sharingState());
+    } else if (url.pathname === "/api/sharing" && req.method === "PUT") {
+      respond(setSharing((await body(req)).enabled === true));
+    } else if (url.pathname === "/api/sharing/firewall" && req.method === "POST") {
+      respond(await openFirewall());
+    } else if (url.pathname === "/api/sharing/pair" && req.method === "POST") {
+      respond(createPairing());
+    } else if (url.pathname === "/api/sharing/devices" && req.method === "DELETE") {
+      respond(removeDevice(url.searchParams.get("id") ?? ""));
+    } else if (url.pathname === "/api/editor/search" && req.method === "GET") {
       respond(await findWorkspacePaths(workspacePath(projectId ?? "", threadId), url.searchParams.get("query") ?? ""));
     } else if (url.pathname === "/api/editor/tree" && req.method === "GET") {
       respond(await tree(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", true));
     } else if (url.pathname === "/api/editor/file" && req.method === "POST") {
-      respond(await createEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
+      respond(await createEditorFile(editableWorkspace(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
     } else if (url.pathname === "/api/editor/file" && req.method === "GET") {
       respond(await readEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
     } else if (url.pathname === "/api/editor/file" && req.method === "PUT") {
       const input = await body(req, 12 * 1024 * 1024 + 1024);
-      const saved = await saveEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", input.text, input.revision);
+      const saved = await saveEditorFile(editableWorkspace(projectId ?? "", threadId), url.searchParams.get("path") ?? "", input.text, input.revision);
       respond({ revision: saved.revision });
     } else if (url.pathname === "/api/threads/question" && req.method === "POST") {
       const input = await body(req);

@@ -1,5 +1,6 @@
 import { realpath } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
+import { existsSync } from "node:fs";
 import { workspacePath } from "./workspaces.ts";
 import { saveToolImageFile } from "./tool-images.ts";
 import { answerQuestion, askQuestion, hasPendingQuestion, pendingQuestions } from "./questions.ts";
@@ -40,6 +41,12 @@ function required(args: Record<string, unknown>, key: string): string {
   if (typeof value !== "string" || !value.trim() || value.length > 100_000)
     throw new Error(`Provide a valid ${key}`);
   return value;
+}
+
+const CHAT_TOOLS = new Set(["ask_user", "workspace_tree", "workspace_find", "workspace_read", "workspace_image"]);
+
+function chatTool(name: string): boolean {
+  return CHAT_TOOLS.has(name) || name.startsWith("browser_");
 }
 
 const MAX_RUNNING_SUBAGENTS = 4;
@@ -151,7 +158,8 @@ export async function callWorkspaceTool(
     const browserAllowed = resolveProjectSettings(store.projectDefaults, project.settings).browserAccess !== false;
     return text(workspaceTools.filter(tool =>
       (tool.name.startsWith(`${category}_`) || (category === "workspace" && tool.name === "open_panel")) &&
-      (!tool.name.startsWith("browser_") || browserAllowed),
+      (!tool.name.startsWith("browser_") || browserAllowed) &&
+      (!project.chat || chatTool(tool.name)),
     ));
   }
   if (name === "run_tool") {
@@ -160,6 +168,7 @@ export async function callWorkspaceTool(
     if (!args.arguments || typeof args.arguments !== "object" || Array.isArray(args.arguments)) throw new Error("Tool arguments must be an object");
     args = args.arguments as Record<string, unknown>;
   }
+  if (project.chat && name !== "approve" && !chatTool(name)) throw new Error("Chat can only use the browser and read files.");
   if (name === "approve") {
     const input = args.input ?? {};
     if (args.tool_name === "AskUserQuestion") {
@@ -205,7 +214,7 @@ export async function callWorkspaceTool(
     name === "terminal_write" ||
     name === "terminal_open" ||
     (name === "browser_action" &&
-      !["navigate", "back", "forward", "reload", "scroll", "resize"].includes(
+      !["navigate", "back", "forward", "reload", "scroll", "resize", "hover", "wait", "emulate"].includes(
         String(args.action),
       ));
   if (changes && thread.permissionMode === "plan")
@@ -257,8 +266,19 @@ export async function callWorkspaceTool(
       );
     case "browser_snapshot": {
       if (args.screenshot !== undefined && typeof args.screenshot !== "boolean") throw new Error("screenshot must be a boolean");
+      if (args.tree !== undefined && typeof args.tree !== "boolean") throw new Error("tree must be a boolean");
+      if (args.fullPage !== undefined && typeof args.fullPage !== "boolean") throw new Error("fullPage must be a boolean");
       const screenshot = args.screenshot === true;
-      const snapshot = await browser.browserSnapshot(required(args, "tabId"), screenshot);
+      if (args.tree === false && !screenshot) throw new Error("Request a screenshot, the accessibility tree, or both.");
+      for (const key of ["selector", "ref"] as const)
+        if (args[key] !== undefined && (typeof args[key] !== "string" || !args[key])) throw new Error(`${key} must be a non-empty string`);
+      const snapshot = await browser.browserSnapshot(required(args, "tabId"), {
+        screenshot,
+        tree: args.tree !== false,
+        fullPage: args.fullPage === true,
+        ...(args.selector ? { selector: args.selector as string } : {}),
+        ...(args.ref ? { ref: args.ref as string } : {}),
+      });
       return snapshot.image
         ? [
             ...text(snapshot.text),
@@ -268,13 +288,28 @@ export async function callWorkspaceTool(
             screenshot ? `${snapshot.text}\n\nA screenshot is not available for this page. The accessibility tree above is live.` : snapshot.text,
           );
     }
-    case "browser_action":
-      return text(
-        await browser.browserAction(
-          required(args, "tabId"),
-          args as unknown as BrowserAction,
-        ),
-      );
+    case "browser_logs": {
+      if (args.clear !== undefined && typeof args.clear !== "boolean") throw new Error("clear must be a boolean");
+      const entries = await browser.browserLogs(required(args, "tabId"), args.clear !== false);
+      return text(entries.length
+        ? entries.map((entry) => `${new Date(entry.time).toISOString().slice(11, 23)} ${entry.kind} ${entry.level}: ${entry.text}`).join("\n")
+        : "No console messages, errors, or failed requests since the last read.");
+    }
+    case "browser_action": {
+      const input = args as unknown as BrowserAction;
+      if (input.action === "upload") {
+        const root = thread.workspacePath ?? project.path;
+        const paths = Array.isArray(input.paths) ? input.paths : [];
+        input.paths = paths.map((path) => {
+          if (typeof path !== "string" || !path) throw new Error("Provide file paths to upload.");
+          const absolute = resolve(root, path);
+          if (absolute !== root && !absolute.startsWith(`${root}${sep}`)) throw new Error(`Only files inside this conversation's workspace can be uploaded: ${path}`);
+          if (!existsSync(absolute)) throw new Error(`File not found: ${path}`);
+          return absolute;
+        });
+      }
+      return text(browser.describeBrowserAction(input.action, await browser.browserAction(required(args, "tabId"), input)));
+    }
     case "browser_close": {
       const id = required(args, "tabId");
       await browser.closeBrowser(id);
@@ -310,6 +345,21 @@ export async function callWorkspaceTool(
           typeof args.path === "string" ? args.path : "",
         ),
       );
+    case "workspace_find": {
+      if (args.path !== undefined && typeof args.path !== "string") throw new Error("path must be a string");
+      if (args.name !== undefined && (typeof args.name !== "string" || !args.name)) throw new Error("name must be a non-empty string");
+      if (args.sort !== undefined && args.sort !== "size" && args.sort !== "modified") throw new Error("sort must be size or modified");
+      const limit = args.limit ?? 20;
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("limit must be an integer from 1 to 100");
+      const found = await files.find(workspacePath(project.id, threadId), {
+        path: (args.path as string | undefined) ?? "",
+        name: args.name as string | undefined,
+        sort: (args.sort as "size" | "modified" | undefined) ?? "size",
+        limit,
+        signal,
+      });
+      return text({ ...found, files: found.files.map((file) => ({ ...file, modified: new Date(file.modified).toISOString() })) });
+    }
     case "workspace_read": {
       const content = await files.read(workspacePath(project.id, threadId), required(args, "path"));
       if (content === null) throw new Error("Cannot read this file. Use a readable file path inside this workspace.");

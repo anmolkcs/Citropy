@@ -1,8 +1,5 @@
 import {
   ArrowLeft,
-  CheckCheck,
-  FileCode2,
-  FilePlus2,
   GitBranch,
   GitCommitHorizontal,
   GitMerge,
@@ -296,13 +293,6 @@ export function ChangesSection({
             </>
           ) : (
             <EmptyState
-              icon={
-                files.length
-                  ? FileCode2
-                  : data.hasCommits
-                    ? CheckCheck
-                    : FilePlus2
-              }
               title={
                 files.length
                   ? t("Select a file to review")

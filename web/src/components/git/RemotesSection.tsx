@@ -55,7 +55,6 @@ export function RemotesSection({
       </header>
       {!data.remotes.length ? (
         <EmptyState
-          icon={Globe2}
           title={t("Your work is local")}
           action={
             <button

@@ -42,7 +42,7 @@ export function SelectionHighlight({ value, layout, selector = SELECTED }: {
       previous.current = undefined;
     };
     if (!selected) return hide();
-    const position = (animate: boolean) => {
+    const position = () => {
       const bounds = visibleBounds(host, selected);
       if (bounds[2] < 1 || bounds[3] < 1) return hide();
       const last = previous.current;
@@ -50,18 +50,13 @@ export function SelectionHighlight({ value, layout, selector = SELECTED }: {
         last.value = value;
         return;
       }
-      pill.style.transition = animate ? "" : "none";
       pill.style.transform = `translate(${bounds[0]}px, ${bounds[1]}px)`;
       pill.style.width = `${bounds[2]}px`;
       pill.style.height = `${bounds[3]}px`;
       pill.hidden = false;
       previous.current = { value, bounds };
     };
-    let initial = true;
-    const resize = new ResizeObserver(() => {
-      position(initial && Boolean(previous.current && previous.current.value !== value));
-      initial = false;
-    });
+    const resize = new ResizeObserver(position);
     resize.observe(host);
     resize.observe(selected);
     if (host.children.length <= WATCHED_CHILDREN) for (const child of host.children) if (child !== pill) resize.observe(child);

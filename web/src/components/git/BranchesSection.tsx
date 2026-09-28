@@ -102,7 +102,6 @@ export function BranchesSection({
       )}
       {!data.hasCommits ? (
         <EmptyState
-          icon={GitBranch}
           title={t("Create a commit before branching")}
           action={reviewChanges}
         >

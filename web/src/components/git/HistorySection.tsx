@@ -4,7 +4,6 @@ import {
   ChevronRight,
   GitBranch,
   GitCommitHorizontal,
-  History,
 } from "lucide-react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview, type GitSelection } from "../GitReview.tsx";
@@ -53,7 +52,6 @@ export function HistorySection({
     <>
     {!data.hasCommits ? (
       <EmptyState
-        icon={History}
         title={t("Your history starts with a commit")}
         action={reviewChanges}
       >
@@ -184,7 +182,6 @@ export function HistorySection({
             </>
           ) : (
             <EmptyState
-              icon={GitCommitHorizontal}
               title={t("Review a saved change")}
             >
               <p>

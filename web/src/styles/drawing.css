@@ -1,16 +1,16 @@
 .drawing-pane {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-10);
   height: 100%;
-  padding: 12px 14px;
+  padding: var(--space-12) var(--space-16);
   outline: none;
 }
 .drawing-topbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 .drawing-paper-menu .menu-list {
   max-height: none;
@@ -18,7 +18,7 @@
 .drawing-workspace {
   display: flex;
   flex: 1;
-  gap: 10px;
+  gap: var(--space-10);
   min-height: 0;
 }
 .drawing-rail {
@@ -26,15 +26,15 @@
   flex: none;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   overflow-y: auto;
 }
 .drawing-tools,
 .drawing-swatches {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   border-radius: var(--r-md);
   background: var(--canvas-deep);
 }
@@ -57,7 +57,7 @@
 .drawing-history {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2);
   margin-top: auto;
 }
 .drawing-history .icon-btn:disabled {
@@ -95,7 +95,7 @@
   display: flex;
   flex: 1 1 120px;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   min-width: 110px;
   max-width: 220px;
 }
@@ -162,7 +162,7 @@
   position: absolute;
   min-width: 48px;
   margin: -4px 0 0 -6px;
-  padding: 4px 6px;
+  padding: var(--space-4) var(--space-6);
   overflow: hidden;
   border-radius: var(--r-xs);
   background: color-mix(in srgb, currentColor 9%, transparent);
@@ -184,12 +184,12 @@
   flex-direction: column;
   gap: 1px;
   width: 200px;
-  padding: 4px;
+  padding: var(--space-4);
   border-radius: var(--r-md);
   background: var(--canvas-deep);
 }
 .drawing-layers-empty {
-  padding: 10px 8px;
+  padding: var(--space-10) var(--space-8);
   color: var(--text-3);
   font-size: var(--text-sm);
 }
@@ -216,10 +216,10 @@
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   min-width: 0;
   height: 30px;
-  padding: 0 8px;
+  padding: 0 var(--space-8);
   color: var(--text-2);
   font-size: var(--text-sm);
   text-align: start;

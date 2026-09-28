@@ -7,12 +7,27 @@ Each release publishes its section below as the release notes, which the app sho
 ### Added
 - Keyboard shortcuts to open Settings with Ctrl+, and choose a project folder with Ctrl+O, using Cmd on macOS.
 - Computer control on Sway through screen sharing and direct virtual input, without a VNC server.
+- Chat mode, next to Code in the mode switch at the top of the window. Chat conversations can browse the web and search and read files anywhere on your computer, but can't run commands, edit files, or start subagents.
+- Local sharing. Pair a phone or tablet on the same network by scanning a QR code, then use Citropy from it. On Linux, Citropy offers to open the firewall port when ufw blocks it.
+- An agents panel listing every running agent with its status, memory, and CPU use. Turn off one agent or all idle ones.
+- After a turn that edits files, the conversation shows which files changed with added and removed line counts. Click it to review the changes.
+- Swipe from the screen edge to open and close the sidebars on touch screens.
+- Agents can hover, wait for the page, pick dropdown options, upload files, swipe, emulate dark mode or reduced motion, and read console errors and failed requests in the shared browser. When the browser tab is on screen, you can watch the agent's pointer move and click.
+
+### Changed
+- A calmer, warmer look with more consistent spacing, type sizes, and section pages.
+- The interface defaults to 90% size with a mouse, and stays at 100% on touch screens.
+- Navigation lives in the sidebar footer by default. The side strip is still available in Appearance settings, and phones use it as a bottom tab bar.
+- Clicking the current page's navigation button again toggles the sidebar.
+- On narrow windows, opening one side panel closes the other when both won't fit.
 
 ### Fixed
 - View-only computer sessions can use ScreenCast portals without RemoteDesktop support.
 - Computer tools accept numeric arguments serialized as strings by MCP clients, including pointer coordinates, wait durations, and screenshot widths.
 - Wayland capture releases PipeWire buffers promptly and reports a stalled stream instead of returning an old screenshot as a fresh frame.
 - Screenshots of unchanged Wayland screens keep working instead of timing out on damage-only capture.
+- Questions and approvals from Claude Code no longer time out before the 30-minute answer window ends.
+- The on-screen keyboard on phones no longer pushes the app out of view.
 
 ## 0.5.3
 

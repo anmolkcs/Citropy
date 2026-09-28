@@ -92,10 +92,24 @@ export async function openBrowser(
   }
 }
 
+export type BrowserEvent = { time: number; kind: string; level: string; text: string };
+export type BrowserActionResult = BrowserState & { result?: string; events?: BrowserEvent[] };
+
+export function describeBrowserAction(action: string, response: BrowserActionResult): string {
+  const lines = [`${action} done. Page: ${JSON.stringify(response.title)} ${response.url}${response.loading ? " (still loading)" : ""}`];
+  if (response.dialog) lines.push(`A ${response.dialog.type} dialog is open: ${response.dialog.message}. Respond with action dialog.`);
+  if (response.error) lines.push(`Page error: ${response.error}`);
+  const events = (response.events ?? []).filter((event) => ["error", "warning"].includes(event.level) || ["download", "tab"].includes(event.kind));
+  for (const event of events.slice(0, 12)) lines.push(`${event.kind} ${event.level}: ${event.text}`);
+  if (events.length > 12) lines.push(`${events.length - 12} more entries in browser_logs.`);
+  if (response.result !== undefined) lines.push(`Result: ${response.result}`);
+  return lines.join("\n");
+}
+
 export function browserAction(
   id: string,
   input: BrowserAction,
-): Promise<BrowserState> {
+): Promise<BrowserActionResult> {
   if (!sessions.has(id))
     return Promise.reject(
       new Error("This browser tab is closed. Open a new browser tab."),
@@ -109,12 +123,13 @@ export function browserAction(
     .catch(() => {})
     .then(async () => {
       try {
-        const state = await desktopRequest<BrowserState>("browser.action", {
+        const response = await desktopRequest<BrowserActionResult>("browser.action", {
           id,
           input,
         });
+        const { result: _, events: __, ...state } = response;
         update(state);
-        return state;
+        return response;
       } catch (error) {
         const state = sessions.get(id);
         if (state)
@@ -128,11 +143,16 @@ export function browserAction(
 
 export async function browserSnapshot(
   id: string,
-  screenshot = false,
+  options: { screenshot: boolean; tree: boolean; fullPage: boolean; selector?: string; ref?: string },
 ): Promise<{ text: string; image?: string }> {
   if (!sessions.has(id)) throw new Error("Browser tab not found");
   await queues.get(id)?.catch(() => {});
-  return desktopRequest("browser.snapshot", { id, screenshot });
+  return desktopRequest("browser.snapshot", { id, ...options });
+}
+
+export async function browserLogs(id: string, clear: boolean): Promise<Array<{ time: number; kind: string; level: string; text: string }>> {
+  if (!sessions.has(id)) throw new Error("Browser tab not found");
+  return desktopRequest("browser.logs", { id, clear });
 }
 
 export async function closeBrowser(id: string): Promise<void> {

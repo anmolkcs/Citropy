@@ -1,9 +1,11 @@
 import { uid } from "./ids.ts";
 import { bus } from "./bus.ts";
+import { store } from "./store.ts";
 import type { PanelKind, PanelTab } from "../shared/workbench.ts";
 import { movePanelTab } from "../shared/workbench.ts";
 
 const panels = new Map<string, PanelTab>();
+const CHAT_PANELS = new Set<PanelKind>(["browser"]);
 
 export function panelList(): PanelTab[] {
   return [...panels.values()];
@@ -28,6 +30,7 @@ export function openPanel(
     notes: "Notes",
   };
   if (!Object.hasOwn(titles, kind)) throw new Error("Unknown panel type");
+  if (store.projects.get(projectId)?.chat && !CHAT_PANELS.has(kind)) throw new Error("Chat only has the browser.");
   const existing =
     panels.get(id) ??
     (kind !== "browser" && kind !== "terminal"

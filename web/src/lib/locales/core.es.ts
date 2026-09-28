@@ -187,7 +187,6 @@ export const coreEs: Record<string, string> = {
   "Restore window": "Restaurar ventana",
   "Retry update": "Reintentar actualización",
   "Review the working tree": "Revisa el árbol de trabajo",
-  "Room for your work": "Tu espacio de trabajo",
   "Saving your work and restarting Citropy.": "Guardando tu trabajo y reiniciando Citropy.",
   "Search models": "Buscar modelos",
   "Settings": "Ajustes",
@@ -349,6 +348,7 @@ export const coreEs: Record<string, string> = {
   "crossed out": "tachado",
   "italic text": "texto en cursiva",
   "link text": "texto del enlace",
+  "{count} character": "{count} carácter",
   "{count} characters": "{count} caracteres",
   "{count} word": "{count} palabra",
   "{count} words": "{count} palabras",
@@ -367,5 +367,12 @@ export const coreEs: Record<string, string> = {
   "Layers": "Capas",
   "Image": "Imagen",
   "Nothing drawn yet": "Todavía no hay nada dibujado",
-  "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes.": "Haz clic o arrastra un recuadro para seleccionar y luego arrastra para mover. Ctrl+C copia, Ctrl+V pega trazos o capturas y Supr elimina."
+  "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes.": "Haz clic o arrastra un recuadro para seleccionar y luego arrastra para mover. Ctrl+C copia, Ctrl+V pega trazos o capturas y Supr elimina.",
+  "Chat": "Chat",
+  "Projects, Git, shells, and tools": "Proyectos, Git, terminales y herramientas",
+  "Conversations with the browser and read-only files": "Conversaciones con el navegador y archivos de solo lectura",
+  "Switch mode, {mode}": "Cambiar modo, {mode}",
+  "Start a chat": "Empieza un chat",
+  "Ask anything. Chat can browse the web and read files on this computer, but it can't run commands or change files.": "Pregunta lo que quieras. El chat puede navegar por la web y leer archivos de este equipo, pero no puede ejecutar comandos ni cambiar archivos.",
+  "New chat": "Nuevo chat"
 };

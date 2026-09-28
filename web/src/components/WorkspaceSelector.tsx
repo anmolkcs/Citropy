@@ -1,5 +1,4 @@
 import { ImportSessions } from "./ImportSessions.tsx";
-import { AnimatedText } from "./AnimatedText.tsx";
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { Box, ChevronDown, FolderOpen, FolderPlus, Import, GitFork, LogOut, Monitor, Server, Trash2 } from "lucide-react";
@@ -39,7 +38,7 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
   };
   const group = (id: string): MenuItem[] => {
     const current = id === environments.activeId;
-    const entries = current ? projects : catalog[id]?.projects ?? [];
+    const entries = (current ? projects : catalog[id]?.projects ?? []).filter(entry => !entry.chat);
     const root = current ? home : catalog[id]?.home ?? "";
     return [
       { id: `${id}:open`, label: t("Open another folder…"), icon: <FolderPlus size={17} className="workspace-add-icon" />, disabled: choosing, onSelect: () => { void chooseWorkspaceOn(id); } },
@@ -78,7 +77,7 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
         aria-haspopup="menu" aria-expanded={open} onClick={toggle} disabled={disabled || choosing}
         title={isRemote() ? `${environmentName()}: ${project?.path ?? ""}` : project?.path}>
         {isRemote() ? <Server size={18} /> : <FolderOpen size={18} />}
-        <AnimatedText className="truncate" text={choosing ? t("Choosing folder…") : project?.name ?? t("Open a workspace")} />
+        <span className="truncate">{choosing ? t("Choosing folder…") : project?.name ?? t("Open a workspace")}</span>
         <ChevronDown size={14} />
       </button>}
     />

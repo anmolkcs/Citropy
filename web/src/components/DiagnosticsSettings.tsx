@@ -5,6 +5,7 @@ import { send } from "../lib/socket.ts";
 import type { DiagnosticReport } from "../../../shared/features.ts";
 import { useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { copyText } from "../lib/copy-text.ts";
 
 const memory = (bytes: number) =>
   bytes >= 1024 ** 3
@@ -77,7 +78,7 @@ export function DiagnosticsSettings() {
             <button
               type="button"
               className="btn"
-              onClick={() => void navigator.clipboard.writeText(logging.file).catch(reportError)}
+              onClick={() => void copyText(logging.file).catch(reportError)}
             >
               <Copy size={14} />{t("Copy path")}
             </button>

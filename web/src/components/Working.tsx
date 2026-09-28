@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useAnimationClock } from "../lib/animation-clock.ts";
+import { useSecondClock } from "../lib/use-second-clock.ts";
 import type { ThreadStatus } from "../../../shared/protocol.ts";
 import { duration } from "../lib/format.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -23,26 +24,9 @@ const LABEL: Partial<Record<ThreadStatus, string>> = {
 
 export function Working({ status, tool, compacting, startedAt }: Props) {
   const t = useI18n();
-  const [now, setNow] = useState(() => Date.now());
+  const now = useSecondClock(startedAt);
   const grid = useRef<HTMLSpanElement>(null);
   useAnimationClock(grid);
-
-  useEffect(() => {
-    let timer = 0;
-    const update = () => {
-      clearTimeout(timer);
-      if (document.hidden) return;
-      const now = Date.now();
-      setNow(now);
-      timer = window.setTimeout(update, 1000 - ((now - startedAt + 500) % 1000));
-    };
-    update();
-    document.addEventListener("visibilitychange", update);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", update);
-    };
-  }, [startedAt]);
 
   const text = compacting ? t("Compacting context") : tool ? `${t("Running")} ${tool}` : t((status && LABEL[status]) || "Working");
 

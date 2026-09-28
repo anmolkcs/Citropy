@@ -26,7 +26,7 @@ export function forgetGit(projectId: string): void {
 /** Coalesce checkout reads, synchronize saved branch labels, and emit valid targets' status. */
 export function refreshGit(projectId: string, force = false, threadId?: string): Promise<void> {
   const project = store.projects.get(projectId);
-  if (!project || (threadId && !store.threads.has(threadId))) return Promise.resolve();
+  if (!project || project.chat || (threadId && !store.threads.has(threadId))) return Promise.resolve();
   const path = workspacePath(projectId, threadId);
   const cacheId = threadId ? `${projectId}:${threadId}` : projectId;
   const target = { project, threadId, force };

@@ -15,6 +15,7 @@ import { noteFileName, noteMarkdown, type Note } from "./use-notes.ts";
 import {
   continueList, insertCode, insertDivider, insertLink, toggleLinePrefix, toggleTask, wrapSelection, type TextEdit,
 } from "./markdown-editing.ts";
+import { copyText } from "../../lib/copy-text.ts";
 
 type Format = (value: string, start: number, end: number, t: Translator) => TextEdit;
 
@@ -122,7 +123,7 @@ export function NoteEditor({
   };
 
   const moreItems: MenuItem[] = [
-    { id: "copy", label: t("Copy as Markdown"), icon: <Copy size={16} />, onSelect: () => void navigator.clipboard.writeText(noteMarkdown(note)).catch(reportError) },
+    { id: "copy", label: t("Copy as Markdown"), icon: <Copy size={16} />, onSelect: () => void copyText(noteMarkdown(note)).catch(reportError) },
     { id: "download", label: t("Download as Markdown"), icon: <Download size={16} />, onSelect: download },
     { id: "duplicate", label: t("Duplicate note"), icon: <CopyPlus size={16} />, onSelect: onDuplicate },
     { id: "delete", label: t("Delete note…"), icon: <Trash2 size={16} />, danger: true, onSelect: () => void remove() },
@@ -220,7 +221,7 @@ export function NoteEditor({
         <span className="note-stats">
           {t(words === 1 ? "{count} word" : "{count} words", { count: words })}
           <span aria-hidden="true"> · </span>
-          {t("{count} characters", { count: note.body.length })}
+          {t(note.body.length === 1 ? "{count} character" : "{count} characters", { count: note.body.length })}
         </span>
         <AttachToChatButton
           disabled={!note.body.trim() && !note.title.trim()}

@@ -5,6 +5,7 @@ import { useApp } from "../../lib/store.ts";
 import { useTextReveal } from "../../lib/use-text-reveal.ts";
 import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
 import { useI18n } from "../../lib/i18n.ts";
+import { copyText } from "../../lib/copy-text.ts";
 
 interface Props {
   text: string;
@@ -40,7 +41,7 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
         const copy = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.code-copy") : null;
         if (copy && root.current?.contains(copy)) {
           const code = copy.closest("figure")?.querySelector("pre code")?.textContent ?? "";
-          void navigator.clipboard.writeText(code).then(() => {
+          void copyText(code).then(() => {
             copy.dataset.copied = "";
             copy.setAttribute("aria-label", t("Copied"));
             setTimeout(() => {

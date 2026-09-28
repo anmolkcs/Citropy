@@ -8,7 +8,9 @@ import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
+import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
+import type { MenuItem } from "../Menu.tsx";
 import { Check, Folder, RotateCcw, Trash2 } from "../icons.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { ThreadChildren } from "../ThreadChildren.tsx";
@@ -53,6 +55,16 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
   const busy = thread.running || thread.status === "awaiting";
   const childRunning = (tree.childrenByParent.get(thread.id) ?? []).some((child) => child.running);
   const finishLabel = `${thread.finished ? t("Reopen") : t("Finish")} ${thread.title}`;
+  const touch = useTouchInput();
+  const finish = () => {
+    finishThread(thread.id, !thread.finished, environment);
+    if (!thread.finished) onFinished();
+  };
+  const remove = () => void removeThread(thread.id, environment).catch(reportError);
+  const rowActions: MenuItem[] = touch ? [
+    { id: "finish", label: thread.finished ? t("Reopen") : t("Finish"), icon: thread.finished ? <RotateCcw size={15} /> : <Check size={15} />, disabled: !connected || busy || childRunning, onSelect: finish },
+    { id: "delete", label: t("Delete"), icon: <Trash2 size={15} />, danger: true, onSelect: remove },
+  ] : [];
 
   const openMenu = (card: HTMLElement) => {
     preview.hide();
@@ -153,7 +165,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
           </span>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
-          <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} />
+          <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} rowActions={rowActions} />
           {globalMode && thread.pullRequest && <a
             className="thread-row-pr"
             href={thread.pullRequest}
@@ -162,28 +174,27 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
             aria-label={`${t("Pull request")} #${pullRequestNumber(thread.pullRequest)}`}
             title={`${t("Pull request")} #${pullRequestNumber(thread.pullRequest)}`}
           ><GitPullRequest size={13} /></a>}
-          <button
-            className="thread-row-finish"
-            type="button"
-            title={busy ? t("Stop this conversation before finishing") : finishLabel}
-            aria-label={finishLabel}
-            disabled={!connected || busy || childRunning}
-            onClick={() => {
-              finishThread(thread.id, !thread.finished, environment);
-              if (!thread.finished) onFinished();
-            }}
-          >
-            {thread.finished ? <RotateCcw size={14} /> : <Check size={15} />}
-          </button>
-          <button
-            className="thread-row-kill"
-            type="button"
-            aria-label={`${t("Delete")} ${thread.title}`}
-            title={`${t("Delete")} ${thread.title}`}
-            onClick={() => void removeThread(thread.id, environment).catch(reportError)}
-          >
-            <Trash2 size={13} />
-          </button>
+          {!touch && <>
+            <button
+              className="thread-row-finish"
+              type="button"
+              title={busy ? t("Stop this conversation before finishing") : finishLabel}
+              aria-label={finishLabel}
+              disabled={!connected || busy || childRunning}
+              onClick={finish}
+            >
+              {thread.finished ? <RotateCcw size={14} /> : <Check size={15} />}
+            </button>
+            <button
+              className="thread-row-kill"
+              type="button"
+              aria-label={`${t("Delete")} ${thread.title}`}
+              title={`${t("Delete")} ${thread.title}`}
+              onClick={remove}
+            >
+              <Trash2 size={13} />
+            </button>
+          </>}
         </div>
       </div>
       {!globalMode && thread.pullRequest && (

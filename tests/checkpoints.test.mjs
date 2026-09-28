@@ -70,6 +70,23 @@ test("reused checkpoint index handles deleted and newly ignored files without ch
   assert.equal(thread.checkpoints.at(-1).before, after);
 });
 
+test("finished turns record which files changed and by how many lines", async t => {
+  const { cwd, thread, message } = await fixture(t);
+  await writeFile(join(cwd, "edited.txt"), "one\ntwo\nthree\n");
+  await beginCheckpoint(thread, message.id);
+  await writeFile(join(cwd, "edited.txt"), "one\n2\nthree\nfour\n");
+  await writeFile(join(cwd, "created.txt"), "a\nb\n");
+  const reply = { id: "reply", role: "assistant", ts: 2, parts: [] };
+  store.addMessage(thread.id, reply);
+  await finishCheckpoint(thread, reply.id);
+  const changes = thread.messages.find(entry => entry.id === reply.id).parts.find(part => part.kind === "changes");
+  assert.equal(changes.checkpoint, message.id);
+  assert.deepEqual([...changes.files].sort((a, b) => a.path.localeCompare(b.path)), [
+    { path: "created.txt", added: 2, removed: 0 },
+    { path: "edited.txt", added: 2, removed: 1 },
+  ]);
+});
+
 test("checkpoint capture removes every stale private-index entry when the workspace becomes empty", async t => {
   const { cwd, thread } = await fixture(t);
   await writeFile(join(cwd, "untracked.txt"), "temporary\n");

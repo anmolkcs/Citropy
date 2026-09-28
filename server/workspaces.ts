@@ -93,6 +93,7 @@ export async function chooseThreadWorkspace(
   project: Project,
   choice?: WorkspaceChoice,
 ): Promise<{ workspacePath: string; workspaceBranch?: string }> {
+  if (project.chat) return { workspacePath: project.path };
   const defaults = resolveProjectSettings(store.projectDefaults, project.settings);
   const options = choice ?? { kind: defaults.workspace ?? "current" };
   if (options.kind === "current") {

@@ -1,11 +1,12 @@
 import { fileStore } from "../../lib/file-store.ts";
+import { randomId } from "../../lib/random-id.ts";
 
 const files = fileStore("citropy-drawing-images");
 const bitmaps = new Map<string, ImageBitmap>();
 const loading = new Map<string, Promise<ImageBitmap>>();
 
 export async function storeImage(file: Blob): Promise<{ id: string; bitmap: ImageBitmap }> {
-  const id = crypto.randomUUID();
+  const id = randomId();
   const bitmap = await createImageBitmap(file);
   bitmaps.set(id, bitmap);
   await files.save(id, file);

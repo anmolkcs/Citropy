@@ -1,7 +1,6 @@
 import { useI18n } from "../../lib/i18n.ts";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  Code2,
   FilePlus2,
   FolderTree,
   RefreshCw,
@@ -417,23 +416,7 @@ function Workspace({
               </Suspense>
             ) : (
               <div className="editor-empty">
-                <Code2 size={30} strokeWidth={1.3} />
-                <h3>{t("Your code, right here")}</h3>
                 <p>{t("Open a file to start editing alongside your agent.")}</p>
-                <dl>
-                  <div>
-                    <dt>{t("Save file")}</dt>
-                    <dd>Ctrl / ⌘ S</dd>
-                  </div>
-                  <div>
-                    <dt>{t("Find and replace")}</dt>
-                    <dd>Ctrl / ⌘ H</dd>
-                  </div>
-                  <div>
-                    <dt>{t("Go to line")}</dt>
-                    <dd>Ctrl / ⌘ G</dd>
-                  </div>
-                </dl>
               </div>
             )}
           </div>

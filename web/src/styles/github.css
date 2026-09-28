@@ -10,23 +10,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 28px 30px 22px;
+  gap: var(--space-24);
+  padding: var(--space-32) var(--space-32) var(--space-24);
 }
 .github-heading-copy {
   min-width: 0;
 }
-.github-eyebrow {
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  color: var(--text-3);
-}
 .github-heading h1 {
-  font-size: 23px;
-  margin: 8px 0;
+  font-size: var(--text-title);
+  margin: 0;
   overflow-wrap: anywhere;
 }
 .github-heading p {
+  margin: var(--space-8) 0 0;
   color: var(--text-3);
   font-size: var(--text-sm);
   line-height: 1.7;
@@ -35,18 +31,18 @@
 .github-repo-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
   flex-shrink: 0;
 }
 .github-sidebar-repo {
-  margin: 20px 6px 0;
-  padding: 20px 5px 10px;
+  margin: var(--space-20) var(--space-6) 0;
+  padding: var(--space-20) var(--space-6) var(--space-10);
   font-size: var(--text-xs);
   color: var(--text-3);
 }
 .github-sidebar-repo strong {
   display: block;
-  margin-top: 7px;
+  margin-top: var(--space-8);
   font-weight: 400;
   color: var(--text-2);
   overflow-wrap: anywhere;
@@ -55,8 +51,8 @@
 .github-sidebar-account {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-8);
+  padding: var(--space-12);
   width: 100%;
   border-radius: var(--r-sm);
   text-align: left;
@@ -74,7 +70,7 @@
   border-radius: 50%;
 }
 .github-sidebar-account svg {
-  color: var(--ok);
+  color: var(--text-3);
   margin-left: auto;
 }
 .section-link:disabled {
@@ -97,9 +93,9 @@
 .github-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   flex-wrap: wrap;
-  padding: 18px 26px;
+  padding: var(--space-20) var(--space-24);
   flex: none;
 }
 .github-toolbar h2 {
@@ -113,13 +109,13 @@
 .github-search {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex: 1;
   min-width: 180px;
   max-width: 560px;
   color: var(--text-3);
   background: var(--raised);
-  padding: 0 10px;
+  padding: 0 var(--space-10);
   border-radius: var(--r-sm);
 }
 .github-search input {
@@ -131,7 +127,7 @@
   outline: none;
   background: transparent;
   font-size: var(--text-sm);
-  padding: 7px 0;
+  padding: var(--space-8) 0;
 }
 .github-search:focus-within {
   color: var(--text);
@@ -143,7 +139,7 @@
   background: var(--raised);
   border: 0;
   border-radius: var(--r-sm);
-  padding: 7px 10px;
+  padding: var(--space-8) var(--space-10);
   color: var(--text-2);
   font-size: var(--text-sm);
   min-width: 0;
@@ -152,34 +148,34 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 18px 26px 0;
+  gap: var(--space-12);
+  padding: var(--space-20) var(--space-24) 0;
 }
 .github-workspace-repos > span {
   color: var(--text-3);
   font-size: var(--text-xs);
 }
 .github-repositories {
-  padding: 8px 26px;
+  padding: var(--space-8) var(--space-24);
 }
 .github-repositories article {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 22px 4px;
+  gap: var(--space-16);
+  padding: var(--space-24) var(--space-4);
 }
 .shell[data-backdrop] :is(.github-repositories, .github-releases, .github-notifications) {
   display: grid;
-  gap: 4px;
+  gap: var(--space-4);
 }
 .shell[data-backdrop] .github-local-workspace {
-  margin: 0 26px;
+  margin: 0 var(--space-24);
 }
 .shell[data-backdrop] .github-detail {
   background: var(--panel);
 }
 .shell[data-backdrop] :is(.github-repositories article, .github-releases article, .github-notifications article, .github-local-workspace) {
-  padding: 18px 16px;
+  padding: var(--space-20) var(--space-16);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--canvas) 72%, transparent);
 }
@@ -197,8 +193,8 @@
 .github-connection {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 26px;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-24);
   background: var(--raised);
   color: var(--text-2);
   font-size: var(--text-sm);
@@ -224,33 +220,33 @@
 .github-repository-copy p {
   font-size: var(--text-sm);
   color: var(--text-2);
-  margin-top: 5px;
+  margin-top: var(--space-6);
   overflow-wrap: anywhere;
 }
 .github-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: var(--space-8);
   font-size: var(--text-xs);
   color: var(--text-3);
   line-height: 1.7;
 }
 .github-repository-copy .github-meta {
-  gap: 16px;
-  margin-top: 7px;
+  gap: var(--space-16);
+  margin-top: var(--space-8);
 }
 .github-meta > span {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-6);
 }
 .github-repo-metadata {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
-  padding: 12px 30px;
+  gap: var(--space-20);
+  padding: var(--space-12) var(--space-32);
   background: var(--panel);
   color: var(--text-3);
   font-size: var(--text-xs);
@@ -258,7 +254,7 @@
 .github-repo-metadata > span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
 }
 .github-repo-metadata button {
   margin-left: auto;
@@ -281,7 +277,7 @@
   background: var(--panel);
 }
 .github-list-caption {
-  padding: 16px 20px 8px;
+  padding: var(--space-16) var(--space-20) var(--space-8);
   color: var(--text-3);
   font-size: var(--text-xs);
 }
@@ -289,10 +285,10 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-8);
   width: calc(100% - 16px);
-  padding: 16px;
-  margin: 4px 8px;
+  padding: var(--space-16);
+  margin: var(--space-4) var(--space-8);
   border: 1px solid transparent;
   border-radius: var(--r-md);
   text-align: left;
@@ -313,7 +309,7 @@
 .github-state {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   font-size: var(--text-xs);
   white-space: nowrap;
   text-transform: capitalize;
@@ -334,13 +330,13 @@
 .github-labels {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: var(--space-6);
 }
 .github-labels:empty {
   display: none;
 }
 .github-labels span {
-  padding: 1px 6px;
+  padding: 1px var(--space-6);
   font-size: var(--text-xs);
   color: var(--text-2);
   border: 0;
@@ -349,27 +345,27 @@
 }
 .github-detail {
   min-width: 0;
-  padding: 26px;
+  padding: var(--space-24);
 }
 .github-detail-back {
   display: none;
-  margin-bottom: 22px;
+  margin-bottom: var(--space-24);
 }
 .github-item-heading {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
 }
 .github-item-heading > a {
   margin-left: auto;
 }
 .github-item-heading h2 {
   width: 100%;
-  font-size: 21px;
+  font-size: var(--text-title);
   font-weight: 540;
   line-height: 1.4;
-  margin-top: 7px;
+  margin-top: var(--space-8);
   overflow-wrap: anywhere;
 }
 .github-item-heading p {
@@ -381,13 +377,13 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
+  gap: var(--space-8);
+  margin-top: var(--space-20);
   color: var(--text-3);
   font-size: var(--text-xs);
 }
 .github-branch-line code {
-  padding: 2px 5px;
+  padding: var(--space-2) var(--space-6);
   background: var(--raised);
   border-radius: 4px;
   overflow-wrap: anywhere;
@@ -396,14 +392,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 22px 0;
+  gap: var(--space-8);
+  margin: var(--space-24) 0;
 }
 .github-tabs {
   display: flex;
-  gap: 4px;
-  margin: 26px 0 22px;
-  padding: 4px;
+  gap: var(--space-4);
+  margin: var(--space-24) 0 var(--space-24);
+  padding: var(--space-4);
   background: var(--panel);
   border-radius: var(--r-md);
   width: fit-content;
@@ -411,7 +407,7 @@
   flex-wrap: wrap;
 }
 .github-tabs button {
-  padding: 8px 12px;
+  padding: var(--space-8) var(--space-12);
   font-size: var(--text-sm);
   color: var(--text-3);
   border-radius: var(--r-sm);
@@ -421,7 +417,7 @@
 }
 .github-tabs button span {
   font-size: var(--text-xs);
-  margin-left: 7px;
+  margin-left: var(--space-8);
   color: var(--text-3);
 }
 .github-discussion {
@@ -431,18 +427,18 @@
   font-size: var(--text-base);
 }
 .github-comment {
-  margin-top: 26px;
-  padding-top: 22px;
+  margin-top: var(--space-24);
+  padding-top: var(--space-24);
   background: var(--panel);
-  padding: 18px;
+  padding: var(--space-20);
   border-radius: var(--r-md);
 }
 .github-comment header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: var(--space-16);
   font-size: var(--text-xs);
   color: var(--text-3);
 }
@@ -456,9 +452,9 @@
 .github-item-metadata {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin: 22px 0;
-  padding: 14px;
+  gap: var(--space-8);
+  margin: var(--space-24) 0;
+  padding: var(--space-16);
   background: var(--panel);
   border-radius: var(--r-sm);
   color: var(--text-3);
@@ -468,14 +464,14 @@
   border: 0;
   border-radius: var(--r-sm);
   overflow: hidden;
-  margin: 16px 0;
+  margin: var(--space-16) 0;
   background: var(--panel);
 }
 .github-files summary {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 12px;
+  gap: var(--space-10);
+  padding: var(--space-12);
   background: var(--panel);
   cursor: default;
   font-size: var(--text-xs);
@@ -486,7 +482,7 @@
   overflow-wrap: anywhere;
 }
 .github-files summary svg {
-  color: var(--file-icon);
+  color: var(--text-3);
   flex: none;
 }
 .github-files .add {
@@ -496,11 +492,11 @@
   color: var(--del);
 }
 .github-files p {
-  padding: 10px;
+  padding: var(--space-10);
 }
 .github-patch {
   margin: 0;
-  padding: 12px 0;
+  padding: var(--space-12) 0;
   font-size: var(--text-xs);
   line-height: 1.8;
   overflow: auto;
@@ -510,7 +506,7 @@
   display: block;
   width: max-content;
   min-width: 100%;
-  padding: 0 14px;
+  padding: 0 var(--space-16);
 }
 .github-patch > span[data-kind="add"] {
   color: var(--add);
@@ -528,8 +524,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
-  padding: 16px 0;
+  gap: var(--space-16);
+  padding: var(--space-16) 0;
 }
 .github-checks strong {
   flex: 1;
@@ -537,12 +533,12 @@
   font-weight: 500;
 }
 .github-jobs details {
-  padding: 20px 0;
+  padding: var(--space-20) 0;
 }
 .github-jobs summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: var(--space-16);
   align-items: center;
   cursor: default;
   font-size: var(--text-sm);
@@ -550,13 +546,13 @@
 .github-jobs ol {
   list-style: none;
   padding: 0;
-  margin: 18px 0;
+  margin: var(--space-20) 0;
 }
 .github-jobs li {
   display: flex;
   align-items: flex-start;
-  gap: 15px;
-  padding: 5px 0;
+  gap: var(--space-16);
+  padding: var(--space-6) 0;
   font-size: var(--text-sm);
   color: var(--text-2);
 }
@@ -564,8 +560,8 @@
   min-width: 95px;
 }
 .github-logs {
-  padding: 14px;
-  margin-top: 15px;
+  padding: var(--space-16);
+  margin-top: var(--space-16);
   max-height: calc(var(--viewport-height) * 0.45);
   background: var(--canvas-deep);
   border: 0;
@@ -576,40 +572,40 @@
 }
 .github-releases {
   max-width: 1000px;
-  padding: 0 30px 24px;
+  padding: 0 var(--space-32) var(--space-24);
 }
 .github-releases article {
-  padding: 26px 0;
+  padding: var(--space-24) 0;
 }
 .github-releases header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: var(--space-12);
+  margin-bottom: var(--space-10);
 }
 .github-releases header > svg {
-  color: var(--task-icon);
+  color: var(--text-3);
 }
 .github-releases header h2 {
-  font-size: 18px;
+  font-size: var(--text-lg);
 }
 .github-releases header a {
   margin-left: auto;
 }
 .github-release-assets {
-  margin-top: 25px;
-  padding-top: 18px;
+  margin-top: var(--space-24);
+  padding-top: var(--space-20);
 }
 .github-release-assets h3 {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-12);
   font-size: var(--text-sm);
 }
 .github-asset {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: var(--space-10);
+  padding: var(--space-8) 0;
   font-size: var(--text-sm);
 }
 .github-asset span {
@@ -617,13 +613,13 @@
   color: var(--text-3);
 }
 .github-notifications {
-  padding: 0 26px;
+  padding: 0 var(--space-24);
 }
 .github-notifications article {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 22px 0;
+  gap: var(--space-16);
+  padding: var(--space-24) 0;
 }
 .github-notifications article > svg {
   color: var(--text-3);
@@ -642,7 +638,7 @@
   overflow-wrap: anywhere;
 }
 .github-notifications p {
-  margin-top: 5px;
+  margin-top: var(--space-6);
 }
 .github-notifications p button:hover {
   text-decoration: underline;
@@ -651,14 +647,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 70px 24px;
+  gap: var(--space-16);
+  padding: var(--space-64) var(--space-24);
   text-align: center;
   color: var(--text-3);
 }
 .github-empty h2 {
   color: var(--text-2);
-  font-size: 17px;
+  font-size: var(--text-lg);
   font-weight: 500;
 }
 .github-empty p {
@@ -668,9 +664,9 @@
 }
 .github-feedback {
   display: flex;
-  gap: 12px;
+  gap: var(--space-12);
   align-items: flex-start;
-  padding: 18px 24px;
+  padding: var(--space-20) var(--space-24);
   font-size: var(--text-sm);
   color: var(--text-3);
 }
@@ -688,8 +684,8 @@
 .github-notice {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 26px;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-24);
   color: var(--text-2);
   background: var(--raised);
   font-size: var(--text-sm);
@@ -702,8 +698,8 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 22px;
+  gap: var(--space-10);
+  padding: var(--space-24);
   font-size: var(--text-xs);
   color: var(--text-3);
 }
@@ -728,7 +724,7 @@
   background: var(--raised);
   color: var(--text);
   border-radius: var(--r-sm);
-  padding: 10px 12px;
+  padding: var(--space-10) var(--space-12);
   min-height: 90px;
   resize: vertical;
 }
@@ -740,7 +736,7 @@
 }
 .github-form-columns {
   display: flex;
-  gap: 15px;
+  gap: var(--space-16);
 }
 .github-form-columns > label {
   flex: 1;
@@ -749,10 +745,10 @@
 .github-checkbox {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-10);
   color: var(--text-2);
   font-size: var(--text-sm);
-  padding: 5px 0;
+  padding: var(--space-6) 0;
   cursor: default;
 }
 .github-checkbox input {
@@ -760,20 +756,20 @@
 }
 .github-inline-link {
   display: inline-flex;
-  gap: 5px;
+  gap: var(--space-6);
   align-items: center;
 }
 .github-account {
   width: 100%;
   max-width: 850px;
   margin: 0 auto;
-  padding: 40px 30px;
+  padding: var(--space-40) var(--space-32);
 }
 .github-account-identity {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding-bottom: 28px;
+  gap: var(--space-20);
+  padding-bottom: var(--space-32);
 }
 .github-account-identity > img {
   width: 56px;
@@ -784,8 +780,8 @@
   flex: 1;
 }
 .github-account-identity h2 {
-  font-size: 20px;
-  margin-bottom: 8px;
+  font-size: var(--text-title);
+  margin-bottom: var(--space-8);
 }
 .github-account-identity p {
   font-size: var(--text-sm);
@@ -795,15 +791,15 @@
   border: 0;
   border-radius: var(--r-md);
   background: var(--panel);
-  margin-bottom: 24px;
+  margin-bottom: var(--space-24);
 }
 .github-account-details > div {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--space-16);
+  padding: var(--space-20);
   font-size: var(--text-sm);
 }
 .github-account-details strong {
@@ -816,8 +812,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 60px 24px;
+  gap: var(--space-20);
+  padding: var(--space-64) var(--space-24);
   text-align: center;
 }
 .github-connect p {
@@ -827,7 +823,7 @@
 }
 .github-connect code {
   background: var(--raised);
-  padding: 12px 20px;
+  padding: var(--space-12) var(--space-20);
   border-radius: var(--r-md);
 }
 .github-connect details {
@@ -843,7 +839,7 @@
 @container github (max-width: 900px) {
   .github-heading {
     flex-wrap: wrap;
-    padding: 24px;
+    padding: var(--space-24);
   }
   .github-split {
     display: flex;
@@ -868,14 +864,14 @@
 }
 @container github (max-width: 520px) {
   .github-heading {
-    padding: 22px 18px;
+    padding: var(--space-24) var(--space-20);
   }
   .github-heading h1 {
-    font-size: 21px;
+    font-size: var(--text-title);
   }
   .github-toolbar {
-    padding: 16px;
-    gap: 10px;
+    padding: var(--space-16);
+    gap: var(--space-10);
   }
   .github-search {
     flex-basis: 100%;
@@ -885,13 +881,13 @@
     white-space: normal;
     height: auto;
     min-height: 32px;
-    padding: 7px 10px;
+    padding: var(--space-8) var(--space-10);
   }
   .github-repositories {
-    padding: 0 16px;
+    padding: 0 var(--space-16);
   }
   .github-repositories article {
-    gap: 10px;
+    gap: var(--space-10);
     flex-wrap: wrap;
   }
   .github-repository-icon {
@@ -901,23 +897,23 @@
     flex-basis: 70%;
   }
   .github-repo-metadata {
-    padding: 12px 18px;
-    gap: 12px;
+    padding: var(--space-12) var(--space-20);
+    gap: var(--space-12);
   }
   .github-detail {
-    padding: 20px 16px;
+    padding: var(--space-20) var(--space-16);
   }
   .github-item-heading h2 {
-    font-size: 19px;
+    font-size: var(--text-title);
   }
   .github-tabs {
-    gap: 16px;
+    gap: var(--space-16);
   }
   .github-tabs button {
     font-size: var(--text-xs);
   }
   .github-notifications {
-    padding: 0 16px;
+    padding: 0 var(--space-16);
   }
   .github-notifications article {
     flex-wrap: wrap;
@@ -932,13 +928,13 @@
     flex-basis: 75%;
   }
   .github-account {
-    padding: 24px 18px;
+    padding: var(--space-24) var(--space-20);
   }
   .github-account-identity {
     flex-wrap: wrap;
   }
   .github-releases {
-    padding: 0 18px;
+    padding: 0 var(--space-20);
   }
 }
 @container application (max-width: 520px) {
@@ -952,12 +948,12 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
-  padding: 18px 26px;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-24);
   background: var(--panel);
 }
 .github-local-workspace > svg {
-  color: var(--file-icon);
+  color: var(--text-3);
   flex: none;
 }
 .github-local-workspace > div {
@@ -972,15 +968,14 @@
   color: var(--text-3);
   font-size: var(--text-xs);
   line-height: 1.7;
-  margin-top: 4px;
+  margin-top: var(--space-4);
 }
 
 @container application (max-width: 720px) {
   .github-main:has(.github-split[data-detail="true"]) .github-heading {
-    padding: 16px 18px;
+    padding: var(--space-16) var(--space-20);
   }
   .github-main:has(.github-split[data-detail="true"]) .github-heading p,
-  .github-main:has(.github-split[data-detail="true"]) .github-eyebrow,
   .github-main:has(.github-split[data-detail="true"]) .github-repo-actions,
   .github-main:has(.github-split[data-detail="true"]) .github-repo-metadata,
   .github-workspace:has(.github-split[data-detail="true"]) > .github-toolbar {

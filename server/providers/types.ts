@@ -49,6 +49,7 @@ export interface StartOptions extends ProviderLaunch {
   fastMode?: boolean;
   fastModeTier?: "priority" | "fast";
   permissionMode: PermissionMode;
+  chat?: boolean;
   externalId?: string;
   usage?: Partial<Usage>;
   emit: Emit;
@@ -64,6 +65,7 @@ export interface SessionConfig {
 }
 
 export interface AgentSession {
+  readonly pid?: number;
   /**
    * Apply new settings to the running session in place. Only defined by providers whose protocol
    * supports it (ACP: `session/set_config_option` and `session/set_mode`). Rejects when the

@@ -71,11 +71,11 @@ function locationQuery(directory: string): string {
   return `location%5Bdirectory%5D=${encodeURIComponent(directory)}`;
 }
 
-function startServer(cwd: string, launch: ProviderLaunch | undefined, signal: AbortSignal, mcp?: StartOptions["mcp"]): Promise<Server> {
+function startServer(cwd: string, launch: ProviderLaunch | undefined, signal: AbortSignal, mcp?: StartOptions["mcp"], chat = false): Promise<Server> {
   return new Promise((resolve, reject) => {
     const inherited = JSON.parse(launch?.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}");
     const citropy = mcp ? { citropy: { type: "remote", url: mcp.url, headers: mcp.headers, oauth: false, codemode: false, timeout: { execution: 1_860_000 } } } : {};
-    const config = { ...inherited, mcp: { ...inherited.mcp, servers: { ...inherited.mcp?.servers, ...citropy } } };
+    const config = { ...inherited, mcp: { ...inherited.mcp, servers: chat ? citropy : { ...inherited.mcp?.servers, ...citropy } } };
     const password = randomBytes(32).toString("base64url");
     const child = spawnCommand(launch?.binary ?? "opencode", ["serve", "--stdio", "--hostname", "127.0.0.1", "--port", "0"], {
       detached: process.platform !== "win32",
@@ -199,7 +199,10 @@ export async function generateOpenCode2Text(cwd: string, model: string, effort: 
   }
 }
 
-function permissionRules(mode: PermissionMode): Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }> {
+const CHAT_ACTIONS = ["read", "glob", "grep", "list", "webfetch", "websearch", "question", "citropy_*"];
+
+function permissionRules(mode: PermissionMode, chat = false): Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }> {
+  if (chat) return [{ action: "*", resource: "*", effect: "deny" }, ...CHAT_ACTIONS.map((action) => ({ action, resource: "*", effect: "allow" as const }))];
   if (mode === "bypass") return [{ action: "*", resource: "*", effect: "allow" }];
   const allowed = ["read", "glob", "grep", "skill", "question", "subagent", "citropy_*", ...(mode === "acceptEdits" ? ["edit", "write", "patch"] : [])];
   return [
@@ -301,8 +304,8 @@ export class OpenCode2Session implements AgentSession {
   }
 
   async #boot(): Promise<void> {
-    const { cwd, externalId, model, effort, permissionMode, mcp } = this.#options;
-    const server = await startServer(cwd, this.#options, this.#abort.signal, mcp);
+    const { cwd, externalId, model, effort, permissionMode, mcp, chat } = this.#options;
+    const server = await startServer(cwd, this.#options, this.#abort.signal, mcp, chat);
     if (this.#abort.signal.aborted) { stopProcess(server.child, true); return; }
     this.#server = server;
     const events = await fetch(`${server.url}/api/event`, { headers: { authorization: server.auth, accept: "text/event-stream" }, signal: this.#abort.signal });
@@ -314,7 +317,7 @@ export class OpenCode2Session implements AgentSession {
       this.dispose();
     });
     const agent = permissionMode === "plan" ? "plan" : "build";
-    const permissions = permissionRules(permissionMode);
+    const permissions = permissionRules(permissionMode, chat);
     let sessionId = externalId;
     if (sessionId) {
       const saved = await this.#api<{ data: { location: { directory: string } } }>("GET", `/api/session/${encodeURIComponent(sessionId)}`).catch((error: unknown) => {

@@ -2,8 +2,11 @@ import { useI18n } from "../lib/i18n.ts";
 import { BarChart3, GitBranch, Github, MessagesSquare, Settings } from "lucide-react";
 
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
+import { LocalSharing } from "./LocalSharing.tsx";
+import { AgentsPanel } from "./AgentsPanel.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
+import { useApp } from "../lib/store.ts";
 
 export function NavigationStrip({
   onChat,
@@ -22,15 +25,17 @@ export function NavigationStrip({
 }) {
   const t = useI18n();
   const usagePeek = useUsagePeek("right");
-  const top = [
-    { name: "Conversations", icon: MessagesSquare, run: onChat, view: "chat" },
+  const chat = useApp((state) => state.appMode === "chat");
+  const conversations = { name: "Conversations", icon: MessagesSquare, run: onChat, view: "chat" };
+  const code = [
     { name: "Source control", icon: GitBranch, run: onGit, view: "git" },
     { name: "GitHub", icon: Github, run: onGitHub, view: "github" },
   ];
-  const button = ({ name, icon: Icon, run, view }: typeof top[number]) => (
+  const button = ({ name, icon: Icon, run, view }: typeof conversations) => (
     <button
       type="button"
       className="strip-action"
+      data-view={view}
       aria-current={activeView === view ? "page" : undefined}
       key={view}
       onClick={() => { usagePeek.hide(); run(); }}
@@ -45,9 +50,12 @@ export function NavigationStrip({
   return (
     <nav className="navigation-strip sliding-selection" aria-label={t("Workspace navigation")}>
       <SelectionHighlight value={activeView} selector='.strip-action[aria-current="page"] > .strip-action-face' />
-      {top.map(button)}
+      {button(conversations)}
+      {!chat && code.map(button)}
       <div className="navigation-strip-end">
         {button({ name: "Usage", icon: BarChart3, run: onUsage, view: "usage" })}
+        <LocalSharing />
+        <AgentsPanel />
         <AppUpdateControl variant="strip" />
         {button({ name: "Settings", icon: Settings, run: onSettings, view: "settings" })}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { reportError } from "../../lib/api.ts";
+import { randomId } from "../../lib/random-id.ts";
 
 export interface Note {
   id: string;
@@ -20,7 +21,7 @@ export function useNotes(projectId: string) {
   }, [key, notes]);
 
   const create = (title: string, body: string): string => {
-    const note = { id: crypto.randomUUID(), title, body, updatedAt: Date.now() };
+    const note = { id: randomId(), title, body, updatedAt: Date.now() };
     setNotes((previous) => [note, ...previous]);
     return note.id;
   };

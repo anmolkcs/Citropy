@@ -9,6 +9,7 @@ import { FileIcon } from "./FileIcon.tsx";
 import { MessageSquarePlus } from "lucide-react";
 import type { FilePatch, PatchLine } from "../../../shared/protocol.ts";
 import { scaled } from "../lib/store.ts";
+import { LineCounts } from "./LineCounts.tsx";
 
 interface Props {
   patch: FilePatch;
@@ -97,10 +98,7 @@ export function DiffView({ patch, limit = 26, showHeader = true, partId, expande
         <div className="diff-head">
           <FileIcon path={patch.path} />
           <span className="diff-path truncate">{patch.path}</span>
-          <span className="diff-stat">
-            {patch.added > 0 && <span className="diff-plus">+{patch.added}</span>}
-            {patch.removed > 0 && <span className="diff-minus">-{patch.removed}</span>}
-          </span>
+          <LineCounts added={patch.added} removed={patch.removed} />
         </div>
       )}
       <div className="diff-body scroll" ref={viewport} tabIndex={0} role="region" aria-label={t("Diff for {path}", { path: patch.path })}>

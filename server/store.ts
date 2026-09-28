@@ -3,7 +3,7 @@ import { setLogging } from "./logs.ts";
 import { dev } from "./config.ts";
 import { mkdirSync, readFileSync, readdirSync, rmSync, existsSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, basename, resolve } from "node:path";
+import { join, basename, parse, resolve } from "node:path";
 import { bus } from "./bus.ts";
 import { eventJournal } from "./event-journal.ts";
 import { removeToolImages } from "./tool-images.ts";
@@ -242,6 +242,16 @@ export class Store {
       const raw = JSON.parse(readFileSync(projectsFile, "utf8")) as Project[];
       for (const project of raw) this.projects.set(project.id, project);
     }
+    const computer = parse(homedir()).root;
+    const chat = [...this.projects.values()].find((project) => project.chat);
+    if (chat?.path !== computer) {
+      if (chat) chat.path = computer;
+      else {
+        const created: Project = { id: uid("prj"), path: computer, name: "Chat", isGit: false, lastOpened: 0, chat: true };
+        this.projects.set(created.id, created);
+      }
+      saveJson(projectsFile, [...this.projects.values()]);
+    }
     for (const name of readdirSync(threadsDir)) {
       if (!name.endsWith(".json") || eventJournal.hasThread(name.slice(0, -5))) continue;
       try {
@@ -411,7 +421,7 @@ export class Store {
 
   openProject(path: string): Project {
     const abs = resolve(path.replace(/^~(?=$|[/\\])/, homedir()));
-    const existing = [...this.projects.values()].find((p) => p.path === abs);
+    const existing = [...this.projects.values()].find((p) => p.path === abs && !p.chat);
     if (existing) {
       existing.lastOpened = Date.now();
       bus.emit({ t: "project.upsert", project: existing });
@@ -454,6 +464,7 @@ export class Store {
     const now = Date.now();
     const thread = this.#track({
       ...input,
+      ...(this.projects.get(input.projectId)?.chat ? { permissionMode: "manual" as const } : {}),
       ...(input.parentThreadId ? { parentMessageId: this.threads.get(input.parentThreadId)?.messages.findLast((message) => message.role === "user")?.id } : {}),
       ...(input.parentThreadId ? {} : { position: this.#topPosition(input.projectId) }),
       id: uid("thr"),

@@ -11,7 +11,7 @@ import { isRepo, workingDiff } from "./git.ts";
 import { parseUnifiedDiff } from "./diff.ts";
 import { uid } from "./ids.ts";
 import { emptyUsage } from "../shared/protocol.ts";
-import type { Thread, Message } from "../shared/protocol.ts";
+import type { ChangedFile, Thread, Message } from "../shared/protocol.ts";
 import type { ChangeReview, ReviewScope } from "../shared/review.ts";
 import { fileRestoreIssue } from "../shared/review.ts";
 
@@ -104,6 +104,14 @@ function overlapping(thread: Thread): boolean {
 
 const imageExtensions = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico)$/i;
 
+async function changedFiles(cwd: string, before: string, after: string): Promise<ChangedFile[]> {
+  const output = await git(cwd, ["diff", "--numstat", "--no-renames", before, after]);
+  return output.split("\n").filter(Boolean).map(line => {
+    const [added, removed, ...path] = line.split("\t");
+    return { path: path.join("\t"), added: Number(added) || 0, removed: Number(removed) || 0 };
+  });
+}
+
 async function changedImages(cwd: string, before: string, after: string): Promise<Array<{ path: string; label: string }>> {
   const output = await git(cwd, ["diff", "--name-status", "--diff-filter=AM", "--no-renames", before, after]).catch(() => "");
   const paths = [...new Set(output.split("\n").map(line => line.split("\t").at(-1) ?? "").filter(path => path && imageExtensions.test(path)))];
@@ -111,6 +119,7 @@ async function changedImages(cwd: string, before: string, after: string): Promis
 }
 
 export async function beginCheckpoint(thread: Thread, messageId: string): Promise<void> {
+  if (store.projects.get(thread.projectId)?.chat) return;
   const cwd = workspacePath(thread.projectId, thread.id);
   if (!(await isRepo(cwd))) return;
   await checkpointLock(cwd, async () => {
@@ -156,6 +165,10 @@ export async function finishCheckpoint(thread: Thread, messageId?: string): Prom
           const images = await changedImages(cwd, before, after);
           if (images.length) store.addPart(thread.id, messageId, { id: uid("prt"), kind: "images", files: images });
         } catch {}
+        try {
+          const files = await changedFiles(cwd, before, after);
+          if (files.length) store.addPart(thread.id, messageId, { id: uid("prt"), kind: "changes", checkpoint: checkpoint.messageId, files });
+        } catch (error) { console.error("Turn change summary failed:", thread.id, error); }
       }
     } catch (error) {
       if (store.threads.get(thread.id) === thread) store.patchThread(thread.id, { checkpoints: thread.checkpoints?.map(entry => entry === checkpoint ? { ...entry, error: (error as Error).message } : entry) });

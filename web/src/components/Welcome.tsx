@@ -7,6 +7,7 @@ import { useApp } from "../lib/store.ts";
 export function Welcome() {
   const t = useI18n();
   const projects = useApp((state) => state.projects);
+  const chatMode = useApp((state) => state.appMode === "chat");
   const providers = useApp((state) => state.providers);
   const home = useApp((state) => state.home);
   const activeProjectId = useApp((state) => state.activeProjectId);
@@ -15,20 +16,23 @@ export function Welcome() {
   const connected = useApp((state) => state.connected);
 
   const hasProject = Boolean(activeProjectId);
+  const codeProjects = projects.filter((project) => !project.chat);
 
   return (
     <div className="welcome">
       <div className="welcome-inner">
-        <h1>{hasProject ? t("Start a thread") : t("Open a workspace")}</h1>
+        <h1>{chatMode ? t("Start a chat") : hasProject ? t("Start a thread") : t("Open a workspace")}</h1>
         <p className="lede">
-          {hasProject
-            ? t("Describe a change, work with your provider, and review the result here.")
-            : t("Choose a project folder to start working with your coding provider.")}
+          {chatMode
+            ? t("Ask anything. Chat can browse the web and read files on this computer, but it can't run commands or change files.")
+            : hasProject
+              ? t("Describe a change, work with your provider, and review the result here.")
+              : t("Choose a project folder to start working with your coding provider.")}
         </p>
 
         {hasProject ? (
           <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available)))}>
-            <MessageSquarePlus size={14} />{t("New thread")}</button>
+            <MessageSquarePlus size={14} />{chatMode ? t("New chat") : t("New thread")}</button>
         ) : (
           <button className="btn" type="button" data-variant="primary" onClick={chooseWorkspace} disabled={choosing}>
             <Folder size={16} />
@@ -37,10 +41,10 @@ export function Welcome() {
         )}
 
         {hasProject && !providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available))) && <p className="settings-note">{t("Enable a provider in Settings to start a conversation.")}</p>}
-        {projects.length > 0 && (
+        {!chatMode && codeProjects.length > 0 && (
           <div className="recent-list">
             <span className="eyebrow">{t("Recent")}</span>
-            {projects.slice(0, 6).map((project) => (
+            {codeProjects.slice(0, 6).map((project) => (
               <button
                 key={project.id}
                 type="button"

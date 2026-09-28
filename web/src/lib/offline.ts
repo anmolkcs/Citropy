@@ -4,6 +4,7 @@ import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { useApp } from "./store.ts";
 import type { Attachment, QueuedMessage } from "../../../shared/protocol.ts";
+import { randomId } from "./random-id.ts";
 
 let flushing: AbortSignal | null = null;
 
@@ -18,7 +19,7 @@ export function holdMessage(
   attachments: Attachment[],
 ): void {
   const { offline } = useApp.getState();
-  const item = { id: crypto.randomUUID(), text, attachments, createdAt: Date.now() };
+  const item = { id: randomId(), text, attachments, createdAt: Date.now() };
   save({ ...offline, [threadId]: [...(offline[threadId] ?? []), item] });
 }
 

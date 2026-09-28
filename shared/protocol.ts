@@ -22,7 +22,8 @@ export type PartKind =
   | "patch"
   | "notice"
   | "question"
-  | "images";
+  | "images"
+  | "changes";
 
 export type ToolStatus = "running" | "ok" | "error" | "denied";
 
@@ -150,7 +151,20 @@ export interface ImagesPart {
   files: ImageFile[];
 }
 
-export type Part = TextPart | ReasoningPart | ToolPart | TodoPart | PatchPart | NoticePart | QuestionPart | ImagesPart;
+export interface ChangedFile {
+  path: string;
+  added: number;
+  removed: number;
+}
+
+export interface ChangesPart {
+  id: string;
+  kind: "changes";
+  checkpoint: string;
+  files: ChangedFile[];
+}
+
+export type Part = TextPart | ReasoningPart | ToolPart | TodoPart | PatchPart | NoticePart | QuestionPart | ImagesPart | ChangesPart;
 
 export interface Attachment {
   id?: string;
@@ -211,6 +225,7 @@ export interface Project {
   branch?: string;
   lastOpened: number;
   settings?: ProjectSettings;
+  chat?: boolean;
 }
 
 export interface ProjectSettings {

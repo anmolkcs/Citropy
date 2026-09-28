@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   CircleAlert,
-  FolderGit2,
   Plus,
   X,
 } from "lucide-react";
@@ -241,7 +240,6 @@ export function GitManager({
         <div className="git-content">
           {!projectId ? (
             <EmptyState
-              icon={FolderGit2}
               title={t("Choose a workspace")}
               action={
                 <button
@@ -264,7 +262,7 @@ export function GitManager({
                 <p>{t("Reading repository…")}</p>
               </div>
             ) : (
-              <EmptyState icon={CircleAlert} title={t("Repository unavailable")}>
+              <EmptyState title={t("Repository unavailable")}>
                 <p>{t("Refresh to try loading this workspace again.")}</p>
                 <button
                   className="btn"
@@ -277,7 +275,6 @@ export function GitManager({
             )
           ) : !data.repository ? (
             <EmptyState
-              icon={FolderGit2}
               title={t("Start tracking this project")}
               action={
                 <button

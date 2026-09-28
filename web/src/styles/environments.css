@@ -1,23 +1,23 @@
-.environment-settings { display: flex; flex-direction: column; gap: 16px; }
-.environment-row { display: flex; align-items: center; gap: 14px; padding: 18px 0; }
+.environment-settings { display: flex; flex-direction: column; gap: var(--space-16); }
+.environment-row { display: flex; align-items: center; gap: var(--space-16); padding: var(--space-20) 0; }
 .environment-row > svg { flex: none; color: var(--text-3); }
-.environment-row > div:first-of-type { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 5px; }
+.environment-row > div:first-of-type { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-6); }
 .environment-row strong { font-weight: 500; overflow-wrap: anywhere; }
 .environment-row small { color: var(--text-3); overflow-wrap: anywhere; }
 .environment-row[data-active="true"] > svg { color: var(--accent); }
-.environment-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.environment-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8); }
 .environment-heading h2 { font-size: var(--text-body); font-weight: 500; }
-.environment-actions { display: flex; align-items: center; gap: 6px; }
-.ssh-form, .ssh-options { display: flex; flex-direction: column; gap: 9px; }
-.ssh-form > label:not(:first-child) { margin-top: 6px; }
-.ssh-form input { min-width: 0; width: 100%; padding: 10px 12px; }
-.ssh-form details { margin-top: 8px; }
+.environment-actions { display: flex; align-items: center; gap: var(--space-6); }
+.ssh-form, .ssh-options { display: flex; flex-direction: column; gap: var(--space-10); }
+.ssh-form > label:not(:first-child) { margin-top: var(--space-6); }
+.ssh-form input { min-width: 0; width: 100%; padding: var(--space-10) var(--space-12); }
+.ssh-form details { margin-top: var(--space-8); }
 .ssh-form summary { cursor: default; color: var(--text-3); }
-.ssh-options { padding-top: 14px; }
+.ssh-options { padding-top: var(--space-16); }
 .ssh-error { color: var(--bad) !important; overflow-wrap: anywhere; white-space: pre-wrap; }
-.ssh-progress { display: flex; align-items: center; gap: 8px; }
+.ssh-progress { display: flex; align-items: center; gap: var(--space-8); }
 .ssh-progress > svg { flex: none; }
-.workspace-menu .menu-option[data-group] { margin-top: 4px; }
+.workspace-menu .menu-option[data-group] { margin-top: var(--space-4); }
 .workspace-menu .menu-option[data-group]:first-child { margin-top: 0; }
 .workspace-menu .menu-option[data-group] > .menu-item { min-height: 50px; }
 .workspace-menu .menu-option[data-group] .menu-label { font-weight: 500; }
@@ -30,9 +30,9 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   width: min(560px, calc(100% - 24px));
-  padding: 10px 12px;
+  padding: var(--space-10) var(--space-12);
   border-radius: var(--r-md);
   background: var(--overlay);
 }
@@ -47,4 +47,4 @@
   .environment-breadcrumb { display: none; }
 }
 
-.ssh-form .settings-note { margin: 6px 0 0; }
+.ssh-form .settings-note { margin: var(--space-6) 0 0; }

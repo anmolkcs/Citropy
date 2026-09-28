@@ -1,4 +1,4 @@
-import { open, readdir, stat, realpath } from "node:fs/promises";
+import { lstat, open, readdir, stat, realpath } from "node:fs/promises";
 import { StringDecoder } from "node:string_decoder";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { FileEntry } from "../shared/protocol.ts";
@@ -148,4 +148,56 @@ export async function read(root: string, path: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+const PSEUDO_FILESYSTEMS = new Set(["/proc", "/sys", "/dev", "/run"]);
+const FIND_ENTRY_LIMIT = 20_000_000;
+const FIND_PARALLEL_FOLDERS = 32;
+const FIND_TIME_LIMIT_MS = 60_000;
+
+export interface FoundFile {
+  path: string;
+  size: number;
+  modified: number;
+}
+
+/** Walk every folder under a contained path without following symlinks and keep the top matches. */
+export async function find(
+  root: string,
+  options: { path: string; name?: string; sort: "size" | "modified"; limit: number; signal?: AbortSignal },
+): Promise<{ files: FoundFile[]; scanned: number; complete: boolean }> {
+  const start = inside(root, options.path);
+  if (!start) throw new Error("Choose a folder inside this workspace.");
+  if (!(await stat(start)).isDirectory()) throw new Error(`Not a folder: ${options.path}`);
+  const name = options.name?.toLowerCase();
+  const rank = (file: FoundFile) => options.sort === "size" ? file.size : file.modified;
+  const files: FoundFile[] = [];
+  const pending = [start];
+  const deadline = Date.now() + FIND_TIME_LIMIT_MS;
+  let scanned = 0;
+  const keep = (file: FoundFile) => {
+    if (files.length === options.limit && rank(file) <= rank(files.at(-1)!)) return;
+    const index = files.findIndex((kept) => rank(file) > rank(kept));
+    files.splice(index === -1 ? files.length : index, 0, file);
+    if (files.length > options.limit) files.pop();
+  };
+  const visit = async (directory: string) => {
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    scanned += entries.length;
+    const matches: string[] = [];
+    for (const entry of entries) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!PSEUDO_FILESYSTEMS.has(path)) pending.push(path);
+      } else if (entry.isFile() && (!name || entry.name.toLowerCase().includes(name))) matches.push(path);
+    }
+    for (const info of await Promise.all(matches.map((path) => lstat(path).then((stats) => ({ path, size: stats.size, modified: stats.mtimeMs }), () => null))))
+      if (info) keep(info);
+  };
+  while (pending.length) {
+    options.signal?.throwIfAborted();
+    if (scanned >= FIND_ENTRY_LIMIT || Date.now() > deadline) return { files, scanned, complete: false };
+    await Promise.all(pending.splice(-FIND_PARALLEL_FOLDERS).map(visit));
+  }
+  return { files, scanned, complete: true };
 }

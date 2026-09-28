@@ -4,6 +4,7 @@ import { Collapsible } from "./Collapsible.tsx";
 import { ChevronRight, GitCommitVertical, RotateCcw } from "./icons.ts";
 import { DiffView } from "./DiffView.tsx";
 import { FileIcon } from "./FileIcon.tsx";
+import { LineCounts } from "./LineCounts.tsx";
 import { groupGitFiles } from "../lib/git-files.ts";
 import { commitAll, discardFile, fetchDiff, refreshGit } from "../lib/actions.ts";
 import { scaled, useApp } from "../lib/store.ts";
@@ -50,17 +51,14 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
   return (
     <div className="change" data-open={open}>
       <div className="change-heading">
-        <button className="change-head" type="button" aria-expanded={open} onClick={onToggle}>
+        <button className="change-head" type="button" title={`${file.path} · ${statusLabel(file, t)}`} aria-expanded={open} onClick={onToggle}>
           <ChevronRight size={12} className="change-chevron" />
           <span className="change-file">
             <FileIcon path={file.path} />
             <span className="change-name truncate">{name}</span>
             {dir && <span className="change-dir truncate">{dir}</span>}
           </span>
-          <span className="change-stat">
-            {file.added > 0 && <span className="diff-plus">+{file.added}</span>}
-            {file.removed > 0 && <span className="diff-minus">-{file.removed}</span>}
-          </span>
+          <LineCounts added={file.added} removed={file.removed} />
           <span className="change-badge" data-kind={statusLabel(file, t)}>
             {statusLabel(file, t)}
           </span>

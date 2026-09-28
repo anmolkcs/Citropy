@@ -1,4 +1,5 @@
-import { commandVersion, spawnCommand } from "./binary.ts";
+import { commandVersion, invocation, resolveCommand, spawnCommand } from "./binary.ts";
+import { spawnSync } from "node:child_process";
 import { stopProcess } from "./process.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { discoverModels } from "./models.ts";
@@ -8,6 +9,19 @@ import { ask, cancelThread } from "../permissions.ts";
 import type { AgentSession, Provider, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
+
+const CHAT_DISABLED_FEATURES = ["shell_tool", "unified_exec", "computer_use", "browser_use", "apps"];
+
+function chatOverrides(options: StartOptions): string[] {
+  const call = invocation(resolveCommand(options.binary ?? "codex"), ["mcp", "list", "--json"]);
+  const listed = spawnSync(call.file, call.args, { encoding: "utf8", timeout: 15_000, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...options.environment } });
+  if (listed.status !== 0) throw new Error(`Could not list Codex MCP servers: ${listed.error?.message ?? listed.stderr.trim()}`);
+  const servers = JSON.parse(listed.stdout) as Array<{ name: string }>;
+  return [
+    ...CHAT_DISABLED_FEATURES.flatMap(feature => ["-c", `features.${feature}=false`]),
+    ...servers.filter(server => server.name !== "citropy").flatMap(server => ["-c", `mcp_servers.${server.name}.enabled=false`]),
+  ];
+}
 
 const MODES: Record<PermissionMode, { approvalPolicy: string; sandbox: string; approvalsReviewer: string }> = {
   manual: { approvalPolicy: "untrusted", sandbox: "read-only", approvalsReviewer: "user" },
@@ -66,6 +80,10 @@ function elicitationContent(schema: unknown): Record<string, unknown> | undefine
 class CodexSession implements AgentSession {
   #options: StartOptions;
   #child: ChildProcessWithoutNullStreams;
+
+  get pid(): number | undefined {
+    return this.#child.pid;
+  }
   #ready: Promise<void>;
   #requests = new Map<number, { resolve: (result: Wire) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
   #nextId = 0;
@@ -92,6 +110,7 @@ class CodexSession implements AgentSession {
     this.#options = options;
     const args = ["app-server"];
     if (options.mcp) args.push("-c", `mcp_servers.citropy.url=${JSON.stringify(options.mcp.url)}`, "-c", 'mcp_servers.citropy.bearer_token_env_var="CITROPY_MCP_TOKEN"', "-c", "mcp_servers.citropy.tool_timeout_sec=1860");
+    if (options.chat) args.push(...chatOverrides(options));
     this.#child = spawnCommand(options.binary ?? "codex", args, {
       detached: process.platform !== "win32",
       cwd: options.cwd,

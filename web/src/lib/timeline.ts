@@ -26,6 +26,8 @@ export function partFingerprint(part: Part | undefined): string {
       return `k${part.name}:${part.callId}:${part.images?.length ?? 0}:${part.imageFiles?.length ?? 0}`;
     case "images":
       return "i";
+    case "changes":
+      return `c${part.files.length}`;
     case "notice":
       return `n${part.level}`;
     default:
@@ -169,7 +171,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
         if (row === plan) return false;
         const part = row.kind === "part" ? state.parts.get(row.id) : undefined;
         if (part?.kind === "question" && part.status === "pending") return false;
-        if (part?.kind === "images") return false;
+        if (part?.kind === "images" || part?.kind === "changes") return false;
         return part?.kind !== "notice" || part.level === "info";
       }));
       const ids = [...work].flatMap(row => row.kind === "part" ? [row.id] : row.ids);

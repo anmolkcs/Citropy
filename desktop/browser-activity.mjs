@@ -5,8 +5,11 @@ export function browserActivity(view, parent, activate) {
   let operations = 0;
   let idle;
   let disposed = false;
+  let focused = false;
   let activation = Promise.resolve();
   const focus = value => {
+    if (value === focused) return activation;
+    focused = value;
     activation = activation.catch(() => {}).then(() => {
       if (!disposed && !content.isDestroyed()) return activate(value);
     });
@@ -16,12 +19,14 @@ export function browserActivity(view, parent, activate) {
     if (disposed || content.isDestroyed()) return;
     const active = operations > 0 || idle !== undefined;
     const needed = presented || active;
-    if (needed === attached) return;
-    if (needed) {
-      parent.addChildView(view);
-      view.setVisible(true);
-    } else parent.removeChildView(view);
-    attached = needed;
+    if (needed !== attached) {
+      if (needed) {
+        parent.addChildView(view);
+        view.setVisible(true);
+      } else parent.removeChildView(view);
+      attached = needed;
+    }
+    void focus(needed).catch(() => {});
   };
   return {
     present(value) {
@@ -35,7 +40,7 @@ export function browserActivity(view, parent, activate) {
       operations++;
       try {
         update();
-        await focus(true);
+        await activation;
         if (disposed || content.isDestroyed()) throw new Error("This browser tab is closed");
         return await operation();
       } finally {
@@ -43,7 +48,6 @@ export function browserActivity(view, parent, activate) {
         if (!disposed && !content.isDestroyed() && operations === 0) {
           idle = setTimeout(() => {
             idle = undefined;
-            void focus(false).catch(() => {});
             update();
           }, 30_000);
           idle.unref();

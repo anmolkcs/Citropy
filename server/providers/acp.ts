@@ -46,6 +46,10 @@ export class AcpSession implements AgentSession {
   #config: AcpConfig;
   #options: StartOptions;
   #child: ChildProcessWithoutNullStreams;
+
+  get pid(): number | undefined {
+    return this.#child.pid;
+  }
   #connection: acp.ClientConnection;
   #ready: Promise<void>;
   #sessionId = "";

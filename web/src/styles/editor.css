@@ -11,8 +11,8 @@
 .editor-explorer-heading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-10);
   font-size: var(--text-xs);
   flex: none;
 }
@@ -30,9 +30,9 @@
 }
 .editor-tabbar-actions {
   display: flex;
-  gap: 2px;
+  gap: var(--space-2);
   margin-left: auto;
-  padding: 4px 6px;
+  padding: var(--space-4) var(--space-6);
 }
 .editor-tabbar-actions [aria-pressed="true"] {
   background: var(--raised);
@@ -89,8 +89,8 @@
 .editor-tabs {
   --selection-fill: var(--raised);
   display: flex;
-  gap: 4px;
-  padding: 4px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   scrollbar-width: thin;
   overflow-x: auto;
   flex: none;
@@ -113,21 +113,21 @@
 .editor-tab > button:first-child {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 10px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-10);
   min-width: 0;
   font-size: var(--text-xs);
 }
 .editor-tab > .icon-btn {
   align-self: center;
-  margin-right: 5px;
+  margin-right: var(--space-6);
 }
 .editor-dirty {
   height: 6px;
   width: 6px;
   flex: none;
   border-radius: 50%;
-  background: var(--brand);
+  background: var(--text-2);
 }
 .editor-filebar {
   color: var(--text-3);
@@ -136,11 +136,11 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
 }
 .editor-breadcrumb > span + span::before {
   content: "›";
-  margin-right: 6px;
+  margin-right: var(--space-6);
   color: var(--text-4);
 }
 .editor-breadcrumb > [data-current] {
@@ -148,7 +148,7 @@
 }
 .editor-filebar .btn {
   min-height: 26px;
-  padding: 4px 8px;
+  padding: var(--space-4) var(--space-8);
   font-size: var(--text-xs);
 }
 .code-editor-surface {
@@ -166,10 +166,10 @@
 }
 .editor-problems {
   align-self: flex-end;
-  margin: -34px 12px 8px 0;
+  margin: -34px var(--space-12) var(--space-8) 0;
   position: relative;
   z-index: 1;
-  padding: 4px 9px;
+  padding: var(--space-4) var(--space-10);
   border-radius: var(--r-full);
   background: var(--warn-soft);
   color: var(--warn);
@@ -177,15 +177,15 @@
 }
 .editor-context-menu {
   min-width: 220px;
-  padding: 4px;
+  padding: var(--space-4);
 }
 .editor-context-group + .editor-context-group {
-  margin-top: 6px;
+  margin-top: var(--space-6);
 }
 .editor-context-menu .menu-item {
   width: 100%;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: var(--space-6) var(--space-10);
 }
 .editor-context-menu kbd {
   color: var(--text-4);
@@ -193,7 +193,7 @@
   font-size: var(--text-xs);
 }
 .editor-notice {
-  padding: 9px 12px;
+  padding: var(--space-10) var(--space-12);
   font-size: var(--text-xs);
   color: var(--warn);
   background: var(--warn-soft);
@@ -203,40 +203,14 @@
   margin: auto;
   overflow: auto;
   min-height: 0;
-  padding: 28px 20px;
+  padding: var(--space-32) var(--space-20);
   color: var(--text-3);
   text-align: center;
   max-width: 340px;
 }
-.editor-empty > svg {
-  color: var(--brand);
-  margin-bottom: 14px;
-}
-.editor-empty h3 {
-  color: var(--text);
-  font-size: 16px;
-  font-weight: 550;
-  margin-bottom: 8px;
-}
 .editor-empty p {
   font-size: var(--text-sm);
   line-height: 1.6;
-}
-.editor-empty dl {
-  margin-top: 30px;
-  text-align: left;
-  font-size: var(--text-xs);
-}
-.editor-empty dl > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 6px 0;
-}
-.editor-empty dd {
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  font-size: 11px;
 }
 
 @container (max-width: 650px) {
@@ -251,8 +225,8 @@
 
 .editor-file-search {
   width: calc(100% - 16px);
-  margin: 8px;
-  padding: 7px 8px;
+  margin: var(--space-8);
+  padding: var(--space-8) var(--space-8);
   border: 0;
   border-radius: var(--r-xs);
   background: var(--canvas);
@@ -264,11 +238,11 @@
   margin-right: auto;
 }
 .editor-create {
-  padding: 8px;
+  padding: var(--space-8);
 }
 .editor-create input {
   width: 100%;
-  padding: 7px;
+  padding: var(--space-8);
   background: var(--canvas);
   color: var(--text);
   border: 0;
@@ -276,10 +250,10 @@
   font-size: var(--text-xs);
 }
 .editor-create .btn {
-  margin-top: 8px;
+  margin-top: var(--space-8);
 }
 .editor-create p {
-  margin-top: 8px;
+  margin-top: var(--space-8);
   font-size: var(--text-xs);
   color: var(--text-3);
 }
@@ -295,8 +269,8 @@
 .editor-terminal-heading {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
   font-size: var(--text-xs);
   color: var(--text-3);
   flex: none;
@@ -306,7 +280,7 @@
   display: flex;
   flex: 1;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-4);
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -322,14 +296,14 @@
 .editor-terminal-tab > button:first-child {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   min-width: 0;
-  padding: 6px 8px;
+  padding: var(--space-6) var(--space-8);
   font-size: var(--text-xs);
 }
 .editor-terminal-tab > .icon-btn {
   align-self: center;
-  margin-right: 3px;
+  margin-right: var(--space-4);
 }
 .editor-terminal-body {
   display: flex;
@@ -397,4 +371,7 @@
 }
 .editor-document .media-preview {
   background: var(--canvas);
+}
+
+@media (hover: none) {
 }

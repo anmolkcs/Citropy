@@ -17,18 +17,21 @@ export function DevTriggers() {
     { id: "clear", label: "Clear fakes", hint: "Git refreshes on its own", icon: <Trash2 size={16} />, onSelect: clearFakes },
   ].map((item) => ({ ...item, disabled: !hasThread }));
   return (
-    <div className="dev-triggers">
-      <Menu
-        header="Trigger a fake"
-        align="end"
-        width={280}
-        items={items}
-        trigger={({ id, open, toggle }) => (
-          <button id={id} type="button" className="dev-triggers-button" aria-label="Development triggers" title="Development triggers" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
-            <FlaskConical size={15} />
-          </button>
-        )}
-      />
-    </div>
+    <>
+      <span className="dev-mark" aria-hidden="true">dev</span>
+      <div className="dev-triggers">
+        <Menu
+          header="Trigger a fake"
+          align="end"
+          width={280}
+          items={items}
+          trigger={({ id, open, toggle }) => (
+            <button id={id} type="button" className="dev-triggers-button" aria-label="Development triggers" title="Development triggers" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+              <FlaskConical size={15} />
+            </button>
+          )}
+        />
+      </div>
+    </>
   );
 }

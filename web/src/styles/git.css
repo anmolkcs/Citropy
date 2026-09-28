@@ -15,7 +15,7 @@
 
 .git-manager .btn {
   height: 34px;
-  padding: 0 12px;
+  padding: 0 var(--space-12);
   font-size: var(--text-sm);
   justify-content: center;
   flex: none;
@@ -25,31 +25,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 26px 32px;
+  gap: var(--space-24);
+  padding: var(--space-24) var(--space-32);
   flex: none;
 }
 
 .git-heading {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
-.git-heading > svg {
-  color: var(--accent-text);
-  flex: none;
-}
 .git-heading > div {
   min-width: 0;
 }
 .git-heading h1 {
-  font-size: 21px;
+  font-size: var(--text-title);
   font-weight: 600;
 }
 .git-heading p {
-  margin: 5px 0 0;
+  margin: var(--space-6) 0 0;
   color: var(--text-3);
   font-size: var(--text-sm);
   white-space: nowrap;
@@ -61,13 +57,13 @@
 .git-current-branch {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   min-width: 0;
 }
 
 .git-current-branch {
-  gap: 8px;
-  padding-right: 18px;
+  gap: var(--space-8);
+  padding-right: var(--space-20);
 }
 
 .git-current-branch > svg {
@@ -94,7 +90,7 @@
   justify-content: center;
   min-width: 19px;
   height: 19px;
-  padding: 0 5px;
+  padding: 0 var(--space-6);
   border-radius: 4px;
   background: var(--raised-2);
   color: var(--text-3);
@@ -124,21 +120,16 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: var(--space-16);
   text-align: center;
-  padding: 48px 24px;
+  padding: var(--space-48) var(--space-24);
   min-height: 270px;
   margin: 0 auto;
   max-width: 560px;
 }
 
-.git-empty > svg {
-  color: var(--text-3);
-  margin-bottom: 6px;
-  flex: none;
-}
 .git-empty h2 {
-  font-size: 19px;
+  font-size: var(--text-title);
   font-weight: 500;
   line-height: 1.4;
 }
@@ -156,16 +147,16 @@
   margin: 0;
 }
 .git-empty-copy p + p {
-  margin-top: 10px;
+  margin-top: var(--space-10);
 }
 .git-empty-action {
-  margin-top: 8px;
+  margin-top: var(--space-8);
 }
 .git-alert {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 13px 28px;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-32);
   background: var(--bad-soft);
   color: var(--bad);
   font-size: var(--text-sm);
@@ -173,7 +164,7 @@
 }
 
 .git-alert > svg {
-  margin-top: 2px;
+  margin-top: var(--space-2);
   flex: none;
 }
 .git-alert > div,
@@ -186,7 +177,7 @@
   font-weight: 500;
 }
 .git-alert details {
-  margin-top: 7px;
+  margin-top: var(--space-8);
 }
 .git-alert summary {
   cursor: default;
@@ -216,8 +207,8 @@
 .git-merge-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 13px 28px;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-32);
   flex: none;
   color: var(--text-2);
   font-size: var(--text-sm);
@@ -244,7 +235,7 @@
 }
 .git-merge-banner p {
   color: var(--text-2);
-  margin: 3px 0 0;
+  margin: var(--space-4) 0 0;
 }
 .git-merge-banner strong {
   color: var(--text);
@@ -278,9 +269,9 @@
 .git-filter {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 16px 16px 8px;
-  padding: 0 10px;
+  gap: var(--space-8);
+  margin: var(--space-16) var(--space-16) var(--space-8);
+  padding: 0 var(--space-10);
   height: 34px;
   flex: none;
   color: var(--text-3);
@@ -316,24 +307,24 @@
 .git-file-groups {
   flex: 1;
   min-height: 0;
-  padding: 4px 8px 20px;
+  padding: var(--space-4) var(--space-8) var(--space-20);
 }
 
 .git-file-group {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-20);
 }
 .git-file-group > header {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 10px 9px;
+  gap: var(--space-10);
+  padding: var(--space-10) var(--space-10);
 }
 .git-file-group h3 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--text-2);
@@ -341,7 +332,7 @@
 .git-text-button {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-6);
   color: var(--text-3);
   font-size: var(--text-xs);
   white-space: nowrap;
@@ -351,20 +342,20 @@
 }
 .git-manager .git-stage-all {
   height: 28px;
-  padding: 0 9px;
+  padding: 0 var(--space-10);
   color: var(--text);
   background: var(--raised);
   font-size: var(--text-xs);
 }
 .git-stage-all svg {
-  color: var(--file-icon);
+  color: var(--text-3);
 }
 .git-manager .git-stage-all:hover:not(:disabled) {
   background: var(--raised-2);
 }
 .git-list-hint {
   color: var(--text-3);
-  padding: 10px 9px;
+  padding: var(--space-10) var(--space-10);
   font-size: var(--text-sm);
   line-height: 1.7;
 }
@@ -374,7 +365,7 @@
   align-items: center;
   border-radius: 4px;
   min-width: 0;
-  padding: 0 4px 0 6px;
+  padding: 0 var(--space-4) 0 var(--space-6);
   transition: background var(--dur-instant);
 }
 
@@ -388,10 +379,10 @@
 .git-file-name {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-10);
   min-width: 0;
   flex: 1;
-  padding: 10px 4px;
+  padding: var(--space-10) var(--space-4);
   text-align: left;
 }
 .git-file-name > svg {
@@ -439,8 +430,8 @@
 
 .git-commit-form {
   display: grid;
-  gap: 10px;
-  padding: 17px;
+  gap: var(--space-10);
+  padding: var(--space-16);
   flex: none;
   background: var(--panel);
 }
@@ -457,7 +448,7 @@
   background: var(--raised);
   font-size: var(--text-sm);
   line-height: 1.7;
-  padding: 10px;
+  padding: var(--space-10);
 }
 .git-commit-form textarea {
   min-height: 76px;
@@ -465,7 +456,7 @@
   resize: vertical;
 }
 .git-optional {
-  margin-left: 6px;
+  margin-left: var(--space-6);
   font-size: var(--text-xs);
   font-weight: 400;
   color: var(--text-4);
@@ -478,7 +469,7 @@
 .git-commit-target {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6);
   color: var(--text-3);
   font-size: var(--text-xs);
 }
@@ -491,7 +482,7 @@
 }
 .git-commit-form .btn {
   width: 100%;
-  margin-top: 3px;
+  margin-top: var(--space-4);
 }
 
 .git-review-pane {
@@ -507,9 +498,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: var(--space-20);
   min-height: 80px;
-  padding: 18px 24px;
+  padding: var(--space-20) var(--space-24);
   flex: none;
   background: var(--panel);
 }
@@ -527,7 +518,7 @@
 .git-review-header p {
   color: var(--text-3);
   font-size: var(--text-xs);
-  margin: 3px 0 0;
+  margin: var(--space-4) 0 0;
   overflow-wrap: anywhere;
 }
 .git-review-header code {
@@ -544,7 +535,7 @@
 .git-inline-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex: none;
 }
 .git-danger:hover {
@@ -560,8 +551,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 48px 24px;
+  gap: var(--space-12);
+  padding: var(--space-48) var(--space-24);
   text-align: center;
   min-height: 220px;
   font-size: var(--text-sm);
@@ -578,7 +569,7 @@
   white-space: pre-wrap;
 }
 .git-patches {
-  padding: 18px 20px 40px;
+  padding: var(--space-20) var(--space-20) var(--space-40);
 }
 .git-review-scroll .diff {
   font-size: var(--text-sm);
@@ -603,7 +594,7 @@
   border: 0;
   border-radius: var(--r-xs);
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-16);
   background: var(--code-bg);
 }
 
@@ -613,7 +604,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  padding: 18px 20px 20px;
+  padding: var(--space-20) var(--space-20) var(--space-20);
 }
 .git-single-patch > .diff {
   display: flex;
@@ -629,8 +620,8 @@
 .git-patch-heading {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 12px 14px;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-16);
   background: var(--panel);
   cursor: default;
   font-size: var(--text-sm);
@@ -655,13 +646,13 @@
   position: absolute;
   inset: 0 0 auto;
 }
-.git-patch .diff-stat {
+.git-patch .line-counts {
   margin-left: auto;
   flex: none;
 }
 .git-commit-body {
   white-space: pre-wrap;
-  padding: 2px 0 20px;
+  padding: var(--space-2) 0 var(--space-20);
   font-size: var(--text-base);
   line-height: 1.8;
 }
@@ -669,16 +660,16 @@
   display: inline-block;
   color: var(--accent-text);
   font-size: var(--text-xs);
-  margin-top: 6px;
+  margin-top: var(--space-6);
 }
 .git-no-lines {
-  padding: 16px;
+  padding: var(--space-16);
   color: var(--text-3);
   font-size: var(--text-sm);
 }
 
 .git-list-heading {
-  padding: 22px 22px 16px;
+  padding: var(--space-24) var(--space-24) var(--space-16);
   flex: none;
 }
 .git-list-heading h2 {
@@ -688,28 +679,28 @@
 .git-list-heading p {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin: 8px 0 0;
+  gap: var(--space-6);
+  margin: var(--space-8) 0 0;
   color: var(--text-3);
   font-size: var(--text-xs);
 }
 .git-commits {
   flex: 1;
   min-height: 0;
-  padding: 8px;
+  padding: var(--space-8);
 }
 .git-history-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 14px 12px;
+  gap: var(--space-10);
+  padding: var(--space-16) var(--space-12);
   border-radius: var(--r-xs);
   text-align: left;
   width: 100%;
   transition: background var(--dur-instant);
 }
 .git-history-row > svg {
-  margin-top: 2px;
+  margin-top: var(--space-2);
   color: var(--text-3);
   flex: none;
 }
@@ -728,13 +719,13 @@
   display: block;
   color: var(--text-3);
   font-size: var(--text-xs);
-  margin-top: 4px;
+  margin-top: var(--space-4);
 }
 .git-history-row code {
   color: var(--text-3);
   font-size: var(--text-xs);
   display: inline-block;
-  margin-top: 4px;
+  margin-top: var(--space-4);
 }
 .git-history-row:hover {
   background: var(--raised);
@@ -750,7 +741,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 18px;
+  padding: var(--space-10) var(--space-20);
   color: var(--text-3);
   font-size: var(--text-xs);
   flex: none;
@@ -758,18 +749,18 @@
 
 .git-page {
   height: 100%;
-  padding: 24px 32px 48px;
+  padding: var(--space-24) var(--space-32) var(--space-48);
 }
 .git-section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 25px;
+  gap: var(--space-24);
+  margin-bottom: var(--space-24);
   flex: none;
 }
 .git-section-heading h2 {
-  font-size: 19px;
+  font-size: var(--text-title);
   font-weight: 500;
 }
 .git-section-heading p {
@@ -784,11 +775,11 @@
 .git-current-summary {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-16);
   border: 0;
   background: var(--panel);
   border-radius: var(--r-md);
-  padding: 20px 22px;
+  padding: var(--space-20) var(--space-24);
 }
 .git-current-summary > svg {
   color: var(--accent-text);
@@ -796,7 +787,7 @@
 }
 .git-current-summary > div {
   display: grid;
-  gap: 4px;
+  gap: var(--space-4);
   min-width: 0;
 }
 .git-current-summary small {
@@ -811,8 +802,8 @@
 .git-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
   border: 0;
   border-radius: 4px;
   color: var(--text-3);
@@ -824,7 +815,7 @@
   background: var(--raised);
 }
 .git-branch-filter {
-  margin: 22px 0 10px;
+  margin: var(--space-24) 0 var(--space-10);
   width: min(320px, 100%);
   background: var(--panel);
 }
@@ -832,14 +823,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  padding: 16px 0 12px;
-  margin-top: 12px;
+  gap: var(--space-16);
+  padding: var(--space-16) 0 var(--space-12);
+  margin-top: var(--space-12);
 }
 .git-table-heading h3 {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-10);
   font-size: var(--text-sm);
   color: var(--text-2);
   font-weight: 500;
@@ -853,8 +844,8 @@
 .git-remote-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px 4px;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-4);
   min-width: 0;
 }
 
@@ -863,12 +854,12 @@
   background: var(--panel);
 }
 .shell[data-backdrop] :is(.git-branch-row, .git-remote-row) {
-  padding: 18px 16px;
+  padding: var(--space-20) var(--space-16);
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--canvas) 72%, transparent);
 }
 .shell[data-backdrop] :is(.git-branch-row, .git-remote-row) + :is(.git-branch-row, .git-remote-row) {
-  margin-top: 4px;
+  margin-top: var(--space-4);
 }
 .git-branch-row > svg,
 .git-remote-row > svg {
@@ -882,7 +873,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-10);
 }
 .git-row-main strong {
   font-size: var(--text-base);
@@ -892,38 +883,38 @@
 .git-row-main p {
   font-size: var(--text-sm);
   color: var(--text-3);
-  margin: 5px 0 0;
+  margin: var(--space-6) 0 0;
 }
 .git-row-main small {
   display: block;
   font-size: var(--text-xs);
   color: var(--text-3);
-  margin-top: 5px;
+  margin-top: var(--space-6);
 }
 .git-row-main code {
   display: block;
   font-size: var(--text-xs);
   color: var(--text-3);
-  margin-top: 6px;
+  margin-top: var(--space-6);
   overflow-wrap: anywhere;
 }
 .git-row-date {
   font-size: var(--text-xs);
   color: var(--text-3);
-  padding: 0 16px;
+  padding: 0 var(--space-16);
   flex: none;
 }
 .git-accent {
   color: var(--accent-text);
 }
 .git-branch-list {
-  padding-bottom: 12px;
+  padding-bottom: var(--space-12);
 }
 .git-inline-empty {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 25px 4px;
+  gap: var(--space-16);
+  padding: var(--space-24) var(--space-4);
   color: var(--text-3);
 }
 .git-inline-empty > svg {
@@ -938,18 +929,18 @@
   color: var(--text-2);
 }
 .git-inline-empty p {
-  margin: 5px 0 0;
+  margin: var(--space-6) 0 0;
   font-size: var(--text-sm);
   line-height: 1.7;
 }
 .git-page-note {
-  margin-top: 22px;
+  margin-top: var(--space-24);
   color: var(--text-3);
   font-size: var(--text-sm);
 }
 
 .git-stash-layout > .git-section-heading {
-  padding: 28px 32px 24px;
+  padding: var(--space-32) var(--space-32) var(--space-24);
   margin: 0;
 }
 .git-stash-layout > .git-empty {
@@ -959,23 +950,23 @@
   min-width: 0;
   min-height: 0;
   background: var(--panel);
-  padding: 10px;
+  padding: var(--space-10);
 }
 .git-sync {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
-  padding: 24px;
+  gap: var(--space-24);
+  padding: var(--space-24);
   border: 0;
   border-radius: var(--r-sm);
   background: var(--panel);
-  margin-bottom: 24px;
+  margin-bottom: var(--space-24);
 }
 .git-sync-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   flex: 1;
   min-width: 200px;
 }
@@ -988,20 +979,20 @@
   font-size: var(--text-base);
 }
 .git-sync-title p {
-  margin: 6px 0 0;
+  margin: var(--space-6) 0 0;
   color: var(--text-3);
   font-size: var(--text-sm);
 }
 .git-sync-counts {
   display: flex;
-  gap: 18px;
+  gap: var(--space-20);
   font-size: var(--text-xs);
   color: var(--text-3);
 }
 .git-sync-counts > span {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-6);
 }
 .git-sync-counts strong {
   font-weight: 500;
@@ -1010,29 +1001,29 @@
 
 .git-field {
   display: grid;
-  gap: 8px;
+  gap: var(--space-8);
   font-size: var(--text-sm);
   font-weight: 500;
-  margin-top: 18px;
+  margin-top: var(--space-20);
 }
 .git-field > input {
   width: 100%;
   background: var(--raised);
   border: 0;
   border-radius: var(--r-xs);
-  padding: 10px 12px;
+  padding: var(--space-10) var(--space-12);
   font-size: var(--text-base);
 }
 .git-field > input::placeholder {
   color: var(--text-4);
 }
 .git-dialog-error {
-  padding: 13px;
+  padding: var(--space-12);
   background: var(--bad-soft);
   color: var(--bad);
   border-radius: var(--r-xs);
   font-size: var(--text-sm);
-  margin-top: 18px;
+  margin-top: var(--space-20);
 }
 .git-dialog-error pre {
   font-size: var(--text-xs);
@@ -1042,7 +1033,7 @@
   overflow: auto;
 }
 .git-dialog-error details {
-  margin-top: 8px;
+  margin-top: var(--space-8);
 }
 .git-dialog-error summary {
   cursor: default;
@@ -1063,20 +1054,20 @@
 
 @container (max-width: 950px) {
   .git-header {
-    padding: 22px 22px 18px;
+    padding: var(--space-24) var(--space-24) var(--space-20);
   }
   .git-current-branch > span {
     display: none;
   }
   .git-review-header {
-    padding: 15px 18px;
-    gap: 10px;
+    padding: var(--space-16) var(--space-20);
+    gap: var(--space-10);
   }
   .git-review-header .git-inline-actions {
-    gap: 4px;
+    gap: var(--space-4);
   }
   .git-patches {
-    padding: 14px;
+    padding: var(--space-16);
   }
   .git-row-date {
     padding: 0;
@@ -1085,17 +1076,14 @@
 
 @container (max-width: 680px) {
   .git-header {
-    padding: 18px 18px 15px;
-    gap: 12px;
+    padding: var(--space-20) var(--space-20) var(--space-16);
+    gap: var(--space-12);
   }
   .git-heading {
-    gap: 10px;
-  }
-  .git-heading > svg {
-    display: none;
+    gap: var(--space-10);
   }
   .git-heading h1 {
-    font-size: 18px;
+    font-size: var(--text-lg);
   }
   .git-heading p {
     font-size: var(--text-xs);
@@ -1103,14 +1091,14 @@
   .git-current-branch {
     border: none;
     padding: 0;
-    gap: 5px;
+    gap: var(--space-6);
   }
   .git-current-branch strong {
     max-width: 95px;
     font-size: var(--text-xs);
   }
   .git-repository-state {
-    gap: 4px;
+    gap: var(--space-4);
   }
   .git-split {
     display: flex;
@@ -1138,7 +1126,7 @@
   }
   .git-first-commit,
   .git-merge-banner {
-    padding: 12px 18px;
+    padding: var(--space-12) var(--space-20);
     font-size: var(--text-xs);
     align-items: flex-start;
   }
@@ -1146,29 +1134,29 @@
     flex-wrap: wrap;
   }
   .git-merge-banner .btn {
-    margin-left: 29px;
+    margin-left: var(--space-32);
   }
   .git-page {
-    padding: 24px 18px;
+    padding: var(--space-24) var(--space-20);
   }
   .git-section-heading {
-    gap: 15px;
+    gap: var(--space-16);
     align-items: flex-start;
-    margin-bottom: 22px;
+    margin-bottom: var(--space-24);
   }
   .git-section-heading h2 {
-    font-size: 18px;
+    font-size: var(--text-lg);
   }
   .git-section-heading p {
     font-size: var(--text-sm);
   }
   .git-section-heading .btn {
     font-size: var(--text-xs);
-    padding: 0 9px;
+    padding: 0 var(--space-10);
   }
   .git-current-summary {
-    padding: 16px;
-    gap: 12px;
+    padding: var(--space-16);
+    gap: var(--space-12);
     flex-wrap: wrap;
   }
   .git-current-summary .git-tag {
@@ -1177,26 +1165,26 @@
   }
   .git-empty {
     min-height: 220px;
-    padding: 32px 18px;
-    gap: 12px;
+    padding: var(--space-32) var(--space-20);
+    gap: var(--space-12);
   }
   .git-empty h2 {
-    font-size: 17px;
+    font-size: var(--text-lg);
   }
   .git-empty-copy {
     font-size: var(--text-sm);
   }
   .git-branch-row,
   .git-remote-row {
-    gap: 10px;
+    gap: var(--space-10);
     flex-wrap: wrap;
-    padding: 18px 0;
+    padding: var(--space-20) 0;
   }
   .git-row-main {
     flex-basis: calc(100% - 32px);
   }
   .git-row-date {
-    margin-left: 28px;
+    margin-left: var(--space-32);
     margin-right: auto;
   }
   .git-branch-row .git-inline-actions {
@@ -1222,17 +1210,17 @@
     flex-wrap: wrap;
   }
   .git-inline-empty > .btn {
-    margin-left: 36px;
+    margin-left: var(--space-40);
   }
   .git-alert {
-    padding: 13px 18px;
+    padding: var(--space-12) var(--space-20);
   }
   .git-alert > div {
     max-width: calc(100% - 62px);
   }
   .git-sync {
-    padding: 18px;
-    gap: 20px;
+    padding: var(--space-20);
+    gap: var(--space-20);
   }
   .git-sync-title {
     min-width: 0;
@@ -1245,11 +1233,11 @@
     flex: 1;
   }
   .git-stash-layout > .git-section-heading {
-    padding: 24px 18px 20px;
+    padding: var(--space-24) var(--space-20) var(--space-20);
   }
   .git-review-header {
     flex-wrap: wrap;
-    padding: 15px 12px;
+    padding: var(--space-16) var(--space-12);
   }
   .git-review-header h2 {
     font-size: var(--text-sm);
@@ -1258,7 +1246,7 @@
     margin-left: auto;
   }
   .git-patches {
-    padding: 12px 10px;
+    padding: var(--space-12) var(--space-10);
   }
   .git-review-scroll .diff-line {
     grid-template-columns: 32px 32px 14px minmax(0, 1fr);

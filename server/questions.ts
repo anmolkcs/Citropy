@@ -1,7 +1,7 @@
 import { bus } from "./bus.ts";
 import { store } from "./store.ts";
 import { uid } from "./ids.ts";
-import { pendingRequests } from "./permissions.ts";
+import { ANSWER_WAIT_MS, pendingRequests } from "./permissions.ts";
 import { normalizeQuestions, type QuestionRequest, type QuestionResult } from "../shared/questions.ts";
 
 const pending = new Map<string, { request: QuestionRequest; promise: Promise<QuestionResult>; finish: (answers: Record<string, string[]> | null) => void }>();
@@ -42,7 +42,7 @@ export function askQuestion(threadId: string, input: unknown, options: { id?: st
     bus.emit({ t: "question.close", id });
     resolve({ cancelled: !answers, answers: answers ?? {} });
   };
-  const timer = setTimeout(abort, 30 * 60 * 1000);
+  const timer = setTimeout(abort, ANSWER_WAIT_MS);
   timer.unref();
   pending.set(id, { request, promise, finish });
   store.addPart(threadId, message.id, { id, kind: "question", questions, status: "pending" });

@@ -70,10 +70,11 @@ export function useWorkspaceCatalog(): WorkspaceCatalog {
 }
 
 export function rememberWorkspaces(id: string, projects: Project[], home: string, threads: ThreadMeta[], connected: boolean): void {
+  const code = projects.filter(project => !project.chat);
   const entry = {
     home,
-    projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
-    threads: threads.filter(thread => !thread.parentThreadId).map(workspaceThread),
+    projects: code.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
+    threads: threads.filter(thread => !thread.parentThreadId && code.some(project => project.id === thread.projectId)).map(workspaceThread),
     connected,
   };
   if (JSON.stringify(entry) === JSON.stringify(workspaces[id])) return;

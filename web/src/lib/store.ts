@@ -1,13 +1,14 @@
 import { environmentStorage } from "./environment.ts";
 import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { Project } from "../../../shared/protocol.ts";
-import { useApp, readOffline, type Confirmation } from "./app-state.ts";
+import { useApp, readOffline, modeProjects, type AppMode, type Confirmation } from "./app-state.ts";
 import { trimHistories } from "./history-cache.ts";
 import type { EnvironmentSlice } from "./live-environments.ts";
 
 export { useApp } from "./app-state.ts";
 export { applyEvent, applyEvents } from "./server-events.ts";
-export type { AppState, MessageShell, Toast, Confirmation, Theme, SidebarMode, PanelId } from "./app-state.ts";
+export type { AppState, AppMode, MessageShell, Toast, Confirmation, Theme, SidebarMode, PanelId } from "./app-state.ts";
+export { modeProjects } from "./app-state.ts";
 export {
   toggleFavoriteModel,
   setPanelWidth,
@@ -121,6 +122,34 @@ export function selectProject(id: string): void {
   });
   environmentStorage.removeItem("citropy.thread");
   environmentStorage.setItem("citropy.project", id);
+}
+
+export function setAppMode(mode: AppMode): void {
+  const state = useApp.getState();
+  if (state.appMode === mode) return;
+  const saved = state.otherModeSelection;
+  useApp.setState({
+    appMode: mode,
+    activeView: "chat",
+    readingThreadId: null,
+    otherModeSelection: { projectId: state.activeProjectId, threadId: state.activeThreadId },
+  });
+  environmentStorage.setItem("citropy.appMode", mode);
+  const projects = modeProjects(useApp.getState());
+  const project = projects.find((entry) => entry.id === saved?.projectId) ?? projects[0];
+  if (!project) {
+    useApp.setState({ activeProjectId: null, activeThreadId: null });
+    environmentStorage.removeItem("citropy.project");
+    environmentStorage.removeItem("citropy.thread");
+    return;
+  }
+  selectProject(project.id);
+  if (saved?.threadId && useApp.getState().threads[saved.threadId]?.projectId === project.id) selectThread(saved.threadId);
+}
+
+export function showProjectMode(projectId: string): void {
+  const project = useApp.getState().projects.find((entry) => entry.id === projectId);
+  if (project) setAppMode(project.chat ? "chat" : "code");
 }
 
 export function selectPanel(id: string): void {

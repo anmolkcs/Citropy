@@ -11,7 +11,7 @@
   position: relative;
   width: 16px;
   height: 16px;
-  margin-inline-end: 5px;
+  margin-inline-end: var(--space-6);
   vertical-align: -3px;
   color: var(--text-3);
 }
@@ -42,12 +42,12 @@
 }
 
 .prose h1 {
-  font-size: 20px;
+  font-size: var(--text-title);
   letter-spacing: -0.025em;
 }
 
 .prose h2 {
-  font-size: 17px;
+  font-size: var(--text-lg);
   letter-spacing: -0.02em;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .prose h4 {
-  font-size: 15px;
+  font-size: var(--text-body);
   color: var(--text-2);
 }
 
@@ -82,7 +82,7 @@
 
 .prose blockquote {
   margin: 0.9em 0;
-  padding: 12px 14px;
+  padding: var(--space-12) var(--space-16);
   color: var(--text-2);
   background: var(--panel);
   border-radius: var(--r-sm);
@@ -116,7 +116,7 @@
 
 .prose th,
 .prose td {
-  padding: 6px 10px;
+  padding: var(--space-6) var(--space-10);
   border: 0;
   text-align: left;
 }
@@ -140,7 +140,7 @@
 .markdown-image {
   display: inline-block;
   max-width: min(320px, 100%);
-  margin-block: 4px;
+  margin-block: var(--space-4);
   padding: 0;
   border: 0;
   border-radius: var(--r-sm);
@@ -164,7 +164,7 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
 
 .markdown-image-error {
   display: block;
-  padding: 16px;
+  padding: var(--space-16);
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
@@ -199,8 +199,8 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 3px 4px 3px 12px;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12);
   background: var(--panel);
   color: var(--text-4);
   font-size: var(--text-xs);
@@ -248,7 +248,7 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
 
 .code-block pre {
   margin: 0;
-  padding: 12px;
+  padding: var(--space-12);
   overflow-x: auto;
   font-size: var(--text-sm);
   line-height: 1.62;

@@ -1,6 +1,7 @@
 import { environmentId, environmentSignal, environmentUrl } from "./environment.ts";
 import { logClientError } from "./socket.ts";
 import { useApp } from "./store.ts";
+import { randomId } from "./random-id.ts";
 
 export async function api<T>(
   path: string,
@@ -34,7 +35,7 @@ export function reportError(error: unknown): void {
     toasts: [
       ...state.toasts,
       {
-        id: crypto.randomUUID(),
+        id: randomId(),
         level: "error",
         text: (error as Error).message || "This action could not be completed.",
       },

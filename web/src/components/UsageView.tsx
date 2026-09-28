@@ -10,7 +10,6 @@ import { PixelLoader } from "./PixelLoader.tsx";
 import { ProviderLimits } from "./UsageLimits.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
-import { AnimatedText } from "./AnimatedText.tsx";
 import { UsageChart } from "./usage/UsageChart.tsx";
 import { ProviderBreakdown } from "./usage/ProviderBreakdown.tsx";
 import { ConversationUsage } from "./usage/ConversationUsage.tsx";
@@ -26,9 +25,9 @@ import {
 import { USAGE_TOTAL_KEYS, emptyUsageTotals, type UsageTotals } from "../../../shared/usage-metrics.ts";
 
 const PAGES = [
-  { id: "overview", label: "Overview", icon: ChartColumnStacked, description: "All usage on this computer, read from each provider's own logs, including work outside Citropy." },
-  { id: "limits", label: "Limits", icon: Gauge, description: "Remaining allowance on your provider accounts." },
-  { id: "conversations", label: "Conversations", icon: MessagesSquare, description: "Tokens used by each saved Citropy conversation." },
+  { id: "overview", label: "Overview", icon: ChartColumnStacked },
+  { id: "limits", label: "Limits", icon: Gauge },
+  { id: "conversations", label: "Conversations", icon: MessagesSquare },
 ] as const;
 
 type PageId = typeof PAGES[number]["id"];
@@ -172,10 +171,8 @@ export function UsageView({
           <header className="settings-heading">
             <div>
               <h1 className="settings-title">
-                <span className="settings-title-icon" aria-hidden="true"><page.icon size={19} /></span>
-                <AnimatedText text={t(page.label)} />
+                {t(page.label)}
               </h1>
-              <p><AnimatedText text={t(page.description)} /></p>
             </div>
             <button className="btn" disabled={busy} onClick={() => setRevision((value) => value + 1)}>
               {busy ? <PixelLoader size={15} /> : <RefreshCw size={15} />}
