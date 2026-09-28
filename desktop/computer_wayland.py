@@ -353,6 +353,11 @@ class WaylandInput:
 
     def release(self):
         """Release every held key and button, even while pausing."""
+        if self.closed or self.failed:
+            # Disconnecting already destroyed the virtual devices and their held input.
+            self.pressed.clear()
+            self.buttons.clear()
+            return
         cancelled = self.cancelled
         self.cancelled = False
         try:
