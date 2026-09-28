@@ -80,13 +80,8 @@
   transition: display 160ms allow-discrete, overlay 160ms allow-discrete;
 }
 .citropy-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(5px);
-  animation: backdrop-enter var(--dur-fast) ease-out both;
+  background: transparent;
 }
-.citropy-dialog[data-exiting]::backdrop { animation: backdrop-exit var(--dur-fast) ease-in both; }
-@keyframes backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
-@keyframes backdrop-exit { to { opacity: 0; } }
 .dialog-heading {
   display: flex;
   align-items: flex-start;
@@ -159,6 +154,23 @@
   font-weight: 500;
   overflow-wrap: anywhere;
 }
+.confirmation-card {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(380px, calc(var(--viewport-width) - 24px));
+  border-radius: var(--r-lg);
+  transform-origin: 50% 100%;
+}
+.confirmation-card[data-side="bottom"] { transform-origin: 50% 0; }
+.confirmation-card .dialog-heading { gap: 12px; padding: 16px 16px 12px; }
+.confirmation-card .dialog-heading h2 { font-size: var(--text-base); line-height: 1.4; }
+.confirmation-card .dialog-heading p { margin-top: 4px; font-size: var(--text-sm); line-height: 1.55; }
+.confirmation-card .dialog-symbol { width: 32px; height: 32px; border-radius: var(--r-md); }
+.confirmation-card .dialog-content { padding: 0 16px 14px; }
+.confirmation-card .confirmation-context { padding: 8px 10px; font-size: var(--text-sm); }
+.confirmation-card .dialog-footer { gap: 8px; padding: 10px 12px; }
+.confirmation-card .btn { min-height: 30px; padding: 5px 11px; }
 .dialog-error {
   color: var(--bad);
   font-size: var(--text-sm);
@@ -166,10 +178,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .citropy-dialog { transition: none; }
-  .citropy-dialog::backdrop,
-  .citropy-dialog[data-exiting]::backdrop {
-    animation: none;
-  }
 }
 .notifications-wrap {
   position: relative;

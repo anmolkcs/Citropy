@@ -3,11 +3,12 @@ import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { onJson, onLines } from "../lines.ts";
 import { permissionToolName } from "../permissions.ts";
 import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions } from "./types.ts";
-import type { Attachment, PermissionMode, TodoItem } from "../../shared/protocol.ts";
+import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
@@ -82,6 +83,7 @@ class ClaudeSession implements AgentSession {
   #tasks = new Map<string, TodoItem>();
   #pendingTasks = new Map<string, string>();
   #agents = new Map<string, { title: string; prompt?: string; model?: string }>();
+  #workflows = new Map<string, Map<string, ThreadStatus>>();
   #shells = new Map<string, string>();
   #controls = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
   #nextControl = 0;
@@ -94,6 +96,8 @@ class ClaudeSession implements AgentSession {
   #effort?: string;
   #fastMode: boolean;
   #permissionMode: PermissionMode;
+  #active = false;
+  #steers = new Set<string>();
 
   constructor(options: StartOptions) {
     this.#emit = options.emit;
@@ -114,6 +118,7 @@ class ClaudeSession implements AgentSession {
       "stream-json",
       "--include-partial-messages",
       "--verbose",
+      "--replay-user-messages",
       "--permission-mode",
       MODES[options.permissionMode],
       "--mcp-config",
@@ -175,11 +180,16 @@ class ClaudeSession implements AgentSession {
   }
 
   async send(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
+    this.#active = true;
     this.#write(await this.#content(text, attachments, skills));
   }
 
   async steer(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
-    this.#write(await this.#content(text, attachments, skills), "next");
+    const content = await this.#content(text, attachments, skills);
+    if (!this.#active) throw new Error("Claude Code already finished this turn.");
+    const id = randomUUID();
+    this.#write(content, id);
+    this.#steers.add(id);
   }
 
   async #content(text: string, attachments: Attachment[], skills: Array<{ name: string; path: string }>): Promise<unknown[]> {
@@ -196,13 +206,13 @@ class ClaudeSession implements AgentSession {
     return content;
   }
 
-  #write(content: unknown[], priority?: "next"): void {
+  #write(content: unknown[], steerId?: string): void {
     if (this.#disposed || !this.#child.stdin.writable) throw new Error("Claude session has closed.");
     this.#child.stdin.write(
       `${JSON.stringify({
         type: "user",
         message: { role: "user", content },
-        ...(priority ? { priority } : {}),
+        ...(steerId ? { priority: "next", uuid: steerId } : {}),
       })}\n`,
     );
   }
@@ -214,8 +224,13 @@ class ClaudeSession implements AgentSession {
     catch (error) { this.#manualCompaction = false; throw error; }
   }
 
-  interrupt(): void {
+  interrupt(): Promise<void> {
+    if (this.#steers.size) this.#emit({ type: "notice", level: "warn", text: this.#steers.size === 1 ? "Stopped before Claude Code read your latest message. Send it again to run it." : `Stopped before Claude Code read your last ${this.#steers.size} messages. Send them again to run them.` });
+    this.#steers.clear();
+    if (this.#child.exitCode !== null || this.#child.signalCode !== null) return Promise.resolve();
+    const exited = new Promise<void>(resolve => this.#child.once("exit", () => resolve()));
     this.#child.kill("SIGINT");
+    return exited;
   }
 
   stopShell(taskId: string): Promise<void> {
@@ -298,6 +313,26 @@ class ClaudeSession implements AgentSession {
     }
   }
 
+  #workflow(taskId: string, message: Record<string, unknown>): void {
+    const helpers = this.#workflows.get(taskId) ?? new Map<string, ThreadStatus>();
+    this.#workflows.set(taskId, helpers);
+    const workflowId = String(message.tool_use_id ?? taskId);
+    const progress = Array.isArray(message.workflow_progress) ? message.workflow_progress as Array<Record<string, unknown>> : [];
+    for (const entry of progress) {
+      if (entry.type !== "workflow_agent") continue;
+      const id = `${workflowId}:${entry.index}`;
+      const status: ThreadStatus = entry.state === "done" ? "idle" : entry.state === "error" ? "error" : entry.state === "start" && entry.startedAt === undefined ? "queued" : "working";
+      if (helpers.get(id) === status) continue;
+      helpers.set(id, status);
+      const result = status === "idle" ? entry.resultPreview : status === "error" ? entry.error : undefined;
+      this.#emit({ type: "subagent", id, title: String(entry.label ?? "Workflow agent"), prompt: typeof entry.promptPreview === "string" ? entry.promptPreview : undefined, model: typeof entry.model === "string" ? entry.model : undefined, status, result: typeof result === "string" ? result : undefined });
+    }
+    if (message.subtype !== "task_notification") return;
+    this.#workflows.delete(taskId);
+    const final: ThreadStatus = message.status === "completed" ? "idle" : message.status === "failed" ? "error" : "stopped";
+    for (const [id, status] of helpers) if (status !== "idle" && status !== "error") this.#emit({ type: "subagent", id, status: final });
+  }
+
   #adopt(callId: string, output: string): void {
     const title = this.#pendingTasks.get(callId);
     if (title === undefined) return;
@@ -358,6 +393,10 @@ class ClaudeSession implements AgentSession {
         }
         return;
       }
+      if (Array.isArray(message.workflow_progress) || this.#workflows.has(taskId)) {
+        this.#workflow(taskId, message);
+        return;
+      }
       const id = String(message.tool_use_id ?? message.task_id ?? "");
       if (message.task_type === "local_agent" && !this.#agents.has(id)) this.#agents.set(id, { title: String(message.description ?? "Subagent"), prompt: typeof message.prompt === "string" ? message.prompt : undefined });
       const agent = this.#agents.get(id);
@@ -416,6 +455,11 @@ class ClaudeSession implements AgentSession {
       return;
     }
 
+    if (type === "user" && message.isReplay) {
+      this.#steers.delete(String(message.uuid));
+      return;
+    }
+
     if (type === "user") {
       const content = (message.message as { content?: unknown[] } | undefined)?.content ?? [];
       for (const raw of content) {
@@ -462,10 +506,16 @@ class ClaudeSession implements AgentSession {
       const isError = message.is_error === true;
       if (this.#manualCompaction) {
         this.#manualCompaction = false;
+        this.#active = false;
         if (this.#compacted && !isError) this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
         else this.#emit({ type: "turn.end", error: String(message.result ?? "The provider could not compact this conversation yet.") });
         return;
       }
+      if (this.#steers.size) {
+        if (isError) this.#emit({ type: "notice", level: "error", text: String(message.result ?? "run failed") });
+        return;
+      }
+      this.#active = false;
       this.#emit({
         type: "turn.end",
         error: isError ? String(message.result ?? "run failed") : undefined,

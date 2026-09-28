@@ -23,8 +23,7 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { OptionStrip } from "./OptionStrip.tsx";
 import { Range } from "./Range.tsx";
 import { Collapsible } from "./Collapsible.tsx";
-import { HexColorPicker } from "react-colorful";
-import { isHexColor } from "../lib/custom-theme.ts";
+import { ColorPicker } from "./ColorPicker.tsx";
 
 const THEME_DETAILS: Record<Theme, { label: string; icon: typeof Moon }> = {
   neutral: { label: "Neutral", icon: Circle },
@@ -104,46 +103,8 @@ function CustomImageOption({ selected }: { selected: boolean }) {
 }
 
 function CustomColorPicker() {
-  const t = useI18n();
   const saved = useApp((state) => state.customColor);
-  const [draft, setDraft] = useState(saved);
-  const [text, setText] = useState(saved);
-  const latest = useRef(saved);
-  const preview = (color: string) => {
-    latest.current = color;
-    setDraft(color);
-    setText(color);
-  };
-  const commit = () => {
-    if (latest.current !== useApp.getState().customColor) setCustomColor(latest.current);
-  };
-  return (
-    <div className="settings-group custom-color-picker" id="custom-color-picker">
-      <HexColorPicker
-        color={draft}
-        onChange={preview}
-        onPointerDown={() => window.addEventListener("pointerup", commit, { once: true })}
-        onKeyUp={commit}
-      />
-      <label className="custom-color-hex">
-        <span className="custom-color-swatch" style={{ background: draft }} aria-hidden="true" />
-        <input
-          value={text}
-          spellCheck={false}
-          aria-label={t("Hex color")}
-          onChange={(event) => {
-            setText(event.target.value);
-            const color = `#${event.target.value.replace(/^#/, "").toLowerCase()}`;
-            if (!isHexColor(color)) return;
-            latest.current = color;
-            setDraft(color);
-            commit();
-          }}
-          onBlur={() => setText(latest.current)}
-        />
-      </label>
-    </div>
-  );
+  return <ColorPicker className="settings-group custom-color-picker" id="custom-color-picker" color={saved} onCommit={setCustomColor} />;
 }
 
 export function AppearanceSettings() {

@@ -1,5 +1,5 @@
 import { QuestionForm } from "./QuestionPanel.tsx";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { PermissionRow } from "./PermissionPanel.tsx";
 import { UsageLimitTab } from "./UsageLimitNotice.tsx";
 import { environmentId, environmentSignal } from "../lib/environment.ts";
@@ -25,6 +25,7 @@ import {
 import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { usePanelMotion } from "../lib/use-panel-motion.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
@@ -163,6 +164,8 @@ export function Composer({
   const started = hasMessages || (!loaded && Boolean(thread && (thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length)));
   const starting = !started && !running && !thread?.parentThreadId;
   const composerRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  usePanelMotion(shellRef, thread?.id);
   const startTop = useRef<number>(undefined);
   const reducedMotion = useReducedMotion();
   useLayoutEffect(() => {
@@ -285,6 +288,7 @@ export function Composer({
         </div>
       )}
       <div
+        ref={shellRef}
         className="composer-shell"
         data-dragging={dragging}
         onDragOver={(event) => {
@@ -301,9 +305,9 @@ export function Composer({
         }}
       >
         <ComposerFrame />
-        <div className="composer-tabs">
+        <motion.div className="composer-tabs" layout layoutRoot>
           {tabs}
-        </div>
+        </motion.div>
         <div className="composer-dock">
           {thread.finished && !running && (
             <div className="composer-finished" role="status">

@@ -1,6 +1,6 @@
 import type { UsageLimitState } from "../shared/protocol.ts";
 
-const LIMIT = /usage limit|hit your (?:usage )?limit|limit reached|rate limit|quota (?:exceeded|reached)|out of (?:credits|usage)|too many requests|\b429\b/i;
+const LIMIT = /usage limit|hit your (?:\w+ )?limit|limit reached|rate limit|quota (?:exceeded|reached)|out of (?:credits|usage)|too many requests|\b429\b/i;
 const UNITS: Record<string, number> = { d: 86_400_000, h: 3_600_000, m: 60_000, s: 1000 };
 
 export function isUsageLimitError(message: string | undefined): boolean {

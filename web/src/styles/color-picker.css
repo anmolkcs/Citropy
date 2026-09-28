@@ -1,0 +1,108 @@
+.color-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 320px);
+  padding: 12px;
+  gap: 14px;
+}
+.color-picker .react-colorful {
+  width: 100%;
+  height: auto;
+  gap: 12px;
+}
+.color-picker .react-colorful__saturation {
+  height: 150px;
+  border: 0;
+  border-radius: var(--r-sm);
+}
+.color-picker .react-colorful__hue {
+  flex: none;
+  height: 12px;
+  border-radius: var(--r-full);
+}
+.color-picker .react-colorful__pointer {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.color-picker .react-colorful__interactive:focus-visible .react-colorful__pointer {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.color-picker-hex {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--raised);
+}
+.color-picker-hex:focus-within {
+  box-shadow: var(--field-focus-ring);
+}
+.color-picker-swatch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+}
+.color-picker-hex input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  outline: none;
+}
+.screen-color-picker {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent center / 100% 100% no-repeat;
+  cursor: crosshair;
+}
+.screen-color-loupe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--overlay);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+.screen-color-loupe[hidden] {
+  display: none;
+}
+.screen-color-loupe canvas {
+  display: block;
+  border-radius: var(--r-sm);
+  image-rendering: pixelated;
+}
+.screen-color-loupe > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}

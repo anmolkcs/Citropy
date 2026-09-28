@@ -626,64 +626,7 @@
   .custom-color-toggle:hover { color: var(--text); }
 }
 .custom-color-picker {
-  display: grid;
-  gap: 14px;
-  width: min(100%, 320px);
   margin: 16px auto 0;
-  padding: 12px;
-}
-.custom-color-picker .react-colorful {
-  width: 100%;
-  height: auto;
-  gap: 12px;
-}
-.custom-color-picker .react-colorful__saturation {
-  height: 150px;
-  border: 0;
-  border-radius: var(--r-sm);
-}
-.custom-color-picker .react-colorful__hue {
-  flex: none;
-  height: 12px;
-  border-radius: var(--r-full);
-}
-.custom-color-picker .react-colorful__pointer {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-}
-.custom-color-picker .react-colorful__interactive:focus-visible .react-colorful__pointer {
-  transform: translate(-50%, -50%) scale(1.15);
-}
-.custom-color-hex {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: var(--r-sm);
-  background: var(--raised);
-}
-.custom-color-hex:focus-within {
-  box-shadow: var(--field-focus-ring);
-}
-.custom-color-swatch {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: var(--r-full);
-}
-.custom-color-hex input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  background: none;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  outline: none;
 }
 .background-preview[data-empty] {
   display: grid;

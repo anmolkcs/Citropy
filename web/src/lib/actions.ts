@@ -11,6 +11,7 @@ import { selectThread, selectPanel, setEditorTerminal, useApp, confirmAction } f
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
+import { claimHistoryRequest } from "./history-cache.ts";
 import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
@@ -209,12 +210,8 @@ export async function createThread(provider?: ProviderId, options = false): Prom
   }
 }
 
-const requestedThreads = new Set<string>();
-
 export function loadThread(id: string): void {
-  if (useApp.getState().loaded[id] || requestedThreads.has(id)) return;
-  requestedThreads.add(id);
-  setTimeout(() => requestedThreads.delete(id), 10_000);
+  if (useApp.getState().loaded[id] || !claimHistoryRequest(id)) return;
   send({ t: "thread.load", id });
 }
 

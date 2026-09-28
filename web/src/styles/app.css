@@ -327,6 +327,7 @@
   font-weight: 600;
   letter-spacing: -0.025em;
   user-select: none;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 .brand-tag {
   padding: 1px 7px;
@@ -478,6 +479,7 @@
 }
 
 .stage {
+  overflow: clip;
   container: conversation / inline-size;
   position: relative;
   display: grid;
@@ -541,17 +543,22 @@
   backdrop-filter: blur(22px);
 }
 .stage-focus-band {
+  --focus-offset: calc(var(--stage-center, 50%) - var(--stage-column, var(--reading)) / 2 - var(--focus-spread) * var(--ui-scale));
+  --focus-feather: min(50%, calc(120px * var(--ui-scale)));
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(var(--stage-center, 50%) - var(--stage-column, var(--reading)) / 2 - var(--focus-spread) * var(--ui-scale));
+  left: 0;
   width: calc(var(--stage-column, var(--reading)) + 2 * var(--focus-spread) * var(--ui-scale));
-  visibility: hidden;
+  transform: translateX(var(--focus-offset));
+  mask-image: linear-gradient(to right, transparent, #000 var(--focus-feather), #000 calc(100% - var(--focus-feather)), transparent);
+  will-change: transform;
   pointer-events: none;
 }
 .stage-backdrop.stage-backdrop-focus {
+  transform: translateX(calc(-1 * var(--focus-offset)));
+  will-change: transform;
   mask-image: none;
-  clip-path: inset(0 var(--stage-right, 0px) 0 var(--stage-left, 0px));
 }
 .stage-backdrop:is(.stage-backdrop-glass, .stage-backdrop-focus) {
   opacity: 1;
@@ -613,12 +620,12 @@
 .shell[data-backdrop] .inspector :is(.editor-main, .editor-document > .rich-preview, .editor-document .media-preview) {
   background: color-mix(in srgb, var(--canvas) calc(var(--ui-alpha) * 50%), transparent);
 }
-.shell[data-backdrop="image"] [data-contrast] :is(.icon-btn, .brand, .branch, .thread-title, .breadcrumb-separator, .environment-breadcrumb, .workspace-select, .window-controls button):not(:is([popover], dialog) *) {
+.shell[data-backdrop="image"] :is([data-contrast], [data-contrast] *):is(.icon-btn, .brand, .branch, .thread-title, .breadcrumb-separator, .environment-breadcrumb, .workspace-select, .window-controls button):not(:is([popover], dialog) *) {
   color: var(--contrast-ink);
   text-shadow: 0 0 4px var(--contrast-halo);
   transition: color var(--dur-fast) var(--ease-out);
 }
-.shell[data-backdrop="image"] [data-contrast] :is(.icon-btn, .branch, .environment-breadcrumb, .workspace-select, .window-controls button):not(:is([popover], dialog) *) svg {
+.shell[data-backdrop="image"] :is([data-contrast], [data-contrast] *):is(.icon-btn, .branch, .environment-breadcrumb, .workspace-select, .window-controls button):not(:is([popover], dialog) *) svg {
   filter: drop-shadow(0 0 2px var(--contrast-halo));
 }
 [data-contrast="light"] { --contrast-ink: rgba(255, 255, 255, 0.92); --contrast-halo: rgba(0, 0, 0, 0.55); }

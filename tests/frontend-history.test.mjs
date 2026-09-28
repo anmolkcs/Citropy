@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyEvents } from "../web/src/lib/server-events.ts";
-import { trimHistories } from "../web/src/lib/history-cache.ts";
+import { claimHistoryRequest, trimHistories } from "../web/src/lib/history-cache.ts";
 import { createTimelineSelector, timelineRows } from "../web/src/lib/timeline.ts";
 import { useApp } from "../web/src/lib/app-state.ts";
 
@@ -121,6 +121,16 @@ test("selection-triggered eviction copies history shared with the previous snaps
   assert.equal(state.parts.size, 1);
   assert.equal(state.loaded.chat, true);
   assert.equal(state.messages.reply.partIds[0], "huge");
+});
+
+test("a conversation evicted right after loading can be requested again", t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  assert.equal(claimHistoryRequest("old"), true);
+  assert.equal(claimHistoryRequest("old"), false);
+  const state = applyEvents(initial(), [history("old", [message("reply", [text("huge", "x".repeat(8 * 1024 * 1024))])])]);
+  trimHistories(state);
+  assert.deepEqual(state.loaded, {});
+  assert.equal(claimHistoryRequest("old"), true);
 });
 
 test("hello replaces the history map without mutating the previous snapshot", () => {

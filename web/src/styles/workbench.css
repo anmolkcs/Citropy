@@ -145,7 +145,7 @@
     justify-content: center;
     gap: 0;
   }
-  .workbench-tab > [role="tab"] > span {
+  .workbench-tab > [role="tab"] > span:not(.unseen-anchor) {
     display: none;
   }
 }

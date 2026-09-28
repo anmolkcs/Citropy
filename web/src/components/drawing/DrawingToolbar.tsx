@@ -1,11 +1,14 @@
 import type { CSSProperties } from "react";
-import { Circle, Eraser, Highlighter, MoveUpRight, PaintBucket, Pen, Redo2, Slash, Square, Type, Undo2 } from "lucide-react";
+import { Circle, Eraser, Highlighter, MousePointer2, MoveUpRight, PaintBucket, Pen, Redo2, Slash, Square, Type, Undo2 } from "lucide-react";
 import { useI18n } from "../../lib/i18n.ts";
+import { ColorPicker } from "../ColorPicker.tsx";
+import { Menu } from "../Menu.tsx";
 import { Range } from "../Range.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { INK, type Tool } from "./marks.ts";
 
 const TOOLS = [
+  { tool: "select", label: "Select", key: "V", icon: MousePointer2, hint: "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes." },
   { tool: "pen", label: "Pen", key: "P", icon: Pen, hint: "Drag to draw." },
   { tool: "highlighter", label: "Highlighter", key: "H", icon: Highlighter, hint: "Drag to highlight. It stays see-through." },
   { tool: "eraser", label: "Eraser", key: "E", icon: Eraser, hint: "Drag over anything to erase it." },
@@ -15,6 +18,9 @@ const TOOLS = [
   { tool: "ellipse", label: "Ellipse", key: "O", icon: Circle, hint: "Drag to draw. Hold Shift for a circle." },
   { tool: "text", label: "Text", key: "T", icon: Type, hint: "Click to place text. Enter finishes, Shift+Enter adds a line." },
 ] satisfies Array<{ tool: Tool; label: string; key: string; icon: typeof Pen; hint: string }>;
+
+export const TOOL_ICONS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.icon])) as Record<Tool, typeof Pen>;
+export const TOOL_LABELS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.label])) as Record<Tool, string>;
 
 export const TOOL_KEYS: Record<string, Tool> = Object.fromEntries(TOOLS.map((entry) => [entry.key.toLowerCase(), entry.tool]));
 
@@ -42,7 +48,7 @@ export function DrawingTools({
   canUndo,
   canRedo,
   onTool,
-  onFilled,
+  onToggleFill,
   onUndo,
   onRedo,
 }: {
@@ -51,7 +57,7 @@ export function DrawingTools({
   canUndo: boolean;
   canRedo: boolean;
   onTool: (tool: Tool) => void;
-  onFilled: (filled: boolean) => void;
+  onToggleFill: () => void;
   onUndo: () => void;
   onRedo: () => void;
 }) {
@@ -78,10 +84,9 @@ export function DrawingTools({
         type="button"
         className="icon-btn drawing-fill"
         aria-pressed={filled}
-        disabled={tool !== "rectangle" && tool !== "ellipse"}
         aria-label={t("Fill shapes")}
         title={t("Fill shapes")}
-        onClick={() => onFilled(!filled)}
+        onClick={onToggleFill}
       >
         <PaintBucket size={16} />
       </button>
@@ -130,14 +135,25 @@ export function DrawingStyle({
             onClick={() => onColor(swatch.color)}
           />
         ))}
-        <label
-          className="drawing-swatch drawing-swatch-custom"
-          data-pressed={custom || undefined}
-          title={t("Custom color")}
-          style={{ "--swatch": custom ? color : undefined } as CSSProperties}
-        >
-          <input type="color" aria-label={t("Custom color")} value={custom ? color : "#ff5fa2"} onChange={(event) => onColor(event.target.value)} />
-        </label>
+        <Menu
+          width={336}
+          items={[]}
+          controls={<ColorPicker color={custom ? color : "#ff5fa2"} onCommit={onColor} />}
+          trigger={({ id, open, toggle }) => (
+            <button
+              id={id}
+              type="button"
+              className="drawing-swatch drawing-swatch-custom"
+              aria-pressed={custom}
+              aria-haspopup="menu"
+              aria-expanded={open}
+              aria-label={t("Custom color")}
+              title={t("Custom color")}
+              style={{ "--swatch": custom ? color : undefined } as CSSProperties}
+              onClick={toggle}
+            />
+          )}
+        />
       </div>
       <label className="drawing-size" title={t("Size")}>
         <span className="drawing-size-preview" aria-hidden="true">

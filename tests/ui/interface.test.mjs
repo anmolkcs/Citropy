@@ -34,7 +34,7 @@ await warmup.goto(url, { timeout: 120_000 });
 await warmup.locator(".shell").waitFor({ timeout: 120_000 });
 await warmup.close();
 
-async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {}, width = 1280 }) {
+async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {}, width = 1280, beforeNavigate }) {
   const context = await browser.newContext({ viewport: { width, height: 860 }, permissions: ["clipboard-read", "clipboard-write"] });
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
@@ -60,6 +60,7 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
     const request = route.request();
     return route.fulfill({ json: request.method() === "POST" ? { ok: true } : [] });
   });
+  await beforeNavigate?.(page);
   await page.goto(url);
   await page.locator(".composer-shell").waitFor();
   return { page, sent, push: (event) => live.send(JSON.stringify(event)) };
@@ -92,6 +93,272 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   t.after(async () => { await browser.close(); await server.close(); });
   const checks = [];
   const check = (name, run) => checks.push(t.test(name, run));
+
+  for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide without repeatedly resizing the chat at ${width}px`, async t => {
+    const { page } = await app(t, { width, messages: history(38), preferences: { inspector: "1", sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
+    await settled(page);
+    await page.evaluate(() => {
+      window.stageWidths = [];
+      new ResizeObserver(([entry]) => window.stageWidths.push(entry.contentRect.width)).observe(document.querySelector('.stage'));
+    });
+    let movements = 0;
+    for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j"]) {
+      await page.evaluate(() => { window.stageWidths = []; });
+      await page.keyboard.press(shortcut);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const samples = await page.evaluate(() => {
+        const stage = document.querySelector(".stage");
+        const targets = [...document.querySelectorAll('.canvas-inner, .composer-shell')];
+        const animations = targets.flatMap(target => target.getAnimations());
+        const samples = [0, 70, 140, 280].map(time => {
+          for (const animation of animations) { animation.pause(); animation.currentTime = time; }
+          const rect = stage.getBoundingClientRect();
+          return { width: rect.width, left: rect.left, right: rect.right, layoutLeft: stage.offsetLeft + stage.offsetParent.getBoundingClientRect().left, positions: targets.map(target => target.getBoundingClientRect().left), rightEdges: targets.map(target => target.getBoundingClientRect().right) };
+        });
+        for (const animation of animations) animation.finish();
+        return samples;
+      });
+      for (const bounds of samples) {
+        assert.ok(Math.abs(bounds.left - bounds.layoutLeft) < 1, JSON.stringify(bounds));
+        assert.equal(bounds.width, samples[0].width);
+        for (const left of bounds.positions) assert.ok(left >= bounds.left - 1, JSON.stringify(bounds));
+        for (const right of bounds.rightEdges) assert.ok(right <= bounds.right + 1, JSON.stringify(bounds));
+      }
+      for (let index = 0; index < samples[0].positions.length; index++) {
+        const start = samples[0].positions[index];
+        const end = samples.at(-1).positions[index];
+        if (Math.abs(end - start) < 1) continue;
+        movements++;
+        for (const sample of samples.slice(1, -1)) assert.ok(sample.positions[index] > Math.min(start, end) && sample.positions[index] < Math.max(start, end));
+      }
+      await settled(page);
+      assert.ok(await page.evaluate(() => new Set(window.stageWidths).size <= 2));
+    }
+    if (width > 720) assert.ok(movements >= 2);
+    else assert.equal(movements, 0);
+    await page.keyboard.press('Control+j');
+    await page.waitForTimeout(80);
+    await page.keyboard.press('Control+j');
+    await settled(page);
+    assert.equal(await page.locator('.sliding-panel[data-side="right"]').getAttribute('data-open'), 'true');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.keyboard.press('Control+j');
+    await settled(page);
+    assert.equal(await page.locator('.canvas-inner').evaluate(element => element.getAnimations().length), 0);
+  });
+
+  for (const width of [1280, 380]) check(`settings preserve the current screen while loading at ${width}px`, async t => {
+    let release;
+    const loading = new Promise(resolve => { release = resolve; });
+    t.after(() => release());
+    const { page } = await app(t, {
+      width,
+      messages: history(2),
+      threadPatch: { running: false, status: "idle" },
+      beforeNavigate: page => page.route('**/components/Settings.tsx', async route => {
+        await loading;
+        await route.continue();
+      }),
+    });
+    await page.evaluate(async () => {
+      const { useApp } = await import('/web/src/lib/store.ts');
+      useApp.setState({ activeView: 'settings' });
+    });
+    await page.waitForTimeout(150);
+    assert.equal(await page.locator('.composer-shell').isVisible(), true);
+    assert.equal(await page.getByRole('status').filter({ hasText: 'Loading…' }).count(), 0);
+    release();
+    await page.getByRole('region', { name: 'Settings', exact: true }).waitFor();
+    assert.equal(await page.locator('.settings-title').innerText(), 'General');
+    assert.equal(await page.locator('.composer-shell').count(), 0);
+  });
+
+  for (const width of [1280, 380]) check(`sidebar movement does not animate tabs within the composer at ${width}px`, async t => {
+    const { page } = await app(t, { width, messages: history(8), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
+    await settled(page);
+    for (const shortcut of ['Control+b', 'Control+b', 'Control+j', 'Control+j']) {
+      await page.evaluate(() => {
+        const glass = document.querySelector('.composer-glass');
+        window.masks = new Set([glass.style.maskImage]);
+        window.maskObserver = new MutationObserver(() => window.masks.add(glass.style.maskImage));
+        window.maskObserver.observe(glass, { attributes: true, attributeFilter: ['style'] });
+      });
+      await page.keyboard.press(shortcut);
+      await settled(page);
+      const masks = await page.evaluate(() => {
+        window.maskObserver.disconnect();
+        return window.masks.size;
+      });
+      assert.ok(masks <= 2, `The composer regenerated ${masks} masks during one panel toggle`);
+    }
+  });
+
+  check("rapid panel reversals keep message headers inside the chat", async t => {
+    const { page } = await app(t, { width: 1280, messages: history(8), preferences: { inspector: "1", sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
+    await settled(page);
+    const start = await page.locator('.canvas-inner').boundingBox();
+    for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j", "Control+j", "Control+b", "Control+b", "Control+j"]) {
+      await page.keyboard.press(shortcut);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const escaped = await page.evaluate(() => {
+        const stage = document.querySelector('.stage').getBoundingClientRect();
+        const headers = [...document.querySelectorAll('.message-avatar, .turn-heading > strong, .turn-heading > .turn-meta')];
+        const targets = [...headers, ...document.querySelectorAll('.canvas-inner, .composer-shell')];
+        const animations = targets.flatMap(target => target.getAnimations());
+        for (const animation of animations) { animation.pause(); animation.currentTime = 0; }
+        const escaped = headers.map(header => ({ name: header.className, left: header.getBoundingClientRect().left, right: header.getBoundingClientRect().right }))
+          .filter(header => header.left < stage.left - 1 || header.right > stage.right + 1);
+        for (const animation of animations) animation.play();
+        return escaped;
+      });
+      assert.deepEqual(escaped, []);
+    }
+    await settled(page);
+    const end = await page.locator('.canvas-inner').boundingBox();
+    assert.equal(end.x, start.x);
+    assert.equal(end.width, start.width);
+    assert.equal(await page.locator('.sliding-panel[data-side="right"]').getAttribute('data-open'), 'true');
+    assert.equal(await page.locator('.sliding-panel[data-side="left"]').getAttribute('data-open'), 'true');
+  });
+
+  check("the brand follows its own background during sidebar transitions", async t => {
+    const { page } = await app(t, { messages: history(2), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
+    await page.evaluate(async () => {
+      const { saveBackgroundFile } = await import('/web/src/lib/background-files.ts');
+      const { useApp } = await import('/web/src/lib/store.ts');
+      const image = new OffscreenCanvas(100, 100);
+      const context = image.getContext('2d');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, 100, 100);
+      await saveBackgroundFile('image', await image.convertToBlob());
+      useApp.setState({ stageBackground: 'image', backgroundFocus: 0, backgroundDim: 0 });
+    });
+    await page.locator('.stage-backdrop-image').waitFor();
+    await settled(page);
+    const coveredColor = await page.locator('.brand').evaluate(brand => getComputedStyle(brand).color);
+    await page.keyboard.press('Control+b');
+    await settled(page);
+    assert.equal(await page.locator('.brand').evaluate(brand => brand.closest('[data-contrast]')?.dataset.contrast), 'dark');
+    assert.notEqual(await page.locator('.brand').evaluate(brand => getComputedStyle(brand).color), coveredColor);
+    await page.keyboard.press('Control+b');
+    await page.evaluate(() => {
+      for (const element of document.querySelectorAll('.backdrop-layers, .topbar-left')) {
+        for (const animation of element.getAnimations()) { animation.pause(); animation.currentTime = 140; }
+      }
+    });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const brand = await page.locator('.brand').evaluate(brand => ({
+      covered: brand.getBoundingClientRect().right < document.querySelector('.shell-glass').getBoundingClientRect().right,
+      contrast: brand.closest('[data-contrast]')?.dataset.contrast,
+      transition: getComputedStyle(brand).transitionProperty,
+    }));
+    assert.equal(brand.covered, true);
+    assert.equal(brand.contrast, undefined);
+    assert.ok(brand.transition.includes('color'));
+    await page.evaluate(() => {
+      for (const element of document.querySelectorAll('.backdrop-layers, .topbar-left')) {
+        for (const animation of element.getAnimations()) animation.finish();
+      }
+    });
+    await settled(page);
+    assert.equal(await page.locator('.brand').evaluate(brand => getComputedStyle(brand).color), coveredColor);
+  });
+
+  check("the reading area follows the chat throughout rapid panel reversals", async t => {
+    const { page } = await app(t, { messages: history(8), preferences: { sidebar: "1", inspector: "1" }, threadPatch: { running: false, status: "idle" } });
+    await page.evaluate(async () => {
+      const { saveBackgroundFile } = await import('/web/src/lib/background-files.ts');
+      const { useApp } = await import('/web/src/lib/store.ts');
+      const image = new OffscreenCanvas(100, 100);
+      image.getContext('2d').fillRect(0, 0, 100, 100);
+      await saveBackgroundFile('image', await image.convertToBlob());
+      useApp.setState({ stageBackground: 'image', backgroundFocus: 70 });
+    });
+    await page.locator('.stage-focus-band').waitFor({ state: 'attached' });
+    await settled(page);
+    await page.evaluate(() => {
+      window.focusDraws = 0;
+      const draw = CanvasRenderingContext2D.prototype.drawImage;
+      CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+        if (this.canvas.classList?.contains('stage-backdrop-focus')) window.focusDraws++;
+        return draw.apply(this, args);
+      };
+    });
+    const frames = await page.evaluate(async () => {
+      const { toggleInspector, toggleSidebar } = await import('/web/src/lib/store.ts');
+      const frames = [];
+      for (let index = 0; index < 12; index++) {
+        await new Promise(resolve => requestAnimationFrame(() => {
+          (index % 3 ? toggleInspector : toggleSidebar)();
+          setTimeout(() => {
+            const column = document.querySelector('.canvas-inner').getBoundingClientRect();
+            const band = document.querySelector('.stage-focus-band').getBoundingClientRect();
+            frames.push({ column: column.left + column.width / 2, band: band.left + band.width / 2 });
+            resolve();
+          }, 0);
+        }));
+        await new Promise(resolve => setTimeout(resolve, 35));
+      }
+      return frames;
+    });
+    for (const frame of frames) assert.ok(Math.abs(frame.column - frame.band) <= 1, JSON.stringify(frame));
+    for (const shortcut of ['Control+j', 'Control+b', 'Control+j', 'Control+b', 'Control+j']) {
+      await page.keyboard.press(shortcut);
+      await page.waitForTimeout(35);
+    }
+    await page.evaluate(() => {
+      const column = document.querySelector('.canvas-inner');
+      for (const animation of column.getAnimations()) animation.updatePlaybackRate(0.3);
+    });
+    await settled(page);
+    const bounds = await page.evaluate(() => {
+      const column = document.querySelector('.canvas-inner').getBoundingClientRect();
+      const band = document.querySelector('.stage-focus-band').getBoundingClientRect();
+      return { column: column.left + column.width / 2, band: band.left + band.width / 2 };
+    });
+    assert.ok(Math.abs(bounds.column - bounds.band) <= 1, JSON.stringify(bounds));
+    assert.equal(await page.evaluate(() => window.focusDraws), 0);
+  });
+
+  check("background focus fades across the chat boundary", async t => {
+    const page = await fixture(t, `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { StageBackdrop } from '/web/src/components/StageBackdrop.tsx';
+      import { useApp } from '/web/src/lib/store.ts';
+      import { saveBackgroundFile } from '/web/src/lib/background-files.ts';
+      const image = new OffscreenCanvas(100, 100);
+      const context = image.getContext('2d');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, 100, 100);
+      await saveBackgroundFile('image', await image.convertToBlob());
+      useApp.setState({ stageBackground: 'image', backgroundBlur: 0, backgroundDim: 0, backgroundFocus: 70, backgroundFocusSpread: 140, uiScale: 100 });
+      const host = document.querySelector('#fixture');
+      host.style.cssText = 'position:absolute;inset:0';
+      createRoot(host).render(React.createElement('div', { className: 'shell', 'data-backdrop': 'image', style: { display: 'block', '--strip': '0px', '--ui-alpha': 1 } },
+        React.createElement(StageBackdrop),
+        React.createElement('main', { className: 'stage', style: { width: '55%', height: '100%' } }, React.createElement('div', { className: 'canvas-inner', style: { width: '100%' } }))));
+    `);
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('.stage-backdrop-focus');
+      return canvas && canvas.width > 100 && canvas.getContext('2d').getImageData(50, 20, 1, 1).data[3] > 0;
+    });
+    const boundary = await page.locator('.stage').evaluate(stage => Math.round(stage.getBoundingClientRect().right));
+    const screenshot = await page.screenshot();
+    const samples = await page.evaluate(async ({ data, boundary }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${data}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0);
+      return [boundary - 2, boundary + 2, boundary + 160].map(x => context.getImageData(x, 20, 1, 1).data[0]);
+    }, { data: screenshot.toString('base64'), boundary });
+    assert.ok(Math.abs(samples[0] - samples[1]) < 8, JSON.stringify(samples));
+    assert.ok(samples[2] - samples[0] > 30, JSON.stringify(samples));
+  });
 
   check("unsupported Markdown links keep their content without opening another app page", async t => {
     const page = await fixture(t, `

@@ -54,6 +54,7 @@ export interface Confirmation {
   label: string;
   context?: string;
   danger?: boolean;
+  anchor?: { top: number; right: number; bottom: number; left: number };
   resolve: (confirmed: boolean) => void;
 }
 

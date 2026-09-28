@@ -56,6 +56,8 @@ export class ThreadRuntime {
   #session: AgentSession | null = null;
   #sessionGeneration = 0;
   #preparing = false;
+  #steering = false;
+  #turnsEnded = 0;
   #checkpointCompletion: Promise<void> | null = null;
   #enqueuing: Promise<void> | undefined;
   #stopGeneration = 0;
@@ -84,7 +86,7 @@ export class ThreadRuntime {
   }
 
   get busy(): boolean {
-    if (this.#preparing || this.#enqueuing || this.#stopping || this.#checkpointCompletion) return true;
+    if (this.#preparing || this.#steering || this.#enqueuing || this.#stopping || this.#checkpointCompletion) return true;
     if (this.#thread.running || this.#thread.status === "awaiting") return true;
     return shellList().some(shell =>
       shell.threadId === this.id && !shell.panelId &&
@@ -110,10 +112,10 @@ export class ThreadRuntime {
   }
 
   async send(text: string, files: Attachment[] = [], limitResume = false): Promise<void> {
-    this.#limitResume = limitResume;
     if (typeof text === "string" && text.trim() === "/compact" && Array.isArray(files) && !files.length) return this.compact();
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
-    if (this.#preparing || this.#thread.running || this.#enqueuing) return this.#enqueue(text, files);
+    if (this.#preparing || this.#steering || this.#thread.running || this.#enqueuing || (this.#resume && this.#thread.queue?.length)) return this.#enqueue(text, files);
+    this.#limitResume = limitResume;
     this.#preparing = true;
     this.#resume = false;
     try { await this.#deliver(await this.#prepare(text, files)); }
@@ -195,29 +197,39 @@ export class ThreadRuntime {
     const index = queue.findIndex((entry) => entry.id === id);
     if (index === -1) throw new Error("This message was already sent or removed.");
     const item = queue[index]!;
-    if (!this.#thread.running && !this.#preparing) {
+    if (!this.#thread.running && !this.#preparing && !this.#steering) {
       store.patchThread(this.id, { queue: queue.filter((entry) => entry !== item) });
       return this.#sendQueued(item, index);
     }
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
     if (COMMAND.test(item.text.trim())) throw new Error("Commands wait until the current run finishes.");
     const session = this.#session;
-    if (!session || this.#preparing) throw new Error("Your last message is still on its way. Try again in a moment.");
+    if (!session || this.#preparing || this.#steering) throw new Error("Your last message is still on its way. Try again in a moment.");
     if (!session.steer) throw new Error(`${providers[this.#thread.provider].label} can't take a message until it finishes.`);
-    this.#preparing = true;
+    this.#steering = true;
     store.patchThread(this.id, { queue: queue.filter((entry) => entry !== item) });
+    const generation = this.#stopGeneration;
+    const turn = this.#turnsEnded;
+    let steered = false;
     try {
       const prepared = await this.#prepare(item.text, item.attachments ?? []);
       this.#checkSession(prepared.generation);
-      await session.steer(prepared.prompt, prepared.attachments, prepared.skills);
-      this.#addUserMessage(prepared);
+      if (turn === this.#turnsEnded) {
+        await session.steer(prepared.prompt, prepared.attachments, prepared.skills);
+        this.#addUserMessage(prepared);
+        steered = true;
+      }
     } catch (error) {
-      this.#requeue(item, index);
-      throw error;
+      if (turn === this.#turnsEnded || this.#disposed || generation !== this.#stopGeneration) {
+        this.#requeue(item, index);
+        if (generation !== this.#stopGeneration) return;
+        throw error;
+      }
     } finally {
-      this.#preparing = false;
-      this.#pump();
+      this.#steering = false;
     }
+    if (!steered) return this.#sendQueued(item, index);
+    this.#pump();
   }
 
   async removeQueued(id: string): Promise<void> {
@@ -371,7 +383,7 @@ export class ThreadRuntime {
   }
 
   #pump(): void {
-    if (!this.#resume || this.#preparing || this.#checkpointCompletion || this.#thread.running || this.#disposed) return;
+    if (!this.#resume || this.#preparing || this.#steering || this.#checkpointCompletion || this.#thread.running || this.#disposed) return;
     const [next, ...rest] = this.#thread.queue ?? [];
     if (!next) return;
     store.patchThread(this.id, { queue: rest });
@@ -406,7 +418,7 @@ export class ThreadRuntime {
   async compact(): Promise<void> {
     assertApplicationReady();
     assertProviderReady(this.#thread.provider);
-    if (this.#disposed || this.#preparing || this.#stopping || this.#thread.running || this.#thread.nativeAgentId) throw new Error("Wait for the conversation to finish before compacting.");
+    if (this.#disposed || this.#preparing || this.#steering || this.#stopping || this.#thread.running || this.#thread.nativeAgentId) throw new Error("Wait for the conversation to finish before compacting.");
     if (!this.#thread.externalId) throw new Error("Send a message before compacting this conversation.");
     if (store.disabledProviders.has(this.#thread.provider)) throw new Error("Enable this provider before compacting.");
     const generation = this.#stopGeneration;
@@ -724,6 +736,7 @@ export class ThreadRuntime {
 
   #onTurnEnd(event: Extract<AgentEvent, { type: "turn.end" }>): void {
     if (!this.#thread.running && !this.#stopping) return;
+    this.#turnsEnded += 1;
     cancelQuestions(this.#thread.id);
     this.#stopping?.ended();
     clearTimeout(this.#compactionTimer);
@@ -762,7 +775,7 @@ export class ThreadRuntime {
         this.#checkpointCompletion = null;
         this.#pump();
       });
-      this.#preparing = false;
+      if (build) this.#preparing = false;
       this.#pump();
     };
     if (build) {
@@ -794,6 +807,7 @@ export class ThreadRuntime {
 
   #onExit(event: Extract<AgentEvent, { type: "exit" }>): void {
     this.#stopping?.release();
+    this.#turnsEnded += 1;
     clearTimeout(this.#compactionTimer);
     this.#resume = false;
     this.#buildPlan = false;

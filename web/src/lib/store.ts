@@ -167,12 +167,19 @@ export function dismissToast(id: string): void {
   }));
 }
 
+function focusedAnchor(): Confirmation["anchor"] {
+  const focused = document.activeElement;
+  if (!(focused instanceof HTMLElement) || focused === document.body) return undefined;
+  const { top, right, bottom, left } = focused.getBoundingClientRect();
+  return right > left ? { top, right, bottom, left } : undefined;
+}
+
 export function confirmAction(
-  options: Omit<Confirmation, "resolve">,
+  options: Omit<Confirmation, "resolve" | "anchor">,
 ): Promise<boolean> {
   if (useApp.getState().confirmation) return Promise.resolve(false);
   return new Promise((resolve) =>
-    useApp.setState({ confirmation: { ...options, resolve } }),
+    useApp.setState({ confirmation: { ...options, anchor: focusedAnchor(), resolve } }),
   );
 }
 

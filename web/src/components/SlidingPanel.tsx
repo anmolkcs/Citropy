@@ -9,15 +9,8 @@ function offset(element: HTMLElement): number {
   return transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m41;
 }
 
-function glide(element: HTMLElement, from: number, duration: number): void {
-  for (const animation of element.getAnimations()) animation.cancel();
-  element.animate([{ transform: `translateX(${from}px)` }, { transform: "none" }], { duration, easing: EASE_DRAWER });
-}
-
-// The panel's margin changes in one step and the moving parts glide back with transforms, so the page lays out once instead of on every frame.
 function slide(panel: HTMLElement, side: "left" | "right", open: boolean, duration: number): void {
   const content = panel.firstElementChild as HTMLElement | null;
-  const neighbour = (side === "left" ? panel.nextElementSibling : panel.previousElementSibling) as HTMLElement | null;
   if (!content) return;
   const direction = side === "left" ? 1 : -1;
   const width = panel.offsetWidth;
@@ -25,13 +18,9 @@ function slide(panel: HTMLElement, side: "left" | "right", open: boolean, durati
   const opacity = Number(getComputedStyle(content).opacity);
   const running = content.getAnimations().length > 0;
   const contentFrom = (running ? offset(content) : open ? -direction * 32 : 0) + (open ? -direction : direction) * width;
-  const neighbourFrom = neighbour && getComputedStyle(neighbour).position !== "absolute"
-    ? offset(neighbour) + (open ? -direction : direction) * (width / 2)
-    : undefined;
   for (const animation of content.getAnimations()) animation.cancel();
   content.animate([{ transform: `translateX(${contentFrom}px)` }, { transform: `translateX(${settled}px)` }], { duration, easing: EASE_DRAWER, fill: open ? "none" : "forwards" });
   content.animate([{ opacity: running ? opacity : open ? 0 : 1 }, { opacity: open ? 1 : 0 }], { duration, easing: "ease-out", fill: open ? "none" : "forwards" });
-  if (neighbour && neighbourFrom !== undefined) glide(neighbour, neighbourFrom, duration);
 }
 
 export function SlidingPanel({ open, side, keepMounted = false, pauseHidden = false, children }: {

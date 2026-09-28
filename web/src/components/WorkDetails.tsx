@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Working } from "./Working.tsx";
 import { useShallow } from "zustand/react/shallow";
 import type { ToolPart } from "../../../shared/protocol.ts";
@@ -42,10 +42,23 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
         if (transitionActivity) transitionActivity(id, update);
         else update();
       }}>
-        {thread ? <Working status={thread.status} compacting={thread.compacting} tool={!ids.length ? thread.activeTool : undefined} startedAt={thread.runStartedAt ?? thread.updatedAt} /> : <>
-          <ListChecks size={14} className="activity-icon" aria-hidden="true" />
-          <span className="group-label">{t("Work details")}</span>
-        </>}
+        <span className="activity-state">
+          <AnimatePresence initial={false}>
+            <motion.span
+              key={thread ? "working" : "done"}
+              className="activity-state-layer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reducedMotion ? 0 : 0.18, ease: "easeInOut" }}
+            >
+              {thread ? <Working status={thread.status} compacting={thread.compacting} tool={!ids.length ? thread.activeTool : undefined} startedAt={thread.runStartedAt ?? thread.updatedAt} /> : <>
+                <ListChecks size={14} className="activity-icon" aria-hidden="true" />
+                <span className="group-label">{t("Work details")}</span>
+              </>}
+            </motion.span>
+          </AnimatePresence>
+        </span>
         <span id={`activity-count-${id}`} className="activity-count">
           {tools.length > 0 && <span className="reason-count">{tools.length} {t(tools.length === 1 ? "tool" : "tools")}</span>}
           {showFailedTools && stats.failed > 0 && <span className="group-failed"><AlertTriangle size={11} aria-hidden="true" />{t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}</span>}

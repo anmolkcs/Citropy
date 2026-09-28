@@ -56,6 +56,9 @@ interface Props {
   onClose?: () => void;
 }
 
+const CONFIRMATION = ".confirmation-card";
+const inConfirmation = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(CONFIRMATION));
+
 export function Menu({
   trigger,
   items,
@@ -132,15 +135,16 @@ export function Menu({
       element.style.minHeight = "";
       const height = element.offsetHeight / scale;
       const top = clearance?.top ?? bounds.top;
+      const bottom = clearance?.bottom ?? bounds.bottom;
       const above = Math.max(0, top / scale - 18);
-      const below = Math.max(0, (innerHeight - bounds.bottom) / scale - 18);
+      const below = Math.max(0, (innerHeight - bottom) / scale - 18);
       const upwards = height > below && above > below;
       const available = upwards ? above : below;
       element.dataset.side = upwards ? "top" : "bottom";
       element.style.maxHeight = `${scaled(available)}px`;
       if (parseFloat(getComputedStyle(element).minHeight) > scaled(available)) element.style.minHeight = `${scaled(available)}px`;
       element.style.left = `${scaled(Math.max(12 + gutter, Math.min(preferred, viewportWidth() - menuWidth - 12 - gutter)))}px`;
-      element.style.top = `${scaled(upwards ? top / scale - Math.min(height, available) - 6 : bounds.bottom / scale + 6)}px`;
+      element.style.top = `${scaled(upwards ? top / scale - Math.min(height, available) - 6 : bottom / scale + 6)}px`;
     };
     position();
     if (searchable) {
@@ -178,10 +182,10 @@ export function Menu({
   useEffect(() => {
     if (!open) return;
     const onPointer = (event: PointerEvent) => {
-      if (!wrap.current?.contains(event.target as Node) && !anchor?.contains(event.target as Node)) setOpen(false);
+      if (!wrap.current?.contains(event.target as Node) && !anchor?.contains(event.target as Node) && !inConfirmation(event.target)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !document.querySelector(CONFIRMATION)) {
         event.preventDefault();
         event.stopPropagation();
         setOpen(false);
@@ -207,7 +211,7 @@ export function Menu({
       style={anchor || inline ? { display: "contents" } : undefined}
       ref={wrap}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        if (!event.currentTarget.contains(event.relatedTarget) && !inConfirmation(event.relatedTarget)) setOpen(false);
       }}
     >
       {trigger?.({ open, toggle: () => { if (!open) setQuery(""); setOpen((value) => !value); }, id })}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { startAsciiNoise } from "../lib/ascii-noise.ts";
 import { useBackgroundFile } from "../lib/background-files.ts";
 import { colorLight, lightMap, regionLight, type LightMap } from "../lib/backdrop-contrast.ts";
@@ -16,16 +16,15 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
     const shell = layers.parentElement!;
     const stage = shell.querySelector<HTMLElement>(".stage")!;
     let frame = 0;
+    let geometry: StageMetrics = metrics.current;
+    let animation: Animation | undefined;
+    let from = 0;
     const place = () => {
-      frame = panelMoving() || stage.getAnimations().length ? requestAnimationFrame(place) : 0;
-      const outer = shell.getBoundingClientRect();
-      const inner = stage.getBoundingClientRect();
-      const reading = stage.querySelector<HTMLElement>(".settings, .github-main, .git-manager, .canvas-inner")?.getBoundingClientRect();
-      const column = reading ?? inner;
-      const left = Math.round(inner.left - outer.left);
-      const center = Math.round(column.left - outer.left + column.width / 2);
-      const right = Math.round(outer.right - inner.right);
-      const width = reading && Math.round(reading.width);
+      const progress = animation?.effect?.getComputedTiming().progress;
+      const moving = animation?.playState === "running" || animation?.pending;
+      frame = panelMoving() || moving ? requestAnimationFrame(place) : 0;
+      const { left, right, column: width } = geometry;
+      const center = Math.round(geometry.center + (progress == null ? 0 : from * (1 - progress)));
       const last = metrics.current;
       if (left === last.left && center === last.center && right === last.right && width === last.column) return;
       metrics.current = { left, center, right, column: width };
@@ -37,16 +36,34 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
       layers.dispatchEvent(new Event("stage-metrics"));
     };
     const schedule = () => { frame ||= requestAnimationFrame(place); };
-    const observer = new ResizeObserver(schedule);
+    const update = () => {
+      const reading = stage.querySelector<HTMLElement>(".settings, .github-main, .git-manager, .canvas-inner");
+      animation = reading?.getAnimations().find(candidate => candidate.effect instanceof KeyframeEffect && candidate.effect.getKeyframes()[0]?.translate !== undefined);
+      from = animation?.effect instanceof KeyframeEffect ? parseFloat(String(animation.effect.getKeyframes()[0]?.translate)) || 0 : 0;
+      const shift = animation && reading ? parseFloat(getComputedStyle(reading).translate) || 0 : 0;
+      const outer = shell.getBoundingClientRect();
+      const inner = stage.getBoundingClientRect();
+      const column = reading?.getBoundingClientRect() ?? inner;
+      geometry = {
+        left: Math.round(inner.left - outer.left),
+        center: column.left - shift - outer.left + column.width / 2,
+        right: Math.round(outer.right - inner.right),
+        column: reading ? Math.round(column.width) : undefined,
+      };
+      cancelAnimationFrame(frame);
+      place();
+    };
+    const observer = new ResizeObserver(update);
     const watch = () => {
       observer.disconnect();
       observer.observe(shell);
       observer.observe(stage);
-      const column = stage.querySelector<HTMLElement>(".settings");
+      const column = stage.querySelector<HTMLElement>(".settings, .github-main, .git-manager, .canvas-inner");
       if (column) observer.observe(column);
-      place();
+      update();
     };
     watch();
+    stage.addEventListener("panel-motion", update);
     const views = new MutationObserver(watch);
     views.observe(stage, { childList: true });
     const stopSettled = onPanelSettled(schedule);
@@ -55,6 +72,7 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
       observer.disconnect();
       views.disconnect();
       stopSettled();
+      stage.removeEventListener("panel-motion", update);
     };
   }, [root]);
   return metrics;
@@ -87,7 +105,7 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
   return <canvas ref={canvas} className="stage-backdrop" aria-hidden="true" />;
 }
 
-const CONTRAST_GROUPS = [".topbar-left", ".topbar-center", ".topbar-right", ".window-controls"];
+const CONTRAST_GROUPS = [".topbar-left .brand", ".topbar-navigation", ".topbar-center", ".topbar-right", ".window-controls"];
 
 function useTopbarContrast(map: LightMap | undefined, layer: RefObject<HTMLElement | null>, dim: number, focus: number, metrics: RefObject<StageMetrics>) {
   const theme = useApp((state) => state.theme);
@@ -210,36 +228,9 @@ function StillImage({ bitmap, blur, dim, focus, layer }: { bitmap: ImageBitmap; 
   const glass = useRef<HTMLCanvasElement>(null);
   const inspector = useRef<HTMLCanvasElement>(null);
   const focused = useRef<HTMLCanvasElement>(null);
-  const band = useRef<HTMLDivElement>(null);
-  const focusSource = useRef<OffscreenCanvas>(null);
   const theme = useApp((state) => state.theme);
   const scheme = useApp((state) => state.scheme);
   const customColor = useApp((state) => state.customColor);
-  const uiScale = useApp((state) => state.uiScale);
-  const spread = useApp((state) => state.backgroundFocusSpread);
-  const feather = useCallback(() => {
-    const canvas = focused.current;
-    const source = focusSource.current;
-    if (!canvas || !source || !canvas.clientWidth) return;
-    if (canvas.width !== source.width) canvas.width = source.width;
-    if (canvas.height !== source.height) canvas.height = source.height;
-    const scale = canvas.width / canvas.clientWidth;
-    const origin = canvas.getBoundingClientRect().left;
-    const { left, right } = band.current!.getBoundingClientRect();
-    const edge = Math.min(0.5, (120 * uiScale) / 100 / (right - left));
-    const context = canvas.getContext("2d")!;
-    const gradient = context.createLinearGradient((left - origin) * scale, 0, (right - origin) * scale, 0);
-    gradient.addColorStop(0, "transparent");
-    gradient.addColorStop(edge, "#000");
-    gradient.addColorStop(1 - edge, "#000");
-    gradient.addColorStop(1, "transparent");
-    context.globalCompositeOperation = "copy";
-    context.drawImage(source, 0, 0);
-    context.globalCompositeOperation = "destination-in";
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.globalCompositeOperation = "source-over";
-  }, [uiScale]);
   const [size, setSize] = useState<{ width: number; height: number }>();
   useLayoutEffect(() => {
     const root = layer.current!.parentElement!;
@@ -267,16 +258,8 @@ function StillImage({ bitmap, blur, dim, focus, layer }: { bitmap: ImageBitmap; 
     paintBlurred(glass.current!.getContext("2d", { alpha: false })!, bitmap, look, Math.hypot(22, blur));
     paintBlurred(inspector.current!.getContext("2d", { alpha: false })!, bitmap, look, Math.hypot(18, blur));
     if (!focus) return;
-    focusSource.current ??= new OffscreenCanvas(1, 1);
-    paintBlurred(focusSource.current.getContext("2d")!, bitmap, look, Math.hypot((18 * focus) / 100, blur), focus / 100);
-    feather();
-  }, [bitmap, blur, dim, focus, theme, scheme, customColor, layer, size, feather]);
-  useLayoutEffect(feather, [feather, spread]);
-  useEffect(() => {
-    const root = layer.current!.parentElement!;
-    root.addEventListener("stage-metrics", feather);
-    return () => root.removeEventListener("stage-metrics", feather);
-  }, [layer, feather]);
+    paintBlurred(focused.current!.getContext("2d")!, bitmap, look, Math.hypot((18 * focus) / 100, blur), focus / 100);
+  }, [bitmap, blur, dim, focus, theme, scheme, customColor, layer, size]);
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       const { width, height } = entries[0]!.contentRect;
@@ -289,10 +272,9 @@ function StillImage({ bitmap, blur, dim, focus, layer }: { bitmap: ImageBitmap; 
     <canvas ref={layer} className="stage-backdrop stage-backdrop-image" data-blurred={blur > 0 || undefined} style={{ opacity: blur ? 1 : 1 - dim / 100 }} aria-hidden="true" />
     <canvas ref={glass} className="stage-backdrop stage-backdrop-glass" aria-hidden="true" />
     <canvas ref={inspector} className="stage-backdrop stage-backdrop-inspector" aria-hidden="true" />
-    {focus > 0 && <>
-      <div ref={band} className="stage-focus-band" aria-hidden="true" />
-      <canvas ref={focused} className="stage-backdrop stage-backdrop-focus" aria-hidden="true" />
-    </>}
+    {focus > 0 && <div className="stage-focus-band" aria-hidden="true">
+      <canvas ref={focused} className="stage-backdrop stage-backdrop-focus" style={{ width: size?.width, height: size?.height }} />
+    </div>}
   </>;
 }
 

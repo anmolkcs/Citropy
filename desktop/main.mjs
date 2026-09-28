@@ -1035,6 +1035,10 @@ app
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
       return windowState();
     });
+    ipcMain.handle("window:capture", async (event) => {
+      if (!trusted(event)) throw new Error("Unavailable outside Citropy");
+      return (await window.webContents.capturePage()).toDataURL();
+    });
     ipcMain.handle("window:command", (event, command) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
       if (command === "minimize") window.minimize();

@@ -24,6 +24,7 @@ export const settingsEs: Record<string, string> = {
   "Yellow": "Amarillo",
   "Custom color": "Color personalizado",
   "Hex color": "Color hexadecimal",
+  "Pick a color from the app": "Elegir un color de la app",
   "Edit custom color": "Editar color personalizado",
   "Neutral": "Neutro",
   "Mode": "Modo",

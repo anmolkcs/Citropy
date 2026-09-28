@@ -33,6 +33,7 @@ declare global {
       releaseHistory(): Promise<import("../../shared/app-update.ts").ReleaseNotes[]>;
       windowState(): Promise<DesktopWindowState>;
       titlebarHeight(height: number): void;
+      captureWindow(): Promise<string>;
       windowCommand(
         command: "minimize" | "maximize" | "close" | "reload" | "restart",
       ): Promise<void>;

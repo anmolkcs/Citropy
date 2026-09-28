@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from "react";
+import { panelMoving } from "./panel-motion.ts";
 import { useReducedMotion } from "./use-reduced-motion.ts";
 
 function position(element: HTMLElement) {
@@ -35,7 +36,10 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
       width = stage.clientWidth;
       const next = measure();
       const nextLayout = getComputedStyle(root).getPropertyValue("--message-header-layout");
-      if (nextLayout === layout) {
+      if ((nextLayout === layout && !animations.size) || panelMoving()) {
+        for (const animation of animations.values()) animation.cancel();
+        animations.clear();
+        layout = nextLayout;
         positions = new WeakMap(next);
         return;
       }
@@ -61,7 +65,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
           { translate: "0px 0px" },
         ], { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" });
         animations.set(element, animation);
-        animation.onfinish = () => animations.delete(element);
+        animation.onfinish = () => { if (animations.get(element) === animation) animations.delete(element); };
       }
     });
     observer.observe(stage);

@@ -41,7 +41,11 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const [browsing, setBrowsing] = useState<ProviderId | "favorites" | undefined>(choice?.provider);
   const [transferring, setTransferring] = useState(false);
   const [target, setTarget] = useState<WritingModel>();
-  useEffect(() => setBrowsing(choice?.provider), [choice?.provider]);
+  useEffect(() => {
+    setBrowsing(choice?.provider);
+    setTransferring(false);
+    setTarget(undefined);
+  }, [choice?.provider]);
   const available = providers.filter((entry) => entry.enabled && (entry.available || (!defaultOnly && entry.instances?.some(instance => instance.available))));
   const provider = providers.find((entry) => entry.id === choice?.provider);
   const locked = transferring ? undefined : lockedProvider;

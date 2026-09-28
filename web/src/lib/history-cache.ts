@@ -2,11 +2,21 @@ import type { AppState } from "./app-state.ts";
 import type { Message, Part, ServerEvent } from "../../../shared/protocol.ts";
 import { partFingerprint } from "./timeline.ts";
 
+const requestedHistories = new Set<string>();
+
+export function claimHistoryRequest(threadId: string): boolean {
+  if (requestedHistories.has(threadId)) return false;
+  requestedHistories.add(threadId);
+  setTimeout(() => requestedHistories.delete(threadId), 10_000);
+  return true;
+}
+
 export function replaceHistory(
   state: AppState,
   threadId: string,
   messages: Message[],
 ): void {
+  requestedHistories.delete(threadId);
   removeMessages(state, threadId);
   const ids: string[] = [];
   for (const message of messages) {

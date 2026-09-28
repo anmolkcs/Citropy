@@ -8,6 +8,7 @@ import {
   Fragment,
   lazy,
   Suspense,
+  useDeferredValue,
   useEffect,
   useState,
   type CSSProperties,
@@ -68,7 +69,8 @@ export function App() {
     };
   }, []);
   const { activeId: environment } = useEnvironments();
-  const view = useApp((state) => state.activeView);
+  const requestedView = useApp((state) => state.activeView);
+  const view = useDeferredValue(requestedView);
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
   const [settingsSection, setSettingsSection] = useState("General");
   const [gitBusy, setGitBusy] = useState(false);

@@ -70,6 +70,31 @@ test("provider shells expose background lifetime and targeted stop protocols", a
     await assert.rejects(cancelled, /closed/);
   });
 
+  await t.test("Claude lists each background workflow agent as a subagent", async () => {
+    const events = [];
+    const session = claudeProvider.start({ ...options, emit: event => events.push(event) });
+    sessions.push(session);
+    const child = children.at(-1);
+    const subagents = () => events.filter(event => event.type === "subagent");
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_workflow", task_id: "flow", tool_use_id: "call" });
+    child.receive({ type: "system", subtype: "task_progress", task_id: "flow", tool_use_id: "call", workflow_progress: [
+      { type: "workflow_agent", index: 0, label: "find:server", state: "start", startedAt: 1, model: "claude-opus-5-5", promptPreview: "Review the server" },
+      { type: "workflow_agent", index: 1, label: "find:web", state: "start", queuedAt: 1 },
+      { type: "workflow_log", message: "ignored" },
+    ] });
+    assert.deepEqual(subagents().map(event => [event.id, event.title, event.status]), [["call:0", "find:server", "working"], ["call:1", "find:web", "queued"]]);
+    assert.equal(subagents()[0].prompt, "Review the server");
+    assert.equal(subagents()[0].model, "claude-opus-5-5");
+    child.receive({ type: "system", subtype: "task_progress", task_id: "flow", tool_use_id: "call" });
+    child.receive({ type: "system", subtype: "task_progress", task_id: "flow", tool_use_id: "call", workflow_progress: [
+      { type: "workflow_agent", index: 0, label: "find:server", state: "done", resultPreview: "No bugs" },
+      { type: "workflow_agent", index: 1, label: "find:web", state: "progress", startedAt: 2 },
+    ] });
+    assert.deepEqual(subagents().slice(2).map(event => [event.id, event.status, event.result]), [["call:0", "idle", "No bugs"], ["call:1", "working", undefined]]);
+    child.receive({ type: "system", subtype: "task_notification", task_id: "flow", tool_use_id: "call", status: "killed" });
+    assert.deepEqual(subagents().slice(4), [{ type: "subagent", id: "call:1", status: "stopped" }]);
+  });
+
   await t.test("Codex streams output, retains background terminals after turn end and stops polling when empty", async test => {
     test.mock.timers.enable({ apis: ["setTimeout"] });
     const events = [];

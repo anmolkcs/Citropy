@@ -2,6 +2,30 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.2
+
+### Added
+- Drawing selection, moving, copying, pasting, and deleting marks, with a layers list for selecting and hiding items.
+- Paste images and screenshots into drawings, with saved images restored when you return.
+- A shared custom color picker for drawings and appearance settings, including a magnified picker for colors inside the desktop app.
+- Claude Code workflow agents appear in the conversation's subagent activity.
+
+### Changed
+- Sidebar transitions do less work while preserving smooth motion. The reading-area blur reuses prepared image layers instead of repainting its canvas on each frame.
+- Composer tabs move with the composer when sidebars open and close, avoiding unnecessary tab animations.
+- Drawings start with a blank canvas and use smoother freehand strokes.
+- Confirmation cards appear beside the action that opened them.
+
+### Fixed
+- Rapid sidebar toggles no longer leave the reading area behind the chat or push message headers past the chat edge.
+- The reading-area blur fades across its edges without a sharp cutoff, and the Citropy title keeps the right contrast during sidebar transitions.
+- The current screen stays visible while Settings and other pages load.
+- Selected drawing layers preserve their stacking order while being dragged.
+- Queued messages keep their order when a turn ends or a stop finishes while another message is being prepared.
+- Claude Code waits for steered messages to be read before completing the turn and reports messages left unread when stopped.
+- Claude session, weekly, and model limits are recognized for usage-limit recovery.
+- Conversation history requests can retry after an earlier response has arrived.
+
 ## 0.5.1
 
 ### Added

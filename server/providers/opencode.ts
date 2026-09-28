@@ -305,6 +305,7 @@ class OpenCodeSession implements AgentSession {
   async steer(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
     await this.#ready;
     if (!this.#sessionId) throw new Error("OpenCode is still starting. Try again in a moment.");
+    if (!this.#busy) throw new Error("OpenCode already finished this run.");
     await this.#post(`/session/${this.#sessionId}/prompt_async`, this.#body(withSkills(text, skills), attachments));
   }
 
