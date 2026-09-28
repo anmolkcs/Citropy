@@ -173,7 +173,7 @@ class Portal:
                 fd = self.cast.OpenPipeWireRemote(self.session, self.dbus.Dictionary({}, signature="sv")).take()
                 # Returning PipeWire's buffers immediately prevents downstream samples
                 # and videorate from exhausting a compositor's small capture pool.
-                pipeline = self.Gst.parse_launch("pipewiresrc name=source do-timestamp=true always-copy=true ! videorate drop-only=true max-rate=5 ! video/x-raw,framerate=5/1 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 drop=true sync=false enable-last-sample=false")
+                pipeline = self.Gst.parse_launch("pipewiresrc name=source do-timestamp=true always-copy=true keepalive-time=1000 ! videorate drop-only=true max-rate=5 ! video/x-raw,framerate=5/1 ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 drop=true sync=false enable-last-sample=false")
                 source = pipeline.get_by_name("source")
                 source.set_property("fd", fd)
                 source.set_property("path", str(node))
