@@ -17,15 +17,18 @@ import time
 
 
 def uint(*values):
+    """Pack unsigned 32-bit integers for a Wayland message."""
     return struct.pack("=" + "I" * len(values), *values)
 
 
 def string(value):
+    """Encode a Wayland string with length prefix and padding."""
     data = value.encode() + b"\0"
     return uint(len(data)) + data + b"\0" * (-len(data) % 4)
 
 
 def read_string(data, offset=0):
+    """Decode a Wayland string, returning the text and next offset."""
     length, = struct.unpack_from("=I", data, offset)
     end = offset + 4 + length
     if not length or end > len(data) or data[end - 1] != 0:
@@ -38,6 +41,7 @@ MODIFIERS = {0xffe1: 1, 0xffe3: 4, 0xffe9: 8, 0xffeb: 64}
 
 class WaylandInput:
     def __init__(self):
+        """Connect and bind the seat, outputs, and virtual-input managers."""
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket.settimeout(2)
         self.next_id = 2
@@ -89,15 +93,18 @@ class WaylandInput:
 
     @classmethod
     def probe(cls):
+        """Verify the compositor exposes virtual input without creating devices."""
         client = cls()
         client.close()
 
     def new_id(self):
+        """Allocate the next Wayland object ID."""
         result = self.next_id
         self.next_id += 1
         return result
 
     def send(self, target, opcode, payload=b"", fd=None):
+        """Send one Wayland message, transferring the keymap FD when present."""
         if self.closed or self.failed:
             raise RuntimeError("The Wayland input connection ended. Start computer use again.")
         packet = uint(target, ((len(payload) + 8) << 16) | opcode) + payload
@@ -117,6 +124,7 @@ class WaylandInput:
             raise
 
     def receive(self, size, deadline):
+        """Read exactly size bytes or fail when the compositor goes quiet."""
         data = bytearray()
         while len(data) < size:
             self.socket.settimeout(max(0.001, deadline - time.monotonic()))
@@ -127,6 +135,7 @@ class WaylandInput:
         return bytes(data)
 
     def sync(self, check_cancelled=True):
+        """Round-trip with the compositor and revalidate the monitor layout."""
         callback = self.new_id()
         self.send(1, 0, uint(callback))  # wl_display.sync
         deadline = time.monotonic() + 2
@@ -156,10 +165,12 @@ class WaylandInput:
             self.check_cancelled()
 
     def check_cancelled(self):
+        """Raise when pause or stop requested mid-action."""
         if self.cancelled:
             raise InterruptedError("Computer control was paused.")
 
     def event(self, target, opcode, data):
+        """Apply one incoming Wayland event to the tracked globals and outputs."""
         if target == 1 and opcode == 0:  # wl_display.error
             message, _ = read_string(data, 8)
             raise RuntimeError("Wayland input was rejected: " + message)
@@ -202,6 +213,7 @@ class WaylandInput:
                 info["name"], _ = read_string(data)
 
     def bind(self, interface, version, name=None):
+        """Bind a compositor global, failing clearly when it is missing."""
         if name is None:
             name = next((key for key, value in self.globals.items() if value[0] == interface and value[1] >= version), None)
         if name is None:
@@ -211,9 +223,11 @@ class WaylandInput:
         return result
 
     def output_layout(self):
+        """Snapshot output geometry for layout-change detection."""
         return {output: dict(info) for output, info in self.outputs.items()}
 
     def match_output(self, stream):
+        """Match a shared screen to exactly one Wayland output, never guessing."""
         candidates = list(self.outputs)
         if "x" in stream and "y" in stream:
             candidates = [output for output in candidates if all(self.outputs[output].get(key) == stream[key] for key in ["x", "y", "width", "height"])]
@@ -224,6 +238,7 @@ class WaylandInput:
         return candidates[0]
 
     def start(self, streams):
+        """Create one virtual pointer per shared screen plus the keyboard."""
         self.sync()
         matches = [(stream, self.match_output(stream)) for stream in streams]
         self.layout = self.output_layout()
@@ -236,9 +251,11 @@ class WaylandInput:
         self.sync()
 
     def timestamp(self):
+        """Return a millisecond timestamp for input events."""
         return int(time.monotonic() * 1000) & 0xffffffff
 
     def move(self, display_id, x, y):
+        """Move the pointer to absolute output coordinates."""
         self.check_cancelled()
         self.sync()
         pointer, width, height = self.pointers[display_id]
@@ -248,6 +265,7 @@ class WaylandInput:
         self.sync()
 
     def button(self, button, pressed):
+        """Press or release a pointer button on the active virtual pointer."""
         if pressed:
             self.check_cancelled()
             self.buttons.add((self.pointer, button))
@@ -258,6 +276,7 @@ class WaylandInput:
             self.buttons.discard((self.pointer, button))
 
     def scroll(self, dx, dy):
+        """Send wheel-axis scroll events for both axes."""
         self.check_cancelled()
         self.send(self.pointer, 5, uint(0))  # axis_source: wheel
         for axis, delta in [(0, dy), (1, dx)]:
@@ -267,6 +286,7 @@ class WaylandInput:
         self.sync()
 
     def keymap(self, symbols, shifted=False):
+        """Upload a batch keymap covering the given symbols via FD transfer."""
         self.check_cancelled()
         if self.pressed:
             raise RuntimeError("Release held keys before changing the virtual keymap.")
@@ -296,6 +316,7 @@ class WaylandInput:
         self.sync()
 
     def key(self, symbol, pressed):
+        """Send one key event and refresh the held-modifier state."""
         if pressed:
             self.check_cancelled()
             if symbol not in self.pressed:
@@ -310,6 +331,7 @@ class WaylandInput:
         self.sync()
 
     def press(self, symbols):
+        """Press a shortcut chord, always releasing held keys afterwards."""
         self.keymap(symbols, shifted=True)
         try:
             for symbol in symbols:
@@ -318,6 +340,7 @@ class WaylandInput:
             self.release()
 
     def type(self, text):
+        """Type text in batches, mapping Unicode through keysyms."""
         for offset in range(0, len(text), 200):
             symbols = [{"\n": 0xff0d, "\t": 0xff09}.get(character, ord(character) if ord(character) <= 0xff else 0x01000000 | ord(character)) for character in text[offset:offset + 200]]
             self.keymap(symbols)
@@ -329,6 +352,7 @@ class WaylandInput:
                 self.release()
 
     def release(self):
+        """Release every held key and button, even while pausing."""
         cancelled = self.cancelled
         self.cancelled = False
         try:
@@ -341,6 +365,7 @@ class WaylandInput:
             self.cancelled = cancelled or self.cancelled
 
     def close(self):
+        """Release held input, destroy virtual devices, and disconnect."""
         if self.closed:
             return
         try:

@@ -216,6 +216,8 @@ export function App() {
   useEffect(() => {
     const inTextEntry = (target: EventTarget | null) =>
       target instanceof HTMLElement &&
+      // Text fields and embedded terminals keep their own keys, including
+      // every contenteditable form via isContentEditable.
       (target.isContentEditable ||
         target.closest(".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])") !== null);
     const onKey = (event: KeyboardEvent) => {

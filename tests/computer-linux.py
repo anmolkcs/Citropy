@@ -41,7 +41,9 @@ def text(value):
 
 class Compositor:
     """A private wire-protocol peer: no connection to the user's desktop."""
+
     def __init__(self):
+        """Listen on an isolated Wayland socket in a temp directory."""
         self.directory = tempfile.TemporaryDirectory(prefix="citropy-wayland-test-")
         self.path = os.path.join(self.directory.name, "wayland")
         self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -62,9 +64,11 @@ class Compositor:
         self.thread.start()
 
     def emit(self, target, opcode, payload):
+        """Send one raw Wayland message to the connected client."""
         self.connection.sendall(words(target, ((len(payload) + 8) << 16) | opcode) + payload)
 
     def run(self):
+        """Serve registry, outputs, and virtual devices until disconnect."""
         fds = []
         try:
             self.connection, _ = self.listener.accept()
@@ -97,6 +101,7 @@ class Compositor:
                 os.close(fd)
 
     def request(self, target, opcode, data, fds):
+        """Handle one client request, recording events and keymaps."""
         interface = self.objects[target]
         values = struct.unpack("=" + "I" * (len(data) // 4), data)
         if interface == "wl_display":
@@ -158,6 +163,7 @@ class Compositor:
                 self.on_key(values)
 
     def close(self):
+        """Join the server thread, failing if the client never disconnected."""
         self.thread.join(5)
         self.listener.close()
         self.directory.cleanup()
@@ -169,6 +175,7 @@ class Compositor:
 
 class VirtualInputTests(unittest.TestCase):
     def setUp(self):
+        """Start an isolated compositor and connect a client to it."""
         self.server = Compositor()
         self.addCleanup(self.server.close)
         self.environment = patch.dict(os.environ, {"WAYLAND_DISPLAY": self.server.path})
@@ -179,13 +186,16 @@ class VirtualInputTests(unittest.TestCase):
         self.stream = {"id": "screen", "width": 1280, "height": 720, "x": -1280, "y": 0}
 
     def start(self):
+        """Begin a control session on the single positioned test screen."""
         self.client.start([self.stream])
 
     def test_probe_does_not_create_input_devices(self):
+        """Probing binds globals but creates no pointers or keyboards."""
         self.assertEqual(self.server.pointers, {})
         self.assertNotIn("zwp_virtual_keyboard_v1", self.server.objects.values())
 
     def test_scaled_monitor_mapping_and_pointer_events(self):
+        """Check output matching and the pointer/button/scroll wire format."""
         self.start()
         self.client.move("screen", 640, 360)
         self.client.button("left", True)
@@ -201,11 +211,13 @@ class VirtualInputTests(unittest.TestCase):
         self.assertEqual(axes, [120 * 256, -60 * 256])
 
     def test_ambiguous_monitor_is_rejected_before_creating_devices(self):
+        """Refuse to guess among same-sized outputs without position metadata."""
         with self.assertRaisesRegex(RuntimeError, "cannot be matched"):
             self.client.start([{"id": "screen", "width": 1280, "height": 720}])
         self.assertEqual(self.server.pointers, {})
 
     def test_layout_change_disconnects_before_further_input(self):
+        """Disconnect when the monitor layout changes instead of mistargeting."""
         self.start()
         self.server.layout_change = True
         with self.assertRaisesRegex(RuntimeError, "layout changed"):
@@ -214,12 +226,14 @@ class VirtualInputTests(unittest.TestCase):
         self.assertFalse(any(event[0] == "zwlr_virtual_pointer_v1" and event[2] == 1 for event in self.server.events))
 
     def test_compositor_denial_closes_connection(self):
+        """Close cleanly when the compositor rejects virtual input."""
         self.server.reject_keyboard = True
         with self.assertRaisesRegex(RuntimeError, "virtual keyboard denied"):
             self.start()
         self.assertTrue(self.client.closed)
 
     def test_pause_releases_keys_and_allows_viewing_then_resume(self):
+        """Pause releases held keys, keeps screenshots working, then resumes."""
         self.start()
         self.server.on_key = lambda event: setattr(self.client, "cancelled", True) if event[2] else None
         with self.assertRaisesRegex(InterruptedError, "paused"):
@@ -234,6 +248,7 @@ class VirtualInputTests(unittest.TestCase):
         self.assertFalse(self.client.closed)
 
     def test_pause_blocks_pointer_motion_before_sending(self):
+        """Pause sends no pointer traffic and motion works again after resume."""
         self.start()
         sent = len(self.server.events)
         self.client.cancelled = True
@@ -245,6 +260,7 @@ class VirtualInputTests(unittest.TestCase):
         self.assertTrue(any(event[0] == "zwlr_virtual_pointer_v1" and event[2] == 1 for event in self.server.events))
 
     def test_close_releases_drag_button(self):
+        """Closing mid-drag releases the held pointer button."""
         self.start()
         self.client.move("screen", 20, 30)
         self.client.button("left", True)
@@ -253,6 +269,7 @@ class VirtualInputTests(unittest.TestCase):
         self.assertEqual(buttons, [1, 0])
 
     def test_unicode_keymap_fd_and_shortcut_modifiers(self):
+        """Check FD keymap transfer, Unicode symbols, and modifier tracking."""
         self.start()
         self.client.type("Aé界🙂\t\n")
         keymap = self.server.keymaps[-1]
@@ -284,6 +301,7 @@ class VirtualInputTests(unittest.TestCase):
 
 class PortalTests(unittest.TestCase):
     def setUp(self):
+        """Stub portal and desktop modules for backend-selection tests."""
         class DBusError(Exception):
             def get_dbus_name(self):
                 return str(self)
@@ -300,27 +318,32 @@ class PortalTests(unittest.TestCase):
         self.addCleanup(self.environment.stop)
 
     def missing_remote(self, interface, name):
+        """Simulate a portal without the RemoteDesktop interface."""
         if interface.endswith("RemoteDesktop"):
             raise self.error("org.freedesktop.DBus.Error.InvalidArgs")
         return 1
 
     def test_remote_desktop_remains_preferred(self):
+        """A full RemoteDesktop portal skips the virtual-input probe."""
         with patch.object(WaylandInput, "probe") as probe:
             self.assertEqual(computer.dependencies(), "wayland-portal")
             probe.assert_not_called()
 
     def test_missing_remote_desktop_uses_virtual_protocols(self):
+        """Fall back to virtual input when RemoteDesktop is absent."""
         self.props.Get.side_effect = self.missing_remote
         with patch.object(WaylandInput, "probe") as probe:
             self.assertEqual(computer.dependencies(), "wayland-wlr")
             probe.assert_called_once()
 
     def test_screen_cast_only_support_is_reported(self):
+        """Report view-only mode when neither input path exists."""
         self.props.Get.side_effect = self.missing_remote
         with patch.object(WaylandInput, "probe", side_effect=RuntimeError("no virtual keyboard")):
             self.assertEqual(computer.dependencies(), "wayland-screencast")
 
     def test_portal_access_denial_is_not_bypassed(self):
+        """Never bypass a portal access denial via the fallback path."""
         self.props.Get.side_effect = self.error("org.freedesktop.DBus.Error.AccessDenied")
         with patch.object(WaylandInput, "probe") as probe:
             with self.assertRaises(self.error):
@@ -328,9 +351,11 @@ class PortalTests(unittest.TestCase):
             probe.assert_not_called()
 
     def test_view_only_uses_screen_cast_without_creating_virtual_input(self):
+        """View-only sessions never create virtual input devices."""
         portal = computer.Portal.__new__(computer.Portal)
         portal.backend = "wayland-wlr"
         portal.virtual = None
+        portal.streams = {}
         portal.cast, portal.remote = object(), object()
         portal.dbus = types.SimpleNamespace(String=str, ObjectPath=str, UInt32=int, Boolean=bool)
         portal.bus = Mock()
@@ -341,7 +366,26 @@ class PortalTests(unittest.TestCase):
             virtual.assert_not_called()
         self.assertTrue(all(call.args[0] is portal.cast for call in portal.request.call_args_list))
 
+    def test_failed_start_rolls_back_virtual_input_and_capture(self):
+        """A start failure closes the compositor connection and half-opened streams."""
+        portal = computer.Portal.__new__(computer.Portal)
+        portal.backend = "wayland-wlr"
+        portal.virtual = None
+        portal.streams = {}
+        portal.cast, portal.remote = object(), object()
+        portal.dbus = types.SimpleNamespace(String=str, ObjectPath=str, UInt32=int, Boolean=bool)
+        portal.bus = Mock()
+        portal.Gst = types.SimpleNamespace(State=types.SimpleNamespace(NULL=0))
+        portal.request = Mock(side_effect=[{"session_handle": "/session/test"}, RuntimeError("denied")])
+        with patch.object(computer, "WaylandInput") as virtual:
+            with self.assertRaisesRegex(RuntimeError, "denied"):
+                portal.start(True)
+            virtual.return_value.close.assert_called_once_with()
+        self.assertIsNone(portal.virtual)
+        self.assertEqual(portal.streams, {})
+
     def test_x11_ignores_wayland_protocols(self):
+        """X11 sessions never probe the Wayland virtual-input path."""
         with patch.dict(os.environ, {"XDG_SESSION_TYPE": "x11", "WAYLAND_DISPLAY": "", "DISPLAY": ":test"}), patch.object(computer.shutil, "which", return_value="/usr/bin/xdotool"), patch.object(computer.ctypes.util, "find_library", return_value="test"), patch.object(WaylandInput, "probe") as probe:
             self.assertEqual(computer.dependencies(), "x11")
             probe.assert_not_called()
@@ -350,6 +394,7 @@ class PortalTests(unittest.TestCase):
 class SwayTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("sway") and shutil.which("swaymsg"), "requires Sway for isolated headless integration")
     def test_input_reaches_a_private_headless_compositor(self):
+        """Drive pointer, buttons, scroll, shortcuts, and typing on headless Sway."""
         with tempfile.TemporaryDirectory(prefix="citropy-headless-") as directory:
             root = Path(directory)
             marker = root / "shortcut"
@@ -372,7 +417,16 @@ class SwayTests(unittest.TestCase):
                     else:
                         self.fail("Headless Sway did not start: " + (root / "sway.log").read_text())
                     with patch.dict(os.environ, {"WAYLAND_DISPLAY": str(sockets[0])}):
-                        client = WaylandInput()
+                        client = None
+                        for _ in range(5):
+                            try:
+                                client = WaylandInput()
+                                break
+                            except RuntimeError:
+                                # A headless compositor can be slow to answer under load; retry.
+                                time.sleep(0.2)
+                        if client is None:
+                            self.fail("Headless compositor did not answer: " + (root / "sway.log").read_text())
                     output = next(iter(client.outputs.values()))
                     self.assertEqual((output["width"], output["height"]), (640, 360))
                     client.start([{"id": "test", **{key: output[key] for key in ["x", "y", "width", "height"]}}])
@@ -407,6 +461,7 @@ class SwayTests(unittest.TestCase):
 
 class CaptureTests(unittest.TestCase):
     def test_stalled_stream_never_returns_the_previous_sample(self):
+        """A stalled stream errors instead of replaying the previous sample."""
         portal = computer.Portal.__new__(computer.Portal)
         portal.closed = False
         portal.Gst = types.SimpleNamespace(SECOND=1, MessageType=types.SimpleNamespace(ERROR=1, EOS=2))

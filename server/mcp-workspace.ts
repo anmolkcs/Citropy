@@ -49,6 +49,7 @@ const MAX_SUBAGENT_DEPTH = 3;
 // Convert only numeric fields the selected operation actually uses; every other
 // key (text, IDs, frame references, fields for other actions) passes through
 // untouched for downstream validation to accept or reject.
+/** Numeric fields used by each computer action. */
 const actionNumbers: Record<string, string[]> = {
   move: ["x", "y"],
   click: ["x", "y", "count"],
@@ -60,6 +61,7 @@ const actionNumbers: Record<string, string[]> = {
 };
 const regionNumbers = ["x", "y", "width", "height"];
 
+/** Convert stringified numbers in place, rejecting non-numeric values. */
 function coerceNumbers(input: Record<string, unknown>, keys: string[]): void {
   for (const key of keys) {
     if (input[key] === undefined) continue;
@@ -70,6 +72,7 @@ function coerceNumbers(input: Record<string, unknown>, keys: string[]): void {
   }
 }
 
+/** Normalize open-ended computer tool arguments for one operation. */
 function computerArguments(args: Record<string, unknown>, screenshot: boolean): Record<string, unknown> {
   const input = { ...args };
   if (screenshot) {
