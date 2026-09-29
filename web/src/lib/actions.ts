@@ -16,7 +16,6 @@ import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import type {
-  FileEntry,
   FilePatch,
   GitResult,
   PermissionMode,
@@ -387,26 +386,6 @@ export function discardFile(projectId: string, path: string): void {
 
 export function commitAll(projectId: string, message: string): void {
   send({ t: "git.commit", projectId, message });
-}
-
-export function fetchTree(
-  projectId: string,
-  path?: string,
-): Promise<FileEntry[]> {
-  const id = requestId();
-  const promise = awaitResponse<FileEntry[]>(id, 30_000);
-  send({ t: "file.tree", requestId: id, projectId, path });
-  return promise;
-}
-
-export function fetchFile(
-  projectId: string,
-  path: string,
-): Promise<string | null> {
-  const id = requestId();
-  const promise = awaitResponse<string | null>(id, 30_000);
-  send({ t: "file.read", requestId: id, projectId, path });
-  return promise;
 }
 
 // Uses the system folder dialog, or Citropy's own browser for SSH hosts the system dialog cannot reach.

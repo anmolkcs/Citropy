@@ -23,7 +23,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
     const stage = root?.closest<HTMLElement>(".stage");
     if (!root || !stage || reducedMotion) return;
 
-    const animations = new Map<HTMLElement, Animation>();
+    const animations = new Map<HTMLElement, { animation: Animation; x: number; y: number }>();
     let width = stage.clientWidth;
     let layout = getComputedStyle(root).getPropertyValue("--message-header-layout");
     const measure = () => new Map(Array.from(root.querySelectorAll<HTMLElement>(
@@ -37,7 +37,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
       const next = measure();
       const nextLayout = getComputedStyle(root).getPropertyValue("--message-header-layout");
       if ((nextLayout === layout && !animations.size) || panelMoving()) {
-        for (const animation of animations.values()) animation.cancel();
+        for (const { animation } of animations.values()) animation.cancel();
         animations.clear();
         layout = nextLayout;
         positions = new WeakMap(next);
@@ -46,16 +46,15 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
       layout = nextLayout;
       const moves = Array.from(next, ([element, current]) => {
         const previous = positions.get(element);
-        const translate = animations.has(element)
-          ? getComputedStyle(element).translate.split(" ").map(parseFloat)
-          : [0, 0];
+        const running = animations.get(element);
+        const remaining = running ? 1 - (running.animation.effect?.getComputedTiming().progress ?? 1) : 0;
         return {
           element,
-          x: previous ? previous.x - current.x + (translate[0] || 0) : 0,
-          y: previous ? previous.y - current.y + (translate[1] || 0) : 0,
+          x: previous ? previous.x - current.x + (running?.x ?? 0) * remaining : 0,
+          y: previous ? previous.y - current.y + (running?.y ?? 0) * remaining : 0,
         };
       });
-      for (const animation of animations.values()) animation.cancel();
+      for (const { animation } of animations.values()) animation.cancel();
       animations.clear();
       positions = new WeakMap(next);
       for (const { element, x, y } of moves) {
@@ -63,15 +62,15 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
         const animation = element.animate([
           { translate: `${x}px ${y}px` },
           { translate: "0px 0px" },
-        ], { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" });
-        animations.set(element, animation);
-        animation.onfinish = () => { if (animations.get(element) === animation) animations.delete(element); };
+        ], { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)", composite: "add" });
+        animations.set(element, { animation, x, y });
+        animation.onfinish = () => { if (animations.get(element)?.animation === animation) animations.delete(element); };
       }
     });
     observer.observe(stage);
     return () => {
       observer.disconnect();
-      for (const animation of animations.values()) animation.cancel();
+      for (const { animation } of animations.values()) animation.cancel();
     };
   }, [viewport, threadId, reducedMotion]);
 }

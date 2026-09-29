@@ -1,16 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title description">
   <title id="title">Citropy</title>
-  <desc id="description">A yellow lemon half breaking into square pixels.</desc>
-  <rect x="4" y="4" width="248" height="248" rx="54" fill="#171717"/>
-  <g fill="#F4D34E">
-    <path fill-rule="evenodd" d="M120 36c-49 0-88 41-88 92s39 92 88 92V36Zm0 12c-41 0-76 34-76 80s35 80 76 80V48Z"/>
-    <path d="M110 59c-21 3-38 14-49 33l49 27V59Zm-55 45c-8 15-8 33 0 48l49-24-49-24Zm6 60c11 19 28 30 49 33v-60l-49 27Z"/>
-    <path d="M127 49h30v30h-30zM132 89h36v36h-36zM127 136h34v34h-34zM125 179h27v27h-27z"/>
-  </g>
-  <g fill="#DABC46">
-    <path d="M170 62h23v23h-23zM179 113h28v28h-28zM169 164h22v22h-22z"/>
-  </g>
-  <g fill="#B89D37">
-    <path d="M217 83h13v13h-13zM217 166h14v14h-14z"/>
+  <desc id="description">A white half slice of lemon on a yellow square.</desc>
+  <rect x="4" y="4" width="248" height="248" rx="54" fill="#F5B400"/>
+  <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="10" stroke-linejoin="round">
+    <path d="M204.31 181.60L207.85 185.14A97 97 0 0 1 70.86 48.15L74.40 51.69A92 92 0 0 0 204.31 181.60Z"/>
+    <path d="M151.39 128.68L192.27 169.56A75 75 0 0 1 151.39 187.62Z"/>
+    <path d="M134.39 133.63L134.39 187.62A75 75 0 0 1 96.21 171.81Z"/>
+    <path d="M122.37 121.61L84.19 159.79A75 75 0 0 1 68.38 121.61Z"/>
+    <path d="M127.32 104.61L68.38 104.61A75 75 0 0 1 86.44 63.73Z"/>
   </g>
 </svg>

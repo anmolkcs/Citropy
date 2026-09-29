@@ -45,9 +45,12 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     const fitHeld = () => {
       const held = parseFloat(inner.style.minHeight);
       if (!held) return;
-      const needed = Math.min(held, node.scrollTop + node.clientHeight - inner.offsetTop);
+      const top = node.scrollTop;
+      const needed = top + node.clientHeight - inner.offsetTop;
+      if (needed >= held) return;
       inner.style.removeProperty("min-height");
       if (needed > inner.offsetHeight) inner.style.minHeight = `${needed}px`;
+      node.scrollTop = top;
     };
     let settle = 0;
     const onScroll = () => {

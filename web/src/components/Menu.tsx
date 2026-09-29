@@ -11,7 +11,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useTouchInput } from "../lib/use-touch-input.ts";
-import { Check, ChevronRight } from "./icons.ts";
+import { Check, ChevronRight, Search } from "./icons.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
@@ -40,6 +40,7 @@ interface Props {
   }) => ReactNode;
   items: MenuItem[];
   align?: "start" | "end";
+  side?: "below" | "right";
   header?: string;
   controls?: ReactNode;
   footer?: ReactNode;
@@ -65,6 +66,7 @@ export function Menu({
   trigger,
   items,
   align = "start",
+  side = "below",
   header,
   controls,
   footer,
@@ -148,6 +150,17 @@ export function Menu({
       element.style.maxHeight = "";
       element.style.minHeight = "";
       const height = element.offsetHeight / scale;
+      if (side === "right") {
+        const viewport = innerHeight / scale;
+        const fitted = Math.min(height, viewport - 24);
+        element.dataset.side = "right";
+        element.style.maxHeight = `${scaled(viewport - 24)}px`;
+        element.style.left = `${scaled(Math.min(bounds.right / scale + 8, viewportWidth() - menuWidth - 12))}px`;
+        const top = Math.max(12, Math.min(bounds.top / scale, viewport - fitted - 12));
+        element.style.top = `${scaled(top)}px`;
+        element.style.setProperty("--menu-arrow-y", `${scaled((bounds.top + bounds.height / 2) / scale - top)}px`);
+        return;
+      }
       const top = clearance?.top ?? bounds.top;
       const bottom = clearance?.bottom ?? bounds.bottom;
       const above = Math.max(0, top / scale - 18);
@@ -191,7 +204,7 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, gutter, align, searchable, touch, uiScale, anchor, clearOf, sheet, span, inline]);
+  }, [open, width, gutter, align, side, searchable, touch, uiScale, anchor, clearOf, sheet, span, inline]);
 
   useEffect(() => {
     if (!open) return;
@@ -293,13 +306,16 @@ export function Menu({
             {header && <div className="menu-header eyebrow">{header}</div>}
             {controls}
             {searchable && (
-              <input
-                className="menu-search"
-                aria-label={t(searchPlaceholder)}
-                placeholder={t(searchPlaceholder)}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
+              <div className="menu-search-field">
+                <Search size={15} aria-hidden="true" />
+                <input
+                  className="menu-search"
+                  aria-label={t(searchPlaceholder)}
+                  placeholder={t(searchPlaceholder)}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </div>
             )}
             {(items.length > 0 || !controls) && <div className="menu-list scroll sliding-selection" data-large={visibleItems.length > 40} data-sliding={soleSelection ? true : undefined}>
               {soleSelection && <SelectionHighlight value={soleSelection} selector=".menu-option[data-selected]" />}

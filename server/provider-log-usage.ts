@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { dataRoot } from "./paths.ts";
 import { saveJson } from "./save-json.ts";
 import { providerLogRoots } from "./provider-logs.ts";
-import { USAGE_TOTAL_KEYS, emptyUsageTotals, localDay, type UsageTotals } from "../shared/usage-metrics.ts";
+import { USAGE_TOTAL_KEYS, emptyUsageTotals, localDay, record, type UsageTotals } from "../shared/usage-metrics.ts";
 import type { UsageDay } from "../shared/features.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 
@@ -56,7 +56,7 @@ function loadCache(): Cache {
   return saved.version === CACHE_VERSION ? saved : { version: CACHE_VERSION, files: {}, opencode: [] };
 }
 
-function totalsOf(values: Partial<UsageTotals>): UsageTotals {
+function totalsOf(values: Partial<Record<keyof UsageTotals, unknown>>): UsageTotals {
   const totals = emptyUsageTotals();
   for (const key of USAGE_TOTAL_KEYS) {
     const value = values[key];
@@ -65,14 +65,18 @@ function totalsOf(values: Partial<UsageTotals>): UsageTotals {
   return totals;
 }
 
-function claudeReading(row: any): Reading | undefined {
-  const message = row?.message;
-  const usage = message?.usage;
-  if (row?.type !== "assistant" || !usage || !message.id || message.model === "<synthetic>") return;
+function text(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function claudeReading(row: Record<string, unknown>): Reading | undefined {
+  const message = record(row.message);
+  const usage = record(message?.usage);
+  if (row.type !== "assistant" || !message || !usage || !message.id || message.model === "<synthetic>") return;
   return {
-    key: `claude:${message.id}:${row.requestId ?? ""}`,
-    at: Date.parse(row.timestamp),
-    model: message.model,
+    key: `claude:${String(message.id)}:${text(row.requestId) ?? ""}`,
+    at: Date.parse(text(row.timestamp) ?? ""),
+    model: text(message.model),
     totals: totalsOf({
       input: usage.input_tokens,
       output: usage.output_tokens,
@@ -84,21 +88,22 @@ function claudeReading(row: any): Reading | undefined {
   };
 }
 
-function piReading(row: any): Reading | undefined {
-  const message = row?.message;
-  const usage = message?.usage;
-  if (row?.type !== "message" || message?.role !== "assistant" || !usage) return;
+function piReading(row: Record<string, unknown>): Reading | undefined {
+  const message = record(row.message);
+  const usage = record(message?.usage);
+  if (row.type !== "message" || message?.role !== "assistant" || !usage) return;
   return {
-    key: `pi:${row.id}:${row.timestamp}`,
-    at: Date.parse(row.timestamp),
-    model: message.model,
-    totals: totalsOf({ input: usage.input, output: usage.output, cacheRead: usage.cacheRead, cacheWrite: usage.cacheWrite, costUsd: usage.cost?.total, turns: 1 }),
+    key: `pi:${String(row.id)}:${String(row.timestamp)}`,
+    at: Date.parse(text(row.timestamp) ?? ""),
+    model: text(message.model),
+    totals: totalsOf({ input: usage.input, output: usage.output, cacheRead: usage.cacheRead, cacheWrite: usage.cacheWrite, costUsd: record(usage.cost)?.total, turns: 1 }),
   };
 }
 
-function codexReading(row: any, state: CodexState): Reading | undefined {
-  if (row?.type === "turn_context" && typeof row.payload?.model === "string") state.model = row.payload.model;
-  const total = row?.type === "event_msg" && row.payload?.type === "token_count" ? row.payload.info?.total_token_usage : undefined;
+function codexReading(row: Record<string, unknown>, state: CodexState): Reading | undefined {
+  const payload = record(row.payload);
+  if (row.type === "turn_context" && typeof payload?.model === "string") state.model = payload.model;
+  const total = row.type === "event_msg" && payload?.type === "token_count" ? record(record(payload.info)?.total_token_usage) : undefined;
   if (!total) return;
   const current = totalsOf({ input: total.input_tokens, output: total.output_tokens, cacheRead: total.cached_input_tokens, cacheWrite: total.cache_write_input_tokens });
   const delta = emptyUsageTotals();
@@ -106,7 +111,7 @@ function codexReading(row: any, state: CodexState): Reading | undefined {
   state.previous = current;
   if (USAGE_TOTAL_KEYS.every((key) => delta[key] === 0)) return;
   delta.turns = 1;
-  return { key: `codex:${row.timestamp}:${total.total_tokens}`, at: Date.parse(row.timestamp), model: state.model, totals: delta };
+  return { key: `codex:${String(row.timestamp)}:${String(total.total_tokens)}`, at: Date.parse(text(row.timestamp) ?? ""), model: state.model, totals: delta };
 }
 
 function addDay(days: UsageDay[], provider: ProviderId, reading: Reading): void {
@@ -128,8 +133,10 @@ async function readLog(path: string, file: LogFile, seen: Set<string>): Promise<
   let partial: Buffer[] = [];
   const consume = (line: Buffer) => {
     if (!markers.some((marker) => line.includes(marker))) return;
-    let row: unknown;
-    try { row = JSON.parse(line.toString("utf8")); } catch { return; }
+    let parsed: unknown;
+    try { parsed = JSON.parse(line.toString("utf8")); } catch { return; }
+    const row = record(parsed);
+    if (!row) return;
     const reading = file.provider === "claude" ? claudeReading(row) : file.provider === "pi" ? piReading(row) : codexReading(row, file.state);
     if (!reading || !Number.isFinite(reading.at) || seen.has(reading.key)) return;
     seen.add(reading.key);

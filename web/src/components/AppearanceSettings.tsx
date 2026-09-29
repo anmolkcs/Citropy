@@ -4,10 +4,9 @@ import { reportError } from "../lib/api.ts";
 import { saveBackgroundFile, useBackgroundFile, type BackgroundFileKind } from "../lib/background-files.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
-import { setBackgroundBlur, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setNavigationStyle, setOpaquePopups, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
+import { setAsciiLook, setBackgroundBlur, setBackgroundEverywhere, setContentWidth, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setNavigationStyle, setOpaquePopups, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
 import {
   setShowFailedTools,
-  setSidebarMode,
   setTextStreaming,
   setTheme,
   setScheme,
@@ -16,9 +15,8 @@ import {
   setTypingSpeed,
   setUiScale,
   useApp,
-  type SidebarMode,
 } from "../lib/store.ts";
-import { DEFAULT_UI_SCALE, SCHEMES, THEMES, type NavigationStyle, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { DEFAULT_UI_SCALE, MAX_CONTENT_WIDTH, MIN_CONTENT_WIDTH, SCHEMES, THEMES, type NavigationStyle, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { OptionStrip } from "./OptionStrip.tsx";
 import { Range } from "./Range.tsx";
@@ -119,9 +117,13 @@ export function AppearanceSettings() {
   const backgroundBlur = useApp((state) => state.backgroundBlur);
   const backgroundFocus = useApp((state) => state.backgroundFocus);
   const backgroundFocusSpread = useApp((state) => state.backgroundFocusSpread);
+  const asciiDim = useApp((state) => state.asciiDim);
+  const asciiBlur = useApp((state) => state.asciiBlur);
+  const asciiFocus = useApp((state) => state.asciiFocus);
   const uiTransparency = useApp((state) => state.uiTransparency);
   const opaquePopups = useApp((state) => state.opaquePopups);
-  const sidebarMode = useApp((state) => state.sidebarMode);
+  const backgroundEverywhere = useApp((state) => state.backgroundEverywhere);
+  const contentWidth = useApp((state) => state.contentWidth);
   const textStreaming = useApp((state) => state.textStreaming);
   const typingAnimation = useApp((state) => state.typingAnimation);
   const typingSpeed = useApp((state) => state.typingSpeed);
@@ -161,20 +163,31 @@ export function AppearanceSettings() {
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Sidebar mode")}</strong>
-            <small>{t("Workspaces shows one folder at a time. Global lists every open folder and its conversations.")}</small>
-          </span>
-          <Select value={sidebarMode} onChange={(value) => setSidebarMode(value as SidebarMode)}
-            options={[{ value: "workspaces", label: t("Workspaces") }, { value: "global", label: t("Global") }]} />
-        </label>
-        <label className="setting-row">
-          <span>
             <strong>{t("Navigation layout")}</strong>
             <small>{t("Side strip keeps source control, GitHub, usage and settings on the left edge. Bottom bar puts them under the conversation list.")}</small>
           </span>
           <Select value={navigationStyle} onChange={(value) => setNavigationStyle(value as NavigationStyle)}
             options={[{ value: "strip", label: t("Side strip") }, { value: "bar", label: t("Bottom bar") }]} />
         </label>
+        <div className="content-width-setting">
+          <div className="setting-row">
+            <span>
+              <label htmlFor="content-width"><strong>{t("Content width")}</strong></label>
+              <small>{t("How wide conversations, the chat box and settings pages can get.")}</small>
+            </span>
+            <output htmlFor="content-width">{contentWidth}px</output>
+          </div>
+          <Range
+            id="content-width"
+            className="content-width-range"
+            min={MIN_CONTENT_WIDTH}
+            max={MAX_CONTENT_WIDTH}
+            step={20}
+            value={contentWidth}
+            aria-valuetext={`${contentWidth}px`}
+            onChange={(event) => setContentWidth(Number(event.target.value))}
+          />
+        </div>
       </div>
       <h2 className="settings-group-heading settings-group-heading-centered">{t("Theme")}</h2>
       <div className="scheme-switch sliding-selection" role="group" aria-label={t("Mode")}>
@@ -274,13 +287,19 @@ export function AppearanceSettings() {
         ))}
         <CustomImageOption selected={stageBackground === "image"} />
       </OptionStrip>
-      {stageBackground === "image" && (
+      {stageBackground !== "default" && (
         <div className="settings-group settings-group-spaced">
           {[
-            { label: "Dim", hint: "Darken the image so text stays easy to read.", value: backgroundDim, max: 90, unit: "%", change: setBackgroundDim },
-            { label: "Blur", hint: "Soften the whole image. 0 keeps it sharp.", value: backgroundBlur, max: 40, unit: "px", change: setBackgroundBlur },
-            { label: "Reading area", hint: "Darken and blur the image behind the content column. 0 turns it off.", value: backgroundFocus, max: 100, unit: "%", change: setBackgroundFocus },
-            ...(backgroundFocus ? [{ label: "Reading area width", hint: "How far the reading area reaches past the conversation on each side.", value: backgroundFocusSpread, max: 400, unit: "px", change: setBackgroundFocusSpread }] : []),
+            ...(stageBackground === "image" ? [
+              { label: "Dim", hint: "Darken the background so text stays easy to read.", value: backgroundDim, max: 90, unit: "%", change: setBackgroundDim },
+              { label: "Blur", hint: "Soften the whole background. 0 keeps it sharp.", value: backgroundBlur, max: 40, unit: "px", change: setBackgroundBlur },
+              { label: "Reading area", hint: "Darken and blur the background behind the content column. 0 turns it off.", value: backgroundFocus, max: 100, unit: "%", change: setBackgroundFocus },
+            ] : [
+              { label: "Dim", hint: "Darken the background so text stays easy to read.", value: asciiDim, max: 90, unit: "%", change: (value: number) => setAsciiLook("asciiDim", value) },
+              { label: "Blur", hint: "Soften the whole background. 0 keeps it sharp.", value: asciiBlur, max: 12, unit: "px", change: (value: number) => setAsciiLook("asciiBlur", value) },
+              { label: "Reading area", hint: "Darken and blur the background behind the content column. 0 turns it off.", value: asciiFocus, max: 100, unit: "%", change: (value: number) => setAsciiLook("asciiFocus", value) },
+            ]),
+            ...((stageBackground === "image" ? backgroundFocus : asciiFocus) ? [{ label: "Reading area width", hint: "How far the reading area reaches past the conversation on each side.", value: backgroundFocusSpread, max: 400, unit: "px", change: setBackgroundFocusSpread }] : []),
           ].map(({ label, hint, value, max, unit, change }) => (
             <div className="setting-row" key={label}>
               <span>
@@ -321,6 +340,14 @@ export function AppearanceSettings() {
               <output>{uiTransparency}%</output>
             </span>
           </div>
+          <label className="setting-row">
+            <span>
+              <strong>{t("Background on every page")}</strong>
+              <small>{t("Show the background in Settings, Source control, GitHub and Usage too, not only in conversations.")}</small>
+            </span>
+            <input className="setting-switch" type="checkbox" role="switch"
+              checked={backgroundEverywhere} onChange={event => setBackgroundEverywhere(event.target.checked)} />
+          </label>
           <label className="setting-row">
             <span>
               <strong>{t("Opaque pop-ups")}</strong>

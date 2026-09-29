@@ -31,15 +31,10 @@ export function trackRequest(id: string, environment: string): void {
   if (request) request.environment = environment;
 }
 
-export function rejectResponses(switching = false, environment?: string): void {
+export function rejectResponses(environment?: string): void {
   for (const [id, request] of pending) {
     if (environment && request.environment !== environment) continue;
-    if (!switching) resolveResponse(id, undefined, "The connection to Citropy was interrupted. Check the result before retrying this action.");
-    else {
-      pending.delete(id);
-      clearTimeout(request.timer);
-      request.reject(new DOMException("Environment changed", "AbortError"));
-    }
+    resolveResponse(id, undefined, "The connection to Citropy was interrupted. Check the result before retrying this action.");
   }
 }
 

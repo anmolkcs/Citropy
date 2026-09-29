@@ -146,7 +146,7 @@ export interface GitHubNotification {
   subject: { title: string; type: string; url: string | null };
 }
 
-export interface GitHubPage<T> {
+interface GitHubPage<T> {
   items: T[];
   more: boolean;
   total?: number;

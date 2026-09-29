@@ -35,7 +35,7 @@
   padding: var(--space-4) var(--space-6);
 }
 .editor-tabbar-actions [aria-pressed="true"] {
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 .editor-layout {
@@ -83,11 +83,11 @@
   font-weight: 500;
 }
 .editor-explorer .tree-row[data-selected="true"] {
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 .editor-tabs {
-  --selection-fill: var(--raised);
+  --selection-fill: var(--highlight);
   display: flex;
   gap: var(--space-4);
   padding: var(--space-4);
@@ -105,7 +105,7 @@
   color: var(--text-3);
 }
 .editor-tab:hover {
-  background: var(--accent-soft);
+  background: var(--highlight);
 }
 .editor-tab[data-active="true"] {
   color: var(--text);
@@ -276,7 +276,7 @@
   flex: none;
 }
 .editor-terminal-tabs {
-  --selection-fill: var(--raised);
+  --selection-fill: var(--highlight);
   display: flex;
   flex: 1;
   min-width: 0;

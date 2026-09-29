@@ -1,5 +1,4 @@
 import { shuttingDown } from "../lifecycle.ts";
-import { fileRoutes } from "./files.ts";
 import { gitRoutes } from "./git.ts";
 import { githubRoutes } from "./github.ts";
 import { notificationRoutes } from "./notifications.ts";
@@ -21,7 +20,6 @@ const routes: Routes = {
   ...providerRoutes,
   ...threadRoutes,
   ...gitRoutes,
-  ...fileRoutes,
   ...terminalRoutes,
 };
 

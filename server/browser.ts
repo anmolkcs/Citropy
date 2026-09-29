@@ -92,7 +92,7 @@ export async function openBrowser(
   }
 }
 
-export type BrowserEvent = { time: number; kind: string; level: string; text: string };
+type BrowserEvent = { time: number; kind: string; level: string; text: string };
 export type BrowserActionResult = BrowserState & { result?: string; events?: BrowserEvent[] };
 
 export function describeBrowserAction(action: string, response: BrowserActionResult): string {

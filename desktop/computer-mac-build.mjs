@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const source = fileURLToPath(new URL("./computer-mac.swift", import.meta.url));
-export const computerHelper = fileURLToPath(new URL("./computer-mac", import.meta.url));
+const computerHelper = fileURLToPath(new URL("./computer-mac", import.meta.url));
 
 // Compiles the native macOS computer-use helper. Packaged builds pass both architectures to
 // produce one universal binary for the arm64 and x64 app archives.

@@ -2,7 +2,25 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
-## 0.5.4
+## 0.5.5
+
+### Added
+- A new logo, a lemon half slice on a yellow square.
+- Back and forward buttons in the title bar to return to the page or conversation you were on.
+- After an update, Citropy shows what's new once it's finished replying.
+- A content width setting in Appearance for how wide conversations, the chat box and settings pages get.
+- An option to show the background on every page, not only in conversations.
+- Dim, blur and reading area controls for the ASCII background.
+
+### Changed
+- The sidebar always lists every open folder in Code mode. The Sidebar mode setting is gone.
+- The running agents button moved from the sidebar footer and side strip to the title bar.
+- The ASCII background draws on the graphics card and uses less processor time.
+
+### Fixed
+- Claude's effort choices no longer include stray entries parsed from its help text.
+- The macOS window buttons line up with the title bar.
+- A link that fails to open now shows an error instead of doing nothing.
 
 ### Added
 - Keyboard shortcuts to open Settings with Ctrl+, and choose a project folder with Ctrl+O, using Cmd on macOS.

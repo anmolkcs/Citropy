@@ -11,7 +11,7 @@ export function validateContainer(input) {
   return { kind: "container", name, target, port: 0, node: "node" };
 }
 
-export function containerName(id) {
+function containerName(id) {
   if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid environment identifier.");
   return `citropy-${id}`;
 }

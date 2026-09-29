@@ -3,7 +3,7 @@ import { reportError } from "../../lib/api.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
-import { Unplug } from "lucide-react";
+import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
 
 export function CachedThreadRow({ thread, categoryEnd, environment, showDisconnected, onConversation }: {
   thread: CachedThread;
@@ -33,7 +33,7 @@ export function CachedThreadRow({ thread, categoryEnd, environment, showDisconne
             <span className="thread-row-heading">
               <ProviderIcon provider={thread.provider} />
               <span className="thread-row-title">{thread.title}</span>
-              {showDisconnected && <span className="thread-status" role="img" aria-label={t("Disconnected")} title={t("Disconnected")}><Unplug size={12} /></span>}
+              {showDisconnected && <span className="thread-status" role="img" aria-label={t("Disconnected")} title={t("Disconnected")}><DisconnectedIcon size={14} /></span>}
             </span>
           </span>
         </button>

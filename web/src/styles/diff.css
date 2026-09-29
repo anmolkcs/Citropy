@@ -119,7 +119,7 @@
 }
 
 .diff-more:hover {
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 
@@ -158,9 +158,9 @@
 .message-actions .icon-btn { width: 24px; height: 24px; }
 .restore-options { display: grid; gap: var(--space-4); min-width: 0; margin: 0; padding: 0; border: 0; }
 .restore-choice { display: grid; grid-template-columns: 18px minmax(0, 1fr) 16px; align-items: center; gap: var(--space-12); padding: var(--space-12); border-radius: var(--r-sm); cursor: default; color: var(--text-2); transition: background-color 120ms ease; }
-.restore-choice:hover:not(:has(input:disabled)) { background: var(--raised); }
+.restore-choice:hover:not(:has(input:disabled)) { background: var(--highlight); }
 .restore-choice:has(input:checked) { background: var(--raised-2); color: var(--text); }
-.restore-choice:has(input:focus-visible) { outline: none; box-shadow: 0 0 0 2px var(--field-focus-color); background: var(--raised-2); }
+.restore-choice:has(input:focus-visible) { outline: none; box-shadow: 0 0 0 2px var(--field-focus-color); background: var(--highlight); }
 .restore-choice:has(input:disabled) { cursor: default; color: var(--text-3); }
 .restore-choice:has(input:disabled) > svg { opacity: 0.5; }
 .restore-choice-text { min-width: 0; }

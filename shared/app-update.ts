@@ -1,4 +1,4 @@
-export type AppUpdateStatus =
+type AppUpdateStatus =
   | "unsupported"
   | "idle"
   | "checking"

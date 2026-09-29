@@ -340,21 +340,6 @@ function applyGitEvent(
   }
 }
 
-function applyFileEvent(
-  event: Extract<ServerEvent, { t: "file.tree" } | { t: "file.content" }>,
-): void {
-  switch (event.t) {
-    case "file.tree": {
-      resolveResponse(event.requestId, event.entries);
-      return;
-    }
-    case "file.content": {
-      resolveResponse(event.requestId, event.content);
-      return;
-    }
-  }
-}
-
 export function applyEvent(state: AppState, event: ServerEvent, focused = true): void {
   if (unloadedDelta(state, event)) return;
   switch (event.t) {
@@ -415,10 +400,6 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
     case "git.diff":
     case "git.manage":
       applyGitEvent(state, event);
-      return;
-    case "file.tree":
-    case "file.content":
-      applyFileEvent(event);
       return;
     case "request.error":
       resolveResponse(event.requestId, undefined, event.error);

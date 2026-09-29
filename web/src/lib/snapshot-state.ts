@@ -14,6 +14,7 @@ export function applySnapshot(state: AppState, snapshot: Snapshot, focused = tru
   state.permissions = snapshot.permissions;
   state.questions = snapshot.questions ?? [];
   state.development = snapshot.development === true;
+  state.usingAppData = snapshot.usingAppData === true;
   state.logging = snapshot.logging ?? { enabled: false, file: "" };
   state.resumeAfterLimits = snapshot.resumeAfterLimits === true;
   state.questionDrafts = Object.fromEntries(Object.entries(state.questionDrafts).filter(([id]) => state.questions.some(question => question.id === id)));

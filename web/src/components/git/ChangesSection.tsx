@@ -29,7 +29,6 @@ export function ChangesSection({
   projectId,
   busy,
   disabled,
-  feedback,
   selection,
   revision,
   filter,
@@ -55,7 +54,6 @@ export function ChangesSection({
   projectId: string;
   busy: GitOperation | null;
   disabled: boolean;
-  feedback: { error: boolean; text: string; detail?: string } | null;
   selection: GitSelection | null;
   revision: number;
   filter: string;

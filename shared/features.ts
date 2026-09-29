@@ -1,6 +1,6 @@
 import type { Attachment, ProviderId, Usage } from "./protocol.ts";
 
-export interface WorktreeInfo {
+interface WorktreeInfo {
   path: string;
   branch: string;
   current: boolean;

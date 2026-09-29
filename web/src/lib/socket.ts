@@ -27,7 +27,6 @@ interface Connection {
 
 const connections = new Map<string, Connection>();
 const termListeners = new Set<TermListener>();
-const shellOutputListeners = new Set<(event: Extract<ServerEvent, { t: "shell.output" }>) => void>();
 const backgroundListeners = new Set<() => void>();
 let backgrounds: Record<string, EnvironmentSlice> = {};
 
@@ -138,10 +137,6 @@ function receive(connection: Connection, current: WebSocket, event: ServerEvent)
     if (connection.sequence && event.sequence !== connection.sequence + 1) { connection.epoch = ""; current.close(); return; }
     connection.sequence = event.sequence;
   }
-  if (event.t === "shell.output") {
-    if (connection.id === environmentId()) for (const listener of shellOutputListeners) listener(event);
-    return;
-  }
   if (event.t === "term.data" || event.t === "term.exit") {
     if (connection.id === environmentId()) for (const listener of termListeners) listener(event);
     return;
@@ -169,7 +164,7 @@ function open(connection: Connection, prepared?: PreparedConnection): void {
     flush(connection);
     connection.socket = null;
     setConnected(connection, false);
-    rejectResponses(false, connection.id);
+    rejectResponses(connection.id);
     connection.reconnectTimer = setTimeout(() => open(connection), connection.backoff);
     connection.backoff = Math.min(connection.backoff * 1.7, 8000);
   };
@@ -192,7 +187,7 @@ function create(id: string, endpoint: string, prepared?: PreparedConnection, sli
   return connection;
 }
 
-function close(connection: Connection, switching = false): void {
+function close(connection: Connection): void {
   flush(connection);
   if (connection.rememberTimer) rememberCatalog(connection);
   if (connection.reconnectTimer) clearTimeout(connection.reconnectTimer);
@@ -210,7 +205,7 @@ function close(connection: Connection, switching = false): void {
   connection.epoch = "";
   connection.sequence = 0;
   setConnected(connection, false);
-  rejectResponses(switching, connection.id);
+  rejectResponses(connection.id);
   connections.delete(connection.id);
   publishBackgrounds();
 }
@@ -267,13 +262,7 @@ export function switchConnection(from: string, to: string): EnvironmentSlice {
   }
   flush(target);
   termListeners.clear();
-  shellOutputListeners.clear();
   return target.slice;
-}
-
-export function onShellOutput(listener: (event: Extract<ServerEvent, { t: "shell.output" }>) => void): () => void {
-  shellOutputListeners.add(listener);
-  return () => { shellOutputListeners.delete(listener); };
 }
 
 export function onTerminal(listener: TermListener): () => void {
@@ -298,7 +287,7 @@ export function sendToEnvironment(environment: string, event: ClientEvent): bool
     resolveResponse(event.requestId, undefined, "Citropy is reconnecting. This request was not sent.");
     return true;
   }
-  if (["browser.action", "desktop.open", "panel.open", "panel.close", "panel.rename", "panel.move", "term.data", "term.ack", "term.unsubscribe", "shell.watch"].includes(event.t)) return true;
+  if (["browser.action", "desktop.open", "panel.open", "panel.close", "panel.rename", "panel.move", "term.data", "term.ack", "term.unsubscribe"].includes(event.t)) return true;
   connection.outbox.push(event);
   return true;
 }
@@ -353,14 +342,6 @@ export function connect(prepared?: PreparedConnection): void {
   const id = environmentId();
   if (connections.has(id)) return;
   create(id, serverUrl(""), prepared, pickEnvironmentSlice(useApp.getState()));
-}
-
-export function disconnect(switching = false): void {
-  const connection = connections.get(environmentId());
-  if (connection) close(connection, switching);
-  termListeners.clear();
-  shellOutputListeners.clear();
-  useApp.setState({ connected: false });
 }
 
 export function waitUntilConnected(signal: AbortSignal): Promise<void> {

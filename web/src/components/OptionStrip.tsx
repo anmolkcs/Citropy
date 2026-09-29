@@ -14,7 +14,7 @@ function maxScroll(strip: HTMLElement): number {
 
 export function OptionStrip({ label, selected, children }: { label: string; selected: string; children: ReactNode }) {
   const t = useI18n();
-  const zone = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
   const target = useRef<number>(undefined);
@@ -41,7 +41,7 @@ export function OptionStrip({ label, selected, children }: { label: string; sele
 
   useEffect(() => {
     const element = strip.current!;
-    const area = zone.current!;
+    const area = frame.current!;
     let pending = 0;
     const onWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
@@ -76,8 +76,8 @@ export function OptionStrip({ label, selected, children }: { label: string; sele
 
   const scrolls = !(ends.start && ends.end);
   return (
-    <div ref={zone} className="option-strip-zone">
-      <div className="option-strip-frame">
+    <div className="option-strip-zone">
+      <div ref={frame} className="option-strip-frame">
         <div ref={strip} className="option-strip" role="group" aria-label={label}>{children}</div>
         {scrolls && (
           <>

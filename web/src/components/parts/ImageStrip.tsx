@@ -49,7 +49,7 @@ export function ImageStrip({ part, compact = false }: { part: ToolPart; compact?
             title={source.name}
             onClick={() => setPreview(source.key)}
           >
-            {missing.has(source.src) ? <span className="image-unavailable" role="img" aria-label={t("Image unavailable")}><ImageOff size={20} aria-hidden="true" /><span>{t("Image unavailable")}</span></span> : source.video ? <span className="video-thumbnail">
+            {missing.has(source.src) ? <span className="image-unavailable" role="img" aria-label={t("Image unavailable")}><ImageOff size={compact ? 14 : 20} aria-hidden="true" /><span>{t("Image unavailable")}</span></span> : source.video ? <span className="video-thumbnail">
               <video
                 src={`${source.src}#t=0.1`}
                 preload="metadata"

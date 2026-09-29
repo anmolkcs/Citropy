@@ -236,7 +236,7 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
 }
 @media (hover: hover) and (pointer: fine) {
   .code-copy:hover {
-    background: var(--raised);
+    background: var(--highlight);
     color: var(--text);
   }
 }

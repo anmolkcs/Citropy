@@ -54,7 +54,9 @@ function writeCache(models: ModelOption[]): void {
   try {
     mkdirSync(dataRoot, { recursive: true });
     writeFileSync(cachePath(), JSON.stringify({ at: Date.now(), models }));
-  } catch {}
+  } catch (error) {
+    console.error("Saving the Cursor model cache failed:", error);
+  }
 }
 
 function refresh(): Promise<ModelOption[]> {

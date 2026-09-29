@@ -22,7 +22,7 @@ import type { Attachment } from "../shared/protocol.ts";
 import type { FilePreviewData } from "../shared/features.ts";
 
 const root = join(dataRoot, "attachments");
-export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 const MAX_TEXT_BYTES = 512 * 1024;
 const types: Record<string, string> = {
   ".png": "image/png",
@@ -49,7 +49,7 @@ const types: Record<string, string> = {
   ".m4a": "audio/mp4",
 };
 
-export const fileMime = (path: string) =>
+const fileMime = (path: string) =>
   types[extname(path).toLowerCase()] ?? "application/octet-stream";
 
 function directory(threadId: string): string {
@@ -174,7 +174,7 @@ function readImagePath(threadId: string, path: string): string | null {
   return found ? path : null;
 }
 
-export async function assetPath(params: URLSearchParams): Promise<string> {
+async function assetPath(params: URLSearchParams): Promise<string> {
   const threadId = params.get("threadId") ?? "";
   const attachmentId = params.get("attachmentId");
   if (attachmentId) return (await attachmentById(threadId, attachmentId)).path;

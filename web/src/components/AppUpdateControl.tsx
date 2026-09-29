@@ -213,6 +213,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
           <div className="app-update-heading">
             {state.status === "current" ? <Check size={16} /> : <Icon size={16} />}
             <strong>{t(title)}</strong>
+            {notes && variant !== "settings" && <span className="app-update-arrows">{releaseArrows}</span>}
           </div>
           {state.currentVersion && (
             <small>
@@ -283,7 +284,6 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
                   </motion.div>
                 </AnimatePresence>
               </div>
-              {variant !== "settings" && <div className="app-update-notes-footer">{releaseArrows}</div>}
             </div>
           ) : state.notesError && (
             <p className="app-update-notes-error">{t("Could not load what this release includes.")}</p>

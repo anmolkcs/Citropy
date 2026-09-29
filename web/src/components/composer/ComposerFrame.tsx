@@ -31,18 +31,22 @@ function svgMask(width: number, height: number, content: string) {
 function frameMasks(width: number, height: number, shell: Box, tabs: Tab[]) {
   const shapes = (fill: string, inset: number) =>
     `<g fill="${fill}"><rect x="${shell.left + inset}" y="${shell.top + inset}" width="${shell.width - 2 * inset}" height="${shell.height - 2 * inset}" rx="${Math.max(shell.radius - inset, 0)}"/>${tabs.map((tab) => `<path d="${tabPath(tab, inset)}"/>`).join("")}</g>`;
+  const ringMask = (thickness: number) => svgMask(width, height, `<mask id="m">${shapes("#fff", 0)}${shapes("#000", thickness)}</mask><rect width="100%" height="100%" mask="url(#m)"/>`);
   return {
     fill: svgMask(width, height, shapes("#000", 0)),
-    ring: svgMask(width, height, `<mask id="m">${shapes("#fff", 0)}${shapes("#000", rim)}</mask><rect width="100%" height="100%" mask="url(#m)"/>`),
+    ring: ringMask(rim),
+    outline: ringMask(1),
   };
 }
 
 export function ComposerFrame() {
   const glassRef = useRef<HTMLSpanElement>(null);
   const ringRef = useRef<HTMLSpanElement>(null);
+  const outlineRef = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const glass = glassRef.current!;
     const ring = ringRef.current!;
+    const outline = outlineRef.current!;
     const shell = ring.parentElement!;
     const tabList = shell.querySelector<HTMLElement>(":scope > .composer-tabs")!;
     let geometry = "";
@@ -72,9 +76,10 @@ export function ComposerFrame() {
       if (nextGeometry === geometry) return;
       geometry = nextGeometry;
       const masks = frameMasks(shellBox.width, rise + shellBox.height, shellBox, visible);
-      for (const layer of [glass, ring]) layer.style.top = `${-rise}px`;
+      for (const layer of [glass, ring, outline]) layer.style.top = `${-rise}px`;
       glass.style.maskImage = masks.fill;
       ring.style.maskImage = masks.ring;
+      outline.style.maskImage = masks.outline;
     };
     draw();
     const resize = new ResizeObserver(draw);
@@ -91,6 +96,7 @@ export function ComposerFrame() {
   }, []);
   return <>
     <span ref={glassRef} className="composer-glass" aria-hidden="true" />
+    <span ref={outlineRef} className="composer-outline" aria-hidden="true" />
     <span ref={ringRef} className="composer-focus-ring" aria-hidden="true" />
   </>;
 }

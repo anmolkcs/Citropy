@@ -1,5 +1,5 @@
 import { environmentStorage } from "./environment.ts";
-import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
+import { MAX_CONTENT_WIDTH, MIN_CONTENT_WIDTH, useApp, type NavigationStyle, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { loadSpanish, type Language } from "./translations.ts";
 import { applyCustomColor } from "./custom-theme.ts";
@@ -60,12 +60,6 @@ export function toggleSidebar(): void {
   environmentStorage.setItem("citropy.sidebar", next ? "1" : "0");
 }
 
-export function setSidebarMode(mode: SidebarMode): void {
-  if (mode !== "workspaces" && mode !== "global") return;
-  useApp.setState({ sidebarMode: mode });
-  environmentStorage.setItem("citropy.sidebarMode", mode);
-}
-
 export function setSearchEngine(engine: SearchEngine): void {
   useApp.setState({ searchEngine: engine });
   environmentStorage.setItem("citropy.searchEngine", engine);
@@ -102,6 +96,15 @@ export function setBackgroundFocusSpread(value: number): void {
   const backgroundFocusSpread = Math.max(0, Math.min(400, Math.round(value)));
   useApp.setState({ backgroundFocusSpread });
   environmentStorage.setItem("citropy.backgroundFocusSpread", String(backgroundFocusSpread));
+}
+
+const ASCII_LIMITS = { asciiDim: 90, asciiBlur: 12, asciiFocus: 100 };
+
+export function setAsciiLook(setting: keyof typeof ASCII_LIMITS, value: number): void {
+  if (!Number.isFinite(value)) return;
+  const level = Math.max(0, Math.min(ASCII_LIMITS[setting], Math.round(value)));
+  useApp.setState({ [setting]: level });
+  environmentStorage.setItem(`citropy.${setting}`, String(level));
 }
 
 export function setUiTransparency(value: number): void {
@@ -142,6 +145,18 @@ export function setOpaquePopups(value: boolean): void {
   useApp.setState({ opaquePopups: value });
   environmentStorage.setItem("citropy.opaquePopups", value ? "1" : "0");
 }
+
+export function setContentWidth(value: number): void {
+  const contentWidth = Math.max(MIN_CONTENT_WIDTH, Math.min(MAX_CONTENT_WIDTH, Math.round(value)));
+  useApp.setState({ contentWidth });
+  environmentStorage.setItem("citropy.contentWidth", String(contentWidth));
+}
+
+export function setBackgroundEverywhere(value: boolean): void {
+  useApp.setState({ backgroundEverywhere: value });
+  environmentStorage.setItem("citropy.backgroundEverywhere", value ? "1" : "0");
+}
+
 
 export function setShowFailedTools(value: boolean): void {
   useApp.setState({ showFailedTools: value });

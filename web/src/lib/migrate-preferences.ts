@@ -1,4 +1,4 @@
-export function migratePreferences(storage: Storage): void {
+function migratePreferences(storage: Storage): void {
   const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
     .filter((key): key is string => Boolean(key?.startsWith("loom.")));
   for (const key of keys) {

@@ -3,7 +3,6 @@ import { BarChart3, GitBranch, Github, MessagesSquare, Settings } from "lucide-r
 
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { LocalSharing } from "./LocalSharing.tsx";
-import { AgentsPanel } from "./AgentsPanel.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
 import { useApp } from "../lib/store.ts";
@@ -55,7 +54,6 @@ export function NavigationStrip({
       <div className="navigation-strip-end">
         {button({ name: "Usage", icon: BarChart3, run: onUsage, view: "usage" })}
         <LocalSharing />
-        <AgentsPanel />
         <AppUpdateControl variant="strip" />
         {button({ name: "Settings", icon: Settings, run: onSettings, view: "settings" })}
       </div>

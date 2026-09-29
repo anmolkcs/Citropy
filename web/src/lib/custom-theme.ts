@@ -55,7 +55,7 @@ function readableText(accent: string, scheme: Scheme): string {
   return luminance(accent) > 0.18 ? mix("#000000", accent, 0.4) : accent;
 }
 
-export function customThemeTokens(accent: string, scheme: Scheme): Record<string, string> {
+function customThemeTokens(accent: string, scheme: Scheme): Record<string, string> {
   if (!isHexColor(accent)) throw new Error(`custom color must be #rrggbb, got ${accent}`);
   const tint = 0.06;
   return {

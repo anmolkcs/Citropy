@@ -14,7 +14,7 @@ import type {
 const cached = new Map<string, ProviderUsage>();
 const pending = new Map<string, Promise<ProviderUsage>>();
 
-export function parseProviderLimits(
+function parseProviderLimits(
   provider: ProviderId,
   result: Record<string, any>,
 ): ProviderUsage {

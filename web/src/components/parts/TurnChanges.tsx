@@ -43,9 +43,9 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
           <ChevronRight size={14} aria-hidden="true" />
         </button>
       ))}
-      {hidden > 0 && (
-        <button type="button" className="turn-changes-file turn-changes-more" onClick={() => setExpanded(true)}>
-          <span>{t("Show {count} more", { count: hidden })}</span>
+      {part.files.length > SHOWN_FILES && (
+        <button type="button" className="turn-changes-file turn-changes-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+          <span>{expanded ? t("Show less") : t("Show {count} more", { count: hidden })}</span>
           <ChevronRight size={14} aria-hidden="true" />
         </button>
       )}

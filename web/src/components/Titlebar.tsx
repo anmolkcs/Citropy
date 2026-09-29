@@ -1,14 +1,15 @@
-import { Server } from "lucide-react";
+import { ArrowLeft, ArrowRight, Server } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { environmentName, isRemote, useEnvironments } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { GitBranch, PanelLeft, PanelRight, SquarePen } from "./icons.ts";
 import { toggleInspector, useApp } from "../lib/store.ts";
 import { createThread } from "../lib/actions.ts";
+import { goBack, goForward, useNavigationHistory } from "../lib/navigation-history.ts";
+import { AgentsPanel } from "./AgentsPanel.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
 import { ComputerIndicator } from "./ComputerPane.tsx";
 import { WindowControls } from "./WindowControls.tsx";
-import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
 import { ModeSwitch } from "./ModeSwitch.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 
@@ -16,13 +17,13 @@ import type { NotificationTarget } from "../../../shared/protocol.ts";
 export function Titlebar({
   view,
   sidebarOpen,
-  workspaceDisabled,
+  sidebarToggle,
   onToggleSidebar,
   onNotification,
 }: {
   view: "chat" | "git" | "github" | "settings" | "usage";
   sidebarOpen: boolean;
-  workspaceDisabled: boolean;
+  sidebarToggle: boolean;
   onToggleSidebar: () => void;
   onNotification: (target: NotificationTarget) => void;
 }) {
@@ -36,9 +37,9 @@ export function Titlebar({
   );
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
-  const globalMode = useApp((state) => state.sidebarMode === "global");
   const canCreateThread = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
   const chatMode = useApp((state) => state.appMode === "chat");
+  const history = useNavigationHistory();
 
   const project = projects.find((entry) => entry.id === activeProjectId);
   // The project-level Git cache can still describe a previously selected worktree.
@@ -47,7 +48,7 @@ export function Titlebar({
   const branch = thread
     ? thread.workspaceBranch ?? (onProjectCheckout ? project?.branch : undefined)
     : project?.branch;
-  const workspaceContext = isRemote() || (!chatMode && (!globalMode || Boolean(branch && view === "chat")));
+  const workspaceContext = isRemote() || (!chatMode && Boolean(branch && view === "chat"));
   const header = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = header.current;
@@ -68,13 +69,8 @@ export function Titlebar({
   return (
     <header ref={header} className="topbar" data-desktop={Boolean(window.citropyDesktop)}>
       <div className="topbar-left">
-        <div className="brand">
-          <span>Citropy</span>
-          <ModeSwitch />
-        </div>
-        <div className="topbar-navigation">
-          <NotificationCenter key={environment} onOpen={onNotification} />
-          <button
+        <div className="topbar-start">
+          {sidebarToggle && <button
             className="icon-btn sidebar-toggle"
             type="button"
             onClick={onToggleSidebar}
@@ -83,6 +79,18 @@ export function Titlebar({
             title={t("Toggle sidebar")}
           >
             <PanelLeft size={15} />
+          </button>}
+          <div className="brand">
+            <span>Citropy</span>
+            <ModeSwitch />
+          </div>
+        </div>
+        <div className="topbar-navigation">
+          <button className="icon-btn topbar-history" type="button" onClick={goBack} disabled={!history.canGoBack} aria-label={t("Back")} title={t("Back")}>
+            <ArrowLeft size={15} />
+          </button>
+          <button className="icon-btn topbar-history" type="button" onClick={goForward} disabled={!history.canGoForward} aria-label={t("Forward")} title={t("Forward")}>
+            <ArrowRight size={15} />
           </button>
         </div>
       </div>
@@ -92,7 +100,6 @@ export function Titlebar({
       >
         {workspaceContext && <div className="workspace-breadcrumb">
           {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><Server size={13} /><span className="truncate">{environmentName()}</span></span>}
-          {!globalMode && !chatMode && <WorkspaceSelector disabled={workspaceDisabled} />}
           {branch && view === "chat" && !chatMode && (
             <span className="branch" title={branch}>
               <GitBranch size={12} />
@@ -115,6 +122,8 @@ export function Titlebar({
       </nav>
 
       <div className="topbar-right">
+        <AgentsPanel />
+        <NotificationCenter key={environment} onOpen={onNotification} />
         <ComputerIndicator />
         {view === "chat" && (
           <button

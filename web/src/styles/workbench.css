@@ -22,7 +22,7 @@
   background: var(--canvas);
 }
 :root[data-scheme="dark"] .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .workbench-open {
   display: grid;
@@ -39,11 +39,11 @@
 }
 .workbench-open:hover,
 .workbench-open[aria-expanded="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
   color: var(--text);
 }
 .workbench-tabs {
-  --selection-fill: var(--raised);
+  --selection-fill: var(--highlight);
   display: flex;
   align-items: stretch;
   gap: var(--space-4);
@@ -91,7 +91,7 @@
   pointer-events: none;
 }
 .workbench-tab:hover:not([data-active="true"]) {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .workbench-tab > [role="tab"] {
   display: flex;
@@ -121,7 +121,7 @@
   opacity: 1;
 }
 .workbench-close:hover {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .workbench-tabs > .menu-wrap {
   flex: none;
@@ -138,7 +138,7 @@
 .workbench-overflow:hover,
 .workbench-overflow[aria-expanded="true"] {
   color: var(--text);
-  background: var(--raised);
+  background: var(--highlight);
 }
 @container workspace-tab (max-width: 100px) {
   .workbench-tab > [role="tab"] {
@@ -234,7 +234,7 @@
 }
 .browser-address :is(a, button):hover {
   color: var(--text);
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .browser-screen {
   display: grid;
@@ -300,7 +300,7 @@
 }
 .browser-viewport-trigger:hover:not(:disabled),
 .browser-viewport-trigger[aria-expanded="true"] {
-  background: var(--accent-soft);
+  background: var(--highlight);
 }
 .browser-viewport-size {
   color: var(--text-3);
@@ -550,7 +550,7 @@
 .thread-child:hover,
 .thread-child[data-active="true"] {
   --child-surface: var(--raised);
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 .thread-child[data-active="true"] { background: transparent; }
@@ -711,7 +711,7 @@
   transition: background var(--dur-instant) var(--ease-out);
 }
 .panel-starter-card:hover {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .panel-starter-label {
   color: var(--text);

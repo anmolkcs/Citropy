@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Menu } from "./Menu.tsx";
 
-export interface SelectOption {
+interface SelectOption {
   value: string;
   label: string;
   icon?: ReactNode;

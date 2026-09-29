@@ -7,7 +7,7 @@ import { computerState, stopComputer } from "./computer.ts";
 import { createServer, type IncomingMessage } from "node:http";
 import { pendingQuestions } from "./questions.ts";
 import { attachWorkspaceFeed } from "./workspace-feed.ts";
-import { shellList, readShellOutput, watchShellOutput } from "./shells.ts";
+import { shellList } from "./shells.ts";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ import { bus } from "./bus.ts";
 import { eventJournal } from "./event-journal.ts";
 import { randomUUID } from "node:crypto";
 import { dev, developmentOrigin, host, origin, port } from "./config.ts";
+import { usingAppData } from "./paths.ts";
 import { activeWork, duringCommand, trackRequest } from "./activity.ts";
 import { startDevelopment } from "./development.ts";
 import { onShutdown, shutdown, shuttingDown } from "./lifecycle.ts";
@@ -56,7 +57,7 @@ bus.subscribe((event) => {
     void desktopRequest("notification", {
       ...event.notification,
       silent: !store.notificationPreferences.sound,
-    }).catch(() => {});
+    }).catch((error) => console.error("Desktop notification failed:", error));
 });
 
 function snapshot(): Snapshot {
@@ -76,6 +77,7 @@ function snapshot(): Snapshot {
     permissions: pendingRequests(),
     questions: pendingQuestions(),
     development: dev,
+    usingAppData,
     projects: [...store.projects.values()].sort((a, b) => b.lastOpened - a.lastOpened),
     threads: store.allMeta().sort((a, b) => b.updatedAt - a.updatedAt),
     providers: providerInfo(),
@@ -200,11 +202,8 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
   if (new URL(req.url ?? "/socket", origin).searchParams.has("desktop")) { attachDesktop(socket); return; }
   if (new URL(req.url ?? "/socket", origin).searchParams.get("workspace") === "1") { attachWorkspaceFeed(socket); return; }
   const consumer = randomUUID();
-  let watchedShell: string | null = null;
-  let unwatchShell: (() => void) | undefined;
   const subscriptions = new Map<string, { pending: number; flow: boolean; streamId: string }>();
   const send = (event: ServerEvent) => {
-    if (event.t === "shell.output" && event.id !== watchedShell) return;
     if (event.t === "term.data") {
       const subscription = subscriptions.get(event.termId);
       if (!subscription) return;
@@ -232,16 +231,6 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       event = JSON.parse(String(raw)) as ClientEvent;
       if (!event || typeof event !== "object") return;
     } catch {
-      return;
-    }
-    if (event.t === "shell.watch") {
-      unwatchShell?.();
-      unwatchShell = undefined;
-      watchedShell = typeof event.id === "string" && event.id.length <= 300 ? event.id : null;
-      if (watchedShell) {
-        unwatchShell = watchShellOutput(watchedShell);
-        send({ t: "shell.output", id: watchedShell, output: readShellOutput(watchedShell) });
-      }
       return;
     }
     if (event.t === "term.ack") {
@@ -276,7 +265,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       else send({ t: "toast", level: "error", text: (error as Error).message });
     }
   });
-  socket.on("close", () => { cancelThreadSearch(send); unsubscribe(); unwatchShell?.(); terminals.release(consumer); });
+  socket.on("close", () => { cancelThreadSearch(send); unsubscribe(); terminals.release(consumer); });
 });
 
 desktopEvents.on("event", (event) => {

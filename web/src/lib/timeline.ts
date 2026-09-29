@@ -202,10 +202,6 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   return timeline;
 }
 
-export function sameTimelineRows(a: TimelineRow[], b: TimelineRow[]): boolean {
-  return a.length === b.length && a.every((item, index) => sameTimelineRow(item, b[index]!));
-}
-
 function sameTimelineRow(item: TimelineRow, other: TimelineRow): boolean {
   if (item.key !== other.key || item.messageId !== other.messageId ||
     item.first !== other.first || item.last !== other.last || item.separator !== other.separator || item.row?.kind !== other.row?.kind) return false;

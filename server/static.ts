@@ -1,7 +1,8 @@
 import { closeSync, createReadStream, fstatSync, openSync, realpathSync, statSync } from "node:fs";
-import { extname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { extname, join, posix, relative, resolve, sep } from "node:path";
 import { pipeline } from "node:stream";
 import type { ServerResponse } from "node:http";
+import { inside, sameFile } from "./files.ts";
 
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -16,17 +17,6 @@ const TYPES: Record<string, string> = {
   ".ico": "image/x-icon",
   ".map": "application/json",
 };
-
-/** Return whether an absolute file path is lexically contained by the root. */
-function inside(root: string, file: string): boolean {
-  const path = relative(root, file);
-  return path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
-}
-
-/** Return whether two stat results identify the same filesystem object. */
-function sameFile(left: { dev: number; ino: number }, right: { dev: number; ino: number }): boolean {
-  return left.dev === right.dev && left.ino === right.ino;
-}
 
 /** Open a regular file within a canonical root; the caller owns the returned descriptor. */
 function openFile(root: string, file: string) {

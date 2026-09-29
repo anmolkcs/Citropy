@@ -54,7 +54,7 @@
   transition: background var(--dur-instant) var(--ease-out);
 }
 .note-row:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .note-row-title {
   color: var(--text);
@@ -103,7 +103,7 @@
 }
 .note-title-input:hover,
 .note-title-input:focus {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .note-title-input::placeholder {
   color: var(--text-4);

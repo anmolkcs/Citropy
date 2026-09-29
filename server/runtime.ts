@@ -345,7 +345,9 @@ export class ThreadRuntime {
       try {
         await session.configure({ model: settings.model, effort: settings.effort, contextMax: settings.contextWindow, fastMode: settings.fastMode, permissionMode: settings.permissionMode });
         live = true;
-      } catch {}
+      } catch (error) {
+        console.error("Live settings change failed, restarting the session:", this.id, error);
+      }
     }
     this.#checkSession(generation);
     if (!live) {
@@ -778,7 +780,7 @@ export class ThreadRuntime {
       if (this.#thread.provider === "cursor" && !this.#providerTitled && this.#autoTitle !== undefined && this.#thread.title === this.#autoTitle)
         void generateThreadTitle(this.id, true);
       this.#resume = completed && !event.error;
-      this.#checkpointCompletion = finishCheckpoint(this.#thread, messageId).catch(() => {}).finally(() => {
+      this.#checkpointCompletion = finishCheckpoint(this.#thread, messageId).catch((error) => console.error("Checkpoint failed:", this.id, error)).finally(() => {
         this.#checkpointCompletion = null;
         this.#pump();
       });

@@ -114,7 +114,7 @@ app.on("before-quit", (event) => {
   quitting = true;
   diagnose("app.quitting");
   folderChoice?.abort();
-  void stopComputer().then(() => environments?.dispose()).then(() => backend?.stop()).catch(() => {}).finally(() => {
+  void stopComputer().then(() => environments?.dispose()).then(() => backend?.stop()).catch((error) => diagnose("app.quit-cleanup-failed", { reason: error.message })).finally(() => {
     updates?.dispose();
     for (const notification of notifications) notification.close();
     for (const tab of tabs.values())
@@ -1216,7 +1216,7 @@ app
       icon: fileURLToPath(new URL(`./assets/${development ? "citropy-dev" : "citropy"}.png`, import.meta.url)),
       frame: false,
       ...(process.platform === "darwin"
-        ? { titleBarStyle: "hidden", trafficLightPosition: { x: 15, y: 20 } }
+        ? { titleBarStyle: "hidden", trafficLightPosition: { x: 15, y: 14 } }
         : {}),
       show: false,
       backgroundColor: "#101010",
@@ -1242,7 +1242,9 @@ app
           }),
           { mode: 0o600 },
         );
-      } catch {}
+      } catch (error) {
+        diagnose("window.save-failed", { reason: error.message });
+      }
     });
     window.on("closed", () => {
       diagnose("app.quit-requested", { reason: "window-closed" });
@@ -1506,7 +1508,7 @@ app
     void window.webContents.setVisualZoomLevelLimits(1, 1);
     window.webContents.setWindowOpenHandler(({ url }) => {
       try {
-        if (["http:", "https:", "mailto:"].includes(new URL(url).protocol)) void shell.openExternal(url).catch(() => {});
+        if (["http:", "https:", "mailto:"].includes(new URL(url).protocol)) void shell.openExternal(url).catch((error) => dialog.showErrorBox("Citropy could not open the link", error.message));
       } catch {}
       return { action: "deny" };
     });

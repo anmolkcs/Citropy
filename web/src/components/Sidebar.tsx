@@ -47,12 +47,10 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   const creatingThread = useApp((state) => state.creatingThread);
   const uiScale = useApp((state) => state.uiScale);
   const chatMode = useApp((state) => state.appMode === "chat");
-  const globalMode = useApp((state) => state.sidebarMode === "global" && state.appMode === "code");
+  const globalMode = !chatMode;
   const { activeId: environment, connections } = useEnvironments();
   const background = useBackgroundEnvironments();
   const catalog = useWorkspaceCatalog();
-  const [allProjectsChecked, setAllProjects] = useState(false);
-  const allProjects = allProjectsChecked && !chatMode;
   const [query, setQuery] = useState("");
   const [focusedRow, setFocusedRow] = useState<string>();
   const viewport = useRef<HTMLDivElement>(null);
@@ -60,7 +58,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   useEffect(() => setQuery(""), [activeProjectId, environment]);
   useEffect(() => { setFocusedRow(undefined); }, [environment]);
 
-  const matches = useThreadSearch(query, globalMode || allProjects ? undefined : (activeProjectId ?? undefined));
+  const matches = useThreadSearch(query, globalMode ? undefined : (activeProjectId ?? undefined));
   const threadsByEnvironment = useMemo(() => Object.fromEntries([
     [environment, threadMap],
     ...Object.entries(background).filter(([, slice]) => slice.connected).map(([id, slice]) => [id, slice.threads]),
@@ -212,7 +210,6 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     globalMode={globalMode}
     query={query}
     match={matches?.find((result) => result.environment === item.environment && result.threadId === item.thread.id)}
-    projectName={!globalMode && query.trim() && allProjects ? (projects.find((project) => project.id === item.thread.projectId)?.name ?? "") : undefined}
     categoryEnd={groups.some((group) => group.threads.at(-1) === item)}
     drag={threadDrag}
     preview={preview.controls}
@@ -273,14 +270,8 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         >
           <MessageSquarePlus size={18} />
         </button>}
-        {globalMode && <WorkspaceSelector addOnly />}
+        {globalMode && <WorkspaceSelector />}
       </div>
-      {query.trim() && !globalMode && !chatMode && (
-        <label className="search-scope">
-          <input type="checkbox" checked={allProjects} onChange={(event) => setAllProjects(event.target.checked)} />
-          {t("All workspaces")}
-        </label>
-      )}
       <div className="rail-scroll">
         <div className="rail-list scroll" ref={viewport}
           onScroll={(event) => {
@@ -297,7 +288,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         >
           <div className="thread-list sliding-selection" ref={threadList} data-virtualized={virtualized} data-dragging={Boolean(threadDrag.draggingId)} style={virtualized ? { height: list.getTotalSize(), position: "relative" } : undefined}>
             <SelectionHighlight value={activeThreadId ? threadKey(environment, activeThreadId) : undefined} layout={rowOrder} selector='.thread-card[data-active="true"], .thread-child[data-active="true"]' />
-            {groups.map((group) => <section className="thread-category" data-category={group.id} key={group.id} style={virtualized ? { display: "contents" } : undefined}>
+            {groups.map((group, index) => <section className="thread-category" data-category={group.id} data-server-start={index > 0 && group.environment !== undefined && group.environment !== "local" && groups[index - 1]!.environment !== group.environment || undefined} key={group.id} style={virtualized ? { display: "contents" } : undefined}>
               {renderGroup(group)}
             </section>)}
             {projectDrag.drop && <div className="project-drop-line" style={{ top: projectDrag.drop.top }} />}

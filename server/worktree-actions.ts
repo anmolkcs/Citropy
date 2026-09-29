@@ -1,11 +1,10 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { mkdir, mkdtemp, writeFile, rm, cp, lstat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { store } from "./store.ts";
 import { dataRoot } from "./paths.ts";
 import { inside } from "./files.ts";
+import { git } from "./git.ts";
 import { uid } from "./ids.ts";
 import { workspacePath, workspaceOptions } from "./workspaces.ts";
 import { assertWorkspaceIdle, checkpointLock, historyPrompt } from "./checkpoints.ts";
@@ -14,8 +13,6 @@ import { panelList, closePanel } from "./panels.ts";
 import * as terminals from "./terminals.ts";
 import { emptyUsage, type Thread } from "../shared/protocol.ts";
 
-const run = promisify(execFile);
-const git = async (cwd: string, args: string[]) => (await run("git", args, { cwd, timeout: 60000, maxBuffer: 128 * 1024 * 1024, env: { ...process.env, GIT_LITERAL_PATHSPECS: "1" } })).stdout;
 
 async function closeTaskTerminals(thread: Thread): Promise<void> {
   const panels = panelList().filter(panel => panel.kind === "terminal" && panel.threadId === thread.id);

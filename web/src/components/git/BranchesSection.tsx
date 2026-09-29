@@ -20,7 +20,6 @@ import type { ReactNode } from "react";
 
 export function BranchesSection({
   data,
-  busy,
   disabled,
   filter,
   branch,
@@ -36,7 +35,6 @@ export function BranchesSection({
   act,
 }: {
   data: GitOverview;
-  busy: GitOperation | null;
   disabled: boolean;
   filter: string;
   branch: string;

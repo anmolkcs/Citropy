@@ -102,7 +102,13 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
       visibleFrom: () => metrics.current.left,
     });
   }, [colors, reducedMotion, metrics]);
-  return <canvas ref={canvas} className="stage-backdrop" aria-hidden="true" />;
+  const dim = useApp((state) => state.asciiDim);
+  const blur = useApp((state) => state.asciiBlur);
+  const focus = useApp((state) => state.asciiFocus);
+  return <>
+    <canvas ref={canvas} className="stage-backdrop" style={{ "--dim": dim / 100, "--blur": `${blur}px` } as CSSProperties} aria-hidden="true" />
+    {focus > 0 && <div className="stage-focus-band stage-focus-ascii" style={{ "--focus": focus / 100 } as CSSProperties} aria-hidden="true" />}
+  </>;
 }
 
 const CONTRAST_GROUPS = [".topbar-left .brand", ".topbar-navigation", ".topbar-center", ".topbar-right", ".window-controls"];

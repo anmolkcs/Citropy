@@ -351,7 +351,7 @@
   color: var(--text-3);
 }
 .git-manager .git-stage-all:hover:not(:disabled) {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .git-list-hint {
   color: var(--text-3);
@@ -370,12 +370,12 @@
 }
 
 .git-file-row:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .git-file-row[data-selected="true"] {
   background: transparent;
 }
-.git-file-groups { --selection-fill: var(--raised-2); }
+.git-file-groups { --selection-fill: var(--highlight); }
 .git-file-name {
   display: flex;
   align-items: center;
@@ -728,12 +728,12 @@
   margin-top: var(--space-4);
 }
 .git-history-row:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .git-history-row[aria-pressed="true"] {
   background: transparent;
 }
-:is(.git-commits, .git-stash-list) { --selection-fill: var(--accent-soft); }
+:is(.git-commits, .git-stash-list) { --selection-fill: var(--highlight); }
 .git-history-row[aria-pressed="true"] > svg {
   color: var(--accent-text);
 }

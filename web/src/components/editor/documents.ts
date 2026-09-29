@@ -25,7 +25,7 @@ export interface TextDocument extends DocumentBase {
   listener: monaco.IDisposable;
 }
 
-export interface PreviewDocument extends DocumentBase {
+interface PreviewDocument extends DocumentBase {
   kind: "preview";
 }
 

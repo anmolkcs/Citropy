@@ -8,7 +8,7 @@ import type { ThreadMeta } from "../shared/protocol.ts";
 const TICK_MS = 60_000;
 const RESET_GRACE_MS = 30_000;
 const UNKNOWN_RESET_RETRY_MS = 15 * 60_000;
-export const RESUME_PROMPT = "Your usage limit has reset. Continue the task from where you stopped.";
+const RESUME_PROMPT = "Your usage limit has reset. Continue the task from where you stopped.";
 
 const checking = new Set<string>();
 

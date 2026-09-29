@@ -2,7 +2,7 @@ import type { ClientEvent, ServerEvent } from "../../shared/protocol.ts";
 
 export type Respond = (event: ServerEvent) => void;
 
-export type Route<K extends ClientEvent["t"]> = (
+type Route<K extends ClientEvent["t"]> = (
   event: Extract<ClientEvent, { t: K }>,
   send: Respond,
 ) => void | Promise<void>;

@@ -1,18 +1,19 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { AnimatePresence } from "motion/react";
-import { closeProject, openOnEnvironment } from "../../lib/actions.ts";
+import { closeProject, createThread, openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
 import { useI18n } from "../../lib/i18n.ts";
 import { confirmAction, selectProject, useApp } from "../../lib/store.ts";
 import { ChevronRight, Folder, FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
+import { GitFork } from "lucide-react";
 import { Menu } from "../Menu.tsx";
 import { PixelLoader } from "../PixelLoader.tsx";
 import { ThreadPulse } from "../ThreadPulse.tsx";
 import { threadActivity } from "../../lib/format.ts";
 import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
-import { Unplug } from "lucide-react";
+import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
 import type { ThreadGroup } from "./thread-groups.ts";
 
 export function ProjectHeading({ group, project, searching, dragging, isFirst, isLast, canCreateThread, onDragStart, consumeDrag, onMove, onNewThread, onConversation }: {
@@ -94,16 +95,17 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
         onPointerDown={onDragStart} onClick={event => { if (!consumeDrag(event)) group.toggle(); }}
       >
-        {pending || connecting ? <PixelLoader size={16} /> : group.icon !== Folder && <Icon size={16} strokeWidth={1.75} />}
+        {pending || connecting ? <PixelLoader size={16} /> : <Icon size={16} strokeWidth={1.75} />}
         <span className="truncate">{group.label}</span>
         <ChevronRight size={12} className="global-project-chevron" />
         {activity && <span className="thread-status" data-status={activity.status} role="img" aria-label={t(activity.label)} title={t(activity.label)}>
           <ThreadPulse status={activity.status} />
         </span>}
-        {group.offline && <span className="global-project-offline" title={t("Disconnected")}><Unplug size={12} /></span>}
+        {group.offline && <span className="global-project-offline" title={t("Disconnected")}><DisconnectedIcon size={14} /></span>}
       </button>
       <Menu align="end" span=".global-project-heading" items={[
         { id: "open", label: t("Open workspace"), icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
+        ...(project.isGit ? [{ id: "new-worktree", label: t("New thread with workspace options…"), icon: <GitFork size={15} />, disabled: disabled || !canCreateThread, onSelect: () => void run(() => { selectProject(project.id); onConversation(); void createThread(undefined, true); }) }] : []),
         { id: "rename", label: t("Rename project"), icon: <Pencil size={15} />, disabled, onSelect: () => void run(() => setRenaming(true)) },
         { id: "up", label: t("Move up"), disabled: isFirst, onSelect: () => onMove(-1) },
         { id: "down", label: t("Move down"), disabled: isLast, onSelect: () => onMove(1) },

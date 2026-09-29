@@ -53,9 +53,10 @@ export function ResizeHandle({
       const sidebar =
         root?.querySelector('.shell-body > .sliding-panel[data-side="left"][data-open="true"] .rail')?.getBoundingClientRect()
           .width ?? 0;
+      const strip = root ? parseFloat(getComputedStyle(root).paddingLeft) : 0;
       return Math.max(
         minimum,
-        viewport - sidebar / (uiScale / 100) - 360,
+        viewport - (sidebar + strip) / (uiScale / 100) - 360,
       );
     }
     const available =

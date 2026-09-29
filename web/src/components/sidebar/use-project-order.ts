@@ -5,7 +5,7 @@ export type DropEdge = "before" | "after";
 
 const storageKey = (environment: string) => `citropy.globalProjectOrder.${environment}`;
 
-export function readProjectOrder(environment: string): string[] {
+function readProjectOrder(environment: string): string[] {
   try {
     const order = JSON.parse(localStorage.getItem(storageKey(environment)) ?? "[]");
     return Array.isArray(order) ? order.filter((id): id is string => typeof id === "string") : [];
@@ -14,7 +14,7 @@ export function readProjectOrder(environment: string): string[] {
   }
 }
 
-export function orderProjects(projects: Project[], order: string[]): Project[] {
+function orderProjects(projects: Project[], order: string[]): Project[] {
   const positions = new Map(order.map((id, index) => [id, index]));
   return [...projects].sort((a, b) => (positions.get(a.id) ?? -1) - (positions.get(b.id) ?? -1));
 }

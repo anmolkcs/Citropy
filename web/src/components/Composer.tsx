@@ -166,8 +166,8 @@ export function Composer({
   const started = hasMessages || (!loaded && Boolean(thread && (thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length)));
   const starting = !started && !running && !thread?.parentThreadId;
   const composerRef = useRef<HTMLDivElement>(null);
-  const shellRef = useRef<HTMLDivElement>(null);
-  usePanelMotion(shellRef, thread?.id);
+  const columnRef = useRef<HTMLDivElement>(null);
+  usePanelMotion(columnRef, thread?.id);
   const startTop = useRef<number>(undefined);
   const reducedMotion = useReducedMotion();
   useLayoutEffect(() => {
@@ -289,8 +289,8 @@ export function Composer({
           {instance?.modelsError ?? provider?.modelsError}
         </div>
       )}
+      <div ref={columnRef} className="composer-column">
       <div
-        ref={shellRef}
         className="composer-shell"
         data-dragging={dragging}
         onDragOver={(event) => {
@@ -362,6 +362,7 @@ export function Composer({
             {t("Uploading {name}…", { name: uploading })}
           </div>
         )}
+        <div className="composer-row">
         <ComposerInput
           value={value}
           onChange={setValue}
@@ -371,9 +372,6 @@ export function Composer({
           thread={thread}
           commands={commands}
         />
-        <div className="composer-bar">
-          {settingsBar}
-
           <div className="composer-actions">
             <ContextUsage onCompact={compact} draft={value} />
             <button
@@ -427,6 +425,8 @@ export function Composer({
             )}
           </div>
         </div>
+      </div>
+      <div className="composer-bar">{settingsBar}</div>
       </div>
     </div>
   );

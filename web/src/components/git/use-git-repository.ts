@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { manageGit } from "../../lib/actions.ts";
+import { reportError } from "../../lib/api.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";
 import type { useI18n } from "../../lib/i18n.ts";
 import { doneLabels, type Section } from "./labels.ts";
@@ -187,7 +188,9 @@ export function useGitRepository({
               return true;
             }
           }
-        } catch {}
+        } catch (refreshError) {
+          reportError(refreshError);
+        }
       }
       return false;
     } finally {

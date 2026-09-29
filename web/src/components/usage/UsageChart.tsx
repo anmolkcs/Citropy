@@ -6,7 +6,7 @@ import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { bucketTotal, measureOf, niceScale, type UsageBucket, type UsageMeasure, type UsagePeriod } from "./usage-series.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";
 
-export function formatMeasure(measure: UsageMeasure, value: number): string {
+function formatMeasure(measure: UsageMeasure, value: number): string {
   return measure === "cost" ? cost(value) : tokens(Math.round(value));
 }
 

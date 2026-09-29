@@ -14,18 +14,7 @@ export type ThreadStatus =
   | "error"
   | "stopped";
 
-export type PartKind =
-  | "text"
-  | "reasoning"
-  | "tool"
-  | "todo"
-  | "patch"
-  | "notice"
-  | "question"
-  | "images"
-  | "changes";
-
-export type ToolStatus = "running" | "ok" | "error" | "denied";
+type ToolStatus = "running" | "ok" | "error" | "denied";
 
 export type ToolShape =
   | "command"
@@ -84,7 +73,7 @@ export interface ShellProcess {
   endedAt?: number;
 }
 
-export interface TextPart {
+interface TextPart {
   id: string;
   kind: "text";
   text: string;
@@ -104,7 +93,7 @@ export interface TodoItem {
   status: "pending" | "in_progress" | "completed" | "cancelled";
 }
 
-export interface TodoPart {
+interface TodoPart {
   id: string;
   kind: "todo";
   items: TodoItem[];
@@ -132,13 +121,13 @@ export interface PatchLine {
   newNo?: number;
 }
 
-export interface PatchPart {
+interface PatchPart {
   id: string;
   kind: "patch";
   patch: FilePatch;
 }
 
-export interface NoticePart {
+interface NoticePart {
   id: string;
   kind: "notice";
   level: "info" | "warn" | "error";
@@ -422,6 +411,7 @@ export interface Snapshot {
   permissions: PermissionRequest[];
   questions?: QuestionRequest[];
   development?: boolean;
+  usingAppData?: boolean;
   projects: Project[];
   threads: ThreadMeta[];
   providers: ProviderInfo[];
@@ -430,7 +420,6 @@ export interface Snapshot {
 }
 
 export type ServerEvent = (
-  | { t: "shell.output"; id: string; output: string }
   | { t: "shell.upsert"; shell: ShellProcess }
   | { t: "shell.remove"; id: string }
   | { t: "project.defaults"; settings: ProjectSettings }
@@ -470,8 +459,6 @@ export type ServerEvent = (
   | { t: "question.close"; id: string }
   | { t: "git.status"; projectId: string; threadId?: string; status: GitStatus }
   | { t: "git.diff"; requestId: string; patch: FilePatch | null; error?: string }
-  | { t: "file.tree"; requestId: string; entries: FileEntry[] }
-  | { t: "file.content"; requestId: string; path: string; content: string | null }
   | { t: "term.data"; termId: string; data: string; streamId?: string; reset?: boolean; offset?: number; sessionId?: string }
   | { t: "term.exit"; termId: string; code: number; offset?: number; sessionId?: string }
   | { t: "toast"; level: "info" | "warn" | "error" | "success"; text: string }
@@ -503,6 +490,7 @@ export type ClientEvent = (
   | { t: "thread.discardPlan"; id: string }
   | { t: "client.error"; message: string }
   | { t: "server.restart" }
+  | { t: "server.useAppData"; enabled: boolean }
   | { t: "thread.finish"; id: string; finished: boolean }
   | { t: "github.request"; requestId: string; request: GitHubRequest }
   | { t: "git.manage"; requestId: string; projectId: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
@@ -563,9 +551,6 @@ export type ClientEvent = (
   | { t: "git.diff"; requestId: string; projectId: string; path: string; staged?: boolean }
   | { t: "git.commit"; projectId: string; message: string }
   | { t: "git.discard"; projectId: string; path: string }
-  | { t: "file.tree"; requestId: string; projectId: string; path?: string }
-  | { t: "file.read"; requestId: string; projectId: string; path: string }
-  | { t: "shell.watch"; id: string | null }
   | { t: "term.open"; termId: string; projectId: string; cols: number; rows: number; flowControl?: boolean; offset?: number; sessionId?: string }
   | { t: "term.ack"; termId: string; count: number; streamId: string }
   | { t: "term.unsubscribe"; termId: string }
@@ -585,7 +570,7 @@ export interface GitOverview {
   stashes: Array<{ ref: string; subject: string }>;
 }
 
-export interface GitDetail {
+interface GitDetail {
   kind: "detail";
   message: string;
   patches: FilePatch[];

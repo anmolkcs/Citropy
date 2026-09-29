@@ -31,7 +31,7 @@ function megabytes(bytes: number): string {
   return `${Math.round(bytes / 1024 / 1024)} MB`;
 }
 
-export function AgentsPanel({ variant = "strip" }: { variant?: "strip" | "rail" }) {
+export function AgentsPanel() {
   const t = useI18n();
   const id = useId();
   const reducedMotion = useReducedMotion();
@@ -76,20 +76,15 @@ export function AgentsPanel({ variant = "strip" }: { variant?: "strip" | "rail" 
     <div className="sharing-control agents-control" ref={wrap} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
       <button
         type="button"
-        className={variant === "rail" ? "rail-action" : "strip-action"}
+        className="icon-btn agents-trigger"
         aria-label={t("Running agents, {count}", { count: agents.length })}
         title={open ? undefined : t("Running agents")}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => setOpen((value) => !value)}
       >
-        {variant === "rail" ? <>
-          <Bot size={17} />
-          {agents.length > 0 && <span className="agents-count" aria-hidden="true">{agents.length}</span>}
-        </> : <span className="strip-action-face">
-          <Bot size={18} />
-          {agents.length > 0 && <span className="agents-count" aria-hidden="true">{agents.length}</span>}
-        </span>}
+        <Bot size={16} />
+        {agents.length > 0 && <span className="agents-count" aria-hidden="true">{agents.length}</span>}
       </button>
       <AnimatePresence>{open && (
         <motion.div

@@ -8,6 +8,7 @@ dist/
 .desktop-build/
 release/
 .audition/
+/design-audit/
 /desktop/computer-mac
 /desktop/computer-mac-arm64
 /desktop/computer-mac-x86_64

@@ -1,21 +1,12 @@
 import { dataRoot } from "./paths.ts";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { uid } from "./ids.ts";
 import { store } from "./store.ts";
+import { git } from "./git.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import type { Project, WorkspaceChoice } from "../shared/protocol.ts";
 import type { WorkspaceOptions } from "../shared/features.ts";
-
-const run = promisify(execFile);
-
-async function git(cwd: string, args: string[]): Promise<string> {
-  return (
-    await run("git", args, { cwd, timeout: 60_000, maxBuffer: 2 * 1024 * 1024 })
-  ).stdout.trim();
-}
 
 export function workspacePath(projectId: string, threadId?: string): string {
   const project = store.projects.get(projectId);
@@ -107,7 +98,7 @@ export async function chooseThreadWorkspace(
         "--count",
         "@{upstream}..HEAD",
       ]).catch(() => "");
-      if (clean && ahead === "0")
+      if (clean && ahead.trim() === "0")
         await git(project.path, ["pull", "--ff-only"]);
     }
     return {
@@ -115,7 +106,7 @@ export async function chooseThreadWorkspace(
       workspaceBranch: await git(project.path, [
         "branch",
         "--show-current",
-      ]).catch(() => undefined),
+      ]).then((branch) => branch.trim()).catch(() => undefined),
     };
   }
   const available = await workspaceOptions(project);

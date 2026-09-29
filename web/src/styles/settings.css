@@ -8,7 +8,7 @@
 }
 
 .settings-inner {
-  max-width: 760px;
+  max-width: var(--reading);
   margin: 0 auto;
 }
 .settings-heading {
@@ -101,7 +101,6 @@
 }
 @media (hover: hover) and (pointer: fine) {
   :is(.setting-row, .sound-row-controls) .select:hover:not(:disabled) { background-color: var(--raised-2); }
-  label.setting-row:not([data-disabled="true"]):hover { background: color-mix(in srgb, var(--panel), var(--text) 3%); }
 }
 
 .assistance-model-choice {
@@ -196,6 +195,10 @@
   transform: translateX(16px);
 }
 .setting-switch:disabled { opacity: 0.45; }
+.content-width-setting { border-top: 1px solid var(--line); }
+.content-width-setting > .setting-row { padding-left: 0; padding-right: 0; }
+.content-width-setting output { color: var(--text-3); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.content-width-setting .content-width-range { display: block; width: min(360px, 100%); margin: 0 auto var(--space-16); }
 .setting-range { display: flex; align-items: center; gap: var(--space-12); flex: 0 1 240px; }
 .setting-range .range { flex: 1; min-width: 0; }
 .range {
@@ -352,10 +355,10 @@
   background: var(--panel);
 }
 .theme-option:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .theme-option[aria-pressed="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .theme-option-label {
   display: flex;

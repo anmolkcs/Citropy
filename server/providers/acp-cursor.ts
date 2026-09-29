@@ -13,7 +13,7 @@ export interface CursorAskQuestionRequest {
   questions: CursorAskQuestion[];
 }
 
-export interface CursorTodo {
+interface CursorTodo {
   id?: string;
   content?: string;
   title?: string;

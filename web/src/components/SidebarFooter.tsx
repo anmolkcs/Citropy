@@ -3,7 +3,6 @@ import { useRef, useState, type CSSProperties } from "react";
 import { GitBranch, Github, Settings, BarChart3 } from "lucide-react";
 
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
-import { AgentsPanel } from "./AgentsPanel.tsx";
 import { LocalSharing } from "./LocalSharing.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
 import { useApp } from "../lib/store.ts";
@@ -94,7 +93,6 @@ export function SidebarFooter({
         ))}
         <span className="navigation-update-divider" aria-hidden="true" />
         <LocalSharing variant="rail" />
-        <AgentsPanel variant="rail" />
         <AppUpdateControl />
       </nav>
       {usagePeek.card}

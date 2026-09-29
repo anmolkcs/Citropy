@@ -3,9 +3,6 @@ import { bus } from "./bus.ts";
 import type { ShellProcess } from "../shared/protocol.ts";
 
 const entries = new Map<string, { shell: ShellProcess; stop: () => void | Promise<void> }>();
-const changed = new Set<string>();
-const watchers = new Map<string, number>();
-let timer: NodeJS.Timeout | undefined;
 
 function publish(id: string): void {
   const entry = entries.get(id);
@@ -16,16 +13,6 @@ export function shellList(includeOutput = true): ShellProcess[] {
   return [...entries.values()].map(entry => ({ ...entry.shell, output: includeOutput ? entry.shell.output : "" }));
 }
 
-export function watchShellOutput(id: string): () => void {
-  watchers.set(id, (watchers.get(id) ?? 0) + 1);
-  return () => {
-    const count = (watchers.get(id) ?? 1) - 1;
-    if (count) watchers.set(id, count);
-    else { watchers.delete(id); changed.delete(id); }
-  };
-}
-
-export function readShellOutput(id: string): string { return entries.get(id)?.shell.output ?? ""; }
 
 export function shellActivity(id: string, busy?: boolean, process?: string): void {
   const entry = entries.get(id);
@@ -60,14 +47,6 @@ export function shellOutput(id: string, output: string, append = false): void {
   const value = stripVTControlCharacters((append ? entry.shell.output + output : output).slice(-32000));
   if (value === entry.shell.output) return;
   entry.shell.output = value;
-  if (!watchers.has(id)) return;
-  changed.add(id);
-  timer ??= setTimeout(() => {
-    timer = undefined;
-    for (const id of changed) bus.emit({ t: "shell.output", id, output: readShellOutput(id) });
-    changed.clear();
-  }, 100);
-  timer.unref();
 }
 
 export function endShell(id: string, status: "finished" | "failed" | "stopped", foregroundOnly = false): void {
@@ -81,7 +60,6 @@ export function endShell(id: string, status: "finished" | "failed" | "stopped", 
   const completed = [...entries.values()].filter(entry => entry.shell.endedAt).sort((a, b) => a.shell.endedAt! - b.shell.endedAt!);
   for (const { shell } of completed.slice(0, Math.max(0, completed.length - 30))) {
     entries.delete(shell.id);
-    changed.delete(shell.id);
     bus.emit({ t: "shell.remove", id: shell.id });
   }
 }
@@ -110,8 +88,6 @@ bus.subscribe(event => {
   for (const [id, { shell }] of entries) {
     if (event.t === "thread.remove" ? shell.threadId !== event.id : shell.projectId !== event.id) continue;
     entries.delete(id);
-    changed.delete(id);
     bus.emit({ t: "shell.remove", id });
   }
-  if (!changed.size) { clearTimeout(timer); timer = undefined; }
 });

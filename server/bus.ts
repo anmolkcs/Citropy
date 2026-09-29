@@ -3,7 +3,7 @@ import { eventJournal } from "./event-journal.ts";
 
 type Listener = (event: ServerEvent) => void;
 
-export class Bus {
+class Bus {
   #listeners = new Set<Listener>();
   #durable: boolean;
   #queue: ServerEvent[] = [];
@@ -18,7 +18,7 @@ export class Bus {
 
   emit(event: ServerEvent): void {
     event = structuredClone(event);
-    if (this.#durable && !["term.data", "term.exit", "browser.state", "computer.state", "shell.upsert", "shell.remove", "shell.output"].includes(event.t)) event = { ...event, sequence: eventJournal.append(event) };
+    if (this.#durable && !["term.data", "term.exit", "browser.state", "computer.state", "shell.upsert", "shell.remove"].includes(event.t)) event = { ...event, sequence: eventJournal.append(event) };
     this.#queue.push(event);
     if (this.#emitting) return;
     this.#emitting = true;

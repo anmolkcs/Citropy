@@ -9,7 +9,7 @@ function finite(value: unknown): number | undefined {
   return undefined;
 }
 
-function record(value: unknown): Record<string, unknown> | undefined {
+export function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
 
@@ -66,7 +66,7 @@ export function estimateConversationTokens(messages: Message[], draft = ""): num
   return estimateTokensFromChars(chars);
 }
 
-export function estimateTurnOutput(messages: Message[], runStartedAt: number): number {
+function estimateTurnOutput(messages: Message[], runStartedAt: number): number {
   let chars = 0;
   for (const message of messages) {
     if (message.role !== "assistant" || message.ts + 2_000 < runStartedAt) continue;
@@ -93,15 +93,7 @@ export function newInputTokens(
   return uncachedInput(provider, usage) + usage.cacheWrite;
 }
 
-export function cacheHitRate(
-  provider: ProviderId,
-  usage: Pick<Usage, "input" | "cacheRead" | "cacheWrite">,
-): number {
-  const total = newInputTokens(provider, usage) + usage.cacheRead;
-  return total > 0 ? usage.cacheRead / total : 0;
-}
-
-export function tokensPerSecond(tokens: number, elapsedMs: number): number {
+function tokensPerSecond(tokens: number, elapsedMs: number): number {
   if (!(tokens > 0) || !(elapsedMs >= 250)) return 0;
   return tokens / (elapsedMs / 1000);
 }

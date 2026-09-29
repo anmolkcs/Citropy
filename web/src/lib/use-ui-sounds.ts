@@ -17,7 +17,7 @@ const NAVIGATION =
   "a[href], summary, [role='tab'], [role='menuitem'], [role='option']";
 const INERT = ":disabled, [aria-disabled='true'], [data-disabled='true']";
 
-export function clickSoundFor(target: EventTarget | null): UiSound | null {
+function clickSoundFor(target: EventTarget | null): UiSound | null {
   if (!(target instanceof Element)) return null;
   if (target.closest(SILENT)) return null;
   const pressed = target.closest(PRESSABLE);

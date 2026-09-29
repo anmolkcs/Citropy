@@ -18,7 +18,7 @@ let sequence = 0;
 const pending = new Map<
   number,
   {
-    resolve: (value: any) => void;
+    resolve: (value: unknown) => void;
     reject: (error: Error) => void;
     timer: NodeJS.Timeout;
   }
@@ -84,7 +84,7 @@ export function desktopRequest<T>(
       pending.delete(id);
       reject(new Error(`Desktop ${method} timed out`));
     }, method === "computer.start" ? 140_000 : method === "computer.action" ? 85_000 : method === "profiles.import" ? 120_000 : 30000);
-    pending.set(id, { resolve, reject, timer });
+    pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
     connection!.send(JSON.stringify({ id, method, params }));
   });
 }

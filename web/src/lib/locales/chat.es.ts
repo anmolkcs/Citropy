@@ -89,7 +89,6 @@ export const chatEs: Record<string, string> = {
   "{provider} is disabled. Enable it in Settings > Providers to continue this conversation.": "{provider} está desactivado. Actívalo en Ajustes > Proveedores para continuar esta conversación.",
   "{used} of {total} tokens": "{used} de {total} tokens",
   "A separate branch and folder for this conversation.": "Una rama y carpeta separadas para esta conversación.",
-  "All workspaces": "Todos los espacios de trabajo",
   "Allow file edits; ask for other actions": "Permitir ediciones de archivos; preguntar por otras acciones",
   "Allow once": "Permitir una vez",
   "Allow this tool for this session": "Permitir esta herramienta durante esta sesión",
@@ -375,5 +374,6 @@ export const chatEs: Record<string, string> = {
   "Changed files": "Archivos modificados",
   "Edited 1 file": "1 archivo editado",
   "Edited {count} files": "{count} archivos editados",
-  "Show {count} more": "Mostrar {count} más"
+  "Show {count} more": "Mostrar {count} más",
+  "Show less": "Mostrar menos"
 };

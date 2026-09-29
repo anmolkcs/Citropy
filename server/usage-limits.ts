@@ -3,7 +3,7 @@ import type { UsageLimitState } from "../shared/protocol.ts";
 const LIMIT = /usage limit|hit your (?:\w+ )?limit|limit reached|rate limit|quota (?:exceeded|reached)|out of (?:credits|usage)|too many requests|\b429\b/i;
 const UNITS: Record<string, number> = { d: 86_400_000, h: 3_600_000, m: 60_000, s: 1000 };
 
-export function isUsageLimitError(message: string | undefined): boolean {
+function isUsageLimitError(message: string | undefined): boolean {
   return Boolean(message && LIMIT.test(message));
 }
 
@@ -26,7 +26,7 @@ function atClockTime(text: string, now: number): number | undefined {
   return target.getTime();
 }
 
-export function resetTimeFromMessage(message: string, now = Date.now()): number | undefined {
+function resetTimeFromMessage(message: string, now = Date.now()): number | undefined {
   const epoch = /\|(\d{10})\b/.exec(message)?.[1];
   if (epoch) return Number(epoch) * 1000;
   return afterDuration(message, now) ?? atClockTime(message, now);

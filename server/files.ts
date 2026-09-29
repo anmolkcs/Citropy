@@ -33,7 +33,7 @@ export function inside(root: string, path: string): string | null {
   return abs;
 }
 
-function sameFile(left: { dev: number; ino: number }, right: { dev: number; ino: number }): boolean {
+export function sameFile(left: { dev: number; ino: number }, right: { dev: number; ino: number }): boolean {
   return left.dev === right.dev && left.ino === right.ino;
 }
 

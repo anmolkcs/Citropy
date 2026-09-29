@@ -7,7 +7,7 @@ import { dataRoot } from "./paths.ts";
 import { store } from "./store.ts";
 import { workspacePath } from "./workspaces.ts";
 import { inside } from "./files.ts";
-import { isRepo, workingDiff } from "./git.ts";
+import { git as runGit, isRepo, workingDiff } from "./git.ts";
 import { parseUnifiedDiff } from "./diff.ts";
 import { uid } from "./ids.ts";
 import { emptyUsage } from "../shared/protocol.ts";
@@ -54,16 +54,8 @@ export async function cleanupCheckpoints(cwd: string, threadIds: string[]): Prom
   });
 }
 
-async function git(cwd: string, args: string[], privateRepo = true, input?: string): Promise<string> {
-  const command = run("git", [...(privateRepo ? [`--git-dir=${join(directory(cwd), "repository")}`, `--work-tree=${cwd}`, "-c", "core.bare=false"] : []), ...args], {
-    cwd, timeout: 60_000, maxBuffer: 32 * 1024 * 1024,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1" },
-  });
-  if (input !== undefined) {
-    command.child.stdin!.on("error", () => {});
-    command.child.stdin!.end(input);
-  }
-  return (await command).stdout;
+function git(cwd: string, args: string[], privateRepo = true, input?: string): Promise<string> {
+  return runGit(cwd, [...(privateRepo ? [`--git-dir=${join(directory(cwd), "repository")}`, `--work-tree=${cwd}`, "-c", "core.bare=false"] : []), ...args], {}, input);
 }
 
 async function capture(cwd: string): Promise<string> {
@@ -164,7 +156,7 @@ export async function finishCheckpoint(thread: Thread, messageId?: string): Prom
         try {
           const images = await changedImages(cwd, before, after);
           if (images.length) store.addPart(thread.id, messageId, { id: uid("prt"), kind: "images", files: images });
-        } catch {}
+        } catch (error) { console.error("Turn image summary failed:", thread.id, error); }
         try {
           const files = await changedFiles(cwd, before, after);
           if (files.length) store.addPart(thread.id, messageId, { id: uid("prt"), kind: "changes", checkpoint: checkpoint.messageId, files });

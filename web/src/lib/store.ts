@@ -7,19 +7,17 @@ import type { EnvironmentSlice } from "./live-environments.ts";
 
 export { useApp } from "./app-state.ts";
 export { applyEvent, applyEvents } from "./server-events.ts";
-export type { AppState, AppMode, MessageShell, Toast, Confirmation, Theme, SidebarMode, PanelId } from "./app-state.ts";
+export type { AppState, AppMode, Toast, Confirmation, PanelId } from "./app-state.ts";
 export { modeProjects } from "./app-state.ts";
 export {
   toggleFavoriteModel,
   setPanelWidth,
   setLanguage,
-  setNavigationStyle,
   setTheme,
   setCustomColor,
   setScheme,
   toggleInspector,
   toggleSidebar,
-  setSidebarMode,
   setSidebarGroupOpen,
   setUiScale,
   setTextStreaming,
@@ -30,12 +28,6 @@ export {
   setUiAlertSounds,
   setUiSoundVolume,
   setTypingSpeed,
-  setStageBackground,
-  setBackgroundDim,
-  setBackgroundBlur,
-  setBackgroundFocus,
-  setBackgroundFocusSpread,
-  setUiTransparency,
   scaled,
   viewportWidth,
 } from "./preferences.ts";
@@ -54,6 +46,7 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     searchShellId: null,
     connected: false,
     development: false,
+    usingAppData: false,
     logging: { enabled: false, file: "" },
     resumeAfterLimits: false,
     githubAccount: null,
@@ -89,10 +82,6 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     toolConnections: {},
     tools: [],
   };
-}
-
-export function resetEnvironment(projects: Project[], home: string): void {
-  useApp.setState(environmentDefaults(projects, home));
 }
 
 export function selectThread(id: string | null): void {

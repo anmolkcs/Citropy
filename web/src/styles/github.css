@@ -61,7 +61,7 @@
 }
 .github-sidebar-account:hover,
 .github-sidebar-account[aria-current="page"] {
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 .github-sidebar-account img {
@@ -294,12 +294,12 @@
   text-align: left;
 }
 .github-item:hover {
-  background: var(--panel);
+  background: var(--highlight);
 }
 .github-item[aria-pressed="true"] {
   background: transparent;
 }
-.github-list { --selection-fill: var(--raised-2); }
+.github-list { --selection-fill: var(--highlight); }
 .github-item strong {
   font-size: var(--text-base);
   font-weight: 500;

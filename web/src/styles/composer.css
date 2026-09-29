@@ -1,5 +1,5 @@
 .composer {
-  padding: 12px var(--chat-gutter) 16px;
+  padding: 12px var(--chat-gutter) 18px;
   position: relative;
   z-index: 5;
   background: var(--canvas);
@@ -7,7 +7,7 @@
 .composer-dock {
   display: grid;
   overflow: hidden;
-  border-radius: 13px 13px 0 0;
+  border-radius: 19px 19px 0 0;
   background: var(--raised);
 }
 .composer-dock:empty {
@@ -73,7 +73,7 @@
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-4) var(--space-10) var(--space-4) var(--space-16);
-  border-radius: 13px 13px 0 0;
+  border-radius: 19px 19px 0 0;
   background: var(--raised);
   color: var(--text-3);
   font-size: var(--text-sm);
@@ -102,13 +102,18 @@
   font-weight: 500;
 }
 
+.composer-column {
+  width: min(var(--reading), 100% - var(--avatar-room, 0px));
+  margin: 0 auto;
+}
+
 .composer-shell {
   position: relative;
   isolation: isolate;
   width: min(var(--reading), 100%);
   margin: 0 auto;
   border: 0;
-  border-radius: 14px;
+  border-radius: 20px;
 }
 
 .composer-glass {
@@ -132,7 +137,15 @@
   pointer-events: none;
   border-radius: inherit;
   background: inherit;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md-drop);
+}
+
+.composer-outline {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--line-bright);
 }
 
 .composer-focus-ring {
@@ -198,6 +211,9 @@
 
 .composer-input::placeholder {
   color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @supports (field-sizing: content) {
@@ -207,11 +223,24 @@
   }
 }
 
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+}
+.composer-row > .composer-writing {
+  flex: 1;
+  min-width: 0;
+}
+.composer-row .composer-input,
+.composer-row .composer-highlights {
+  padding: var(--space-12) var(--space-8) var(--space-12) var(--space-20);
+}
+
 .composer-bar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-8) var(--space-8);
+  margin-top: 8px;
 }
 .composer-bar > * {
   flex: none;
@@ -223,9 +252,11 @@
 
 .composer-actions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--space-6);
-  margin-left: auto;
+  min-height: calc(var(--space-12) * 2 + var(--text-body) * 1.6);
+  padding: 0 var(--space-8);
 }
 
 .composer-send,
@@ -266,7 +297,7 @@
 }
 
 .composer-select:hover {
-  background: var(--raised-2);
+  background: var(--highlight);
   color: var(--text);
 }
 
@@ -319,6 +350,21 @@
   transform-origin: bottom left;
 }
 
+.menu[data-side="right"] {
+  overflow: visible;
+}
+.menu[data-side="right"]::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--menu-arrow-y) - 7px);
+  left: -6px;
+  width: 6px;
+  height: 14px;
+  background: var(--overlay);
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+  pointer-events: none;
+}
+
 .menu[data-side="top"][data-align="end"] {
   transform-origin: bottom right;
 }
@@ -359,20 +405,20 @@
 }
 .menu-option { display: flex; align-items: stretch; min-width: 0; border-radius: var(--r-sm); }
 .menu-option > .menu-item { flex: 1; min-width: 0; }
-.menu-option:has(.menu-item-action):hover { background: var(--raised-2); }
-.menu-option:has(.menu-item-action)[data-selected] { background: var(--accent-soft); }
+.menu-option:has(.menu-item-action):hover { background: var(--highlight); }
+.menu-option:has(.menu-item-action)[data-selected] { background: var(--highlight); }
 .menu-option:has(.menu-item-action) > .menu-item { background: transparent; }
 .menu-item-action { display: grid; place-items: center; flex: none; width: 30px; margin: var(--space-4); border-radius: var(--r-xs); color: var(--text-3); opacity: 0.45; }
 .menu-option:hover .menu-item-action,
 .menu-item-action:focus-visible,
 .menu-item-action[aria-pressed="true"] { opacity: 1; }
-.menu-item-action:hover { background: var(--raised); }
+.menu-item-action:hover { background: var(--highlight); }
 .menu-item-action[aria-pressed="true"] { color: var(--warn); }
 .menu-item-action[aria-pressed="true"] svg { fill: currentColor; }
 
 .menu-item:hover,
 .menu-item:focus-visible {
-  background: var(--raised-2);
+  background: var(--highlight);
   color: var(--text);
 }
 .menu-item:focus-visible { outline: none; }
@@ -465,7 +511,7 @@
 
 .context-ring:hover,
 .context-ring[aria-expanded="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 
 .context-ring[data-hot="true"],
@@ -680,13 +726,25 @@
   .context-actions { padding: var(--space-10); }
 }
 
+.menu-search-field {
+  position: relative;
+  flex: none;
+  display: grid;
+  align-items: center;
+  margin: 0 0 var(--space-8);
+}
+.menu-search-field > svg {
+  position: absolute;
+  left: var(--space-10);
+  color: var(--text-3);
+  pointer-events: none;
+}
 .menu-search {
   display: block;
-  flex: none;
   width: 100%;
   min-height: 38px;
-  margin: 0 0 var(--space-8);
-  padding: var(--space-10) var(--space-10);
+  margin: 0;
+  padding: var(--space-10) var(--space-10) var(--space-10) var(--space-32);
   background: var(--raised);
   color: var(--text);
   border: 0;
@@ -705,10 +763,10 @@
   margin-top: var(--space-6);
 }
 .menu-item[data-selected] {
-  background: var(--accent-soft);
+  background: var(--highlight);
   color: var(--text);
 }
-.menu-list { --selection-fill: var(--accent-soft); }
+.menu-list { --selection-fill: var(--highlight); }
 .menu-list[data-sliding] .menu-item[data-selected],
 .menu-list[data-sliding] .menu-option:has(.menu-item-action)[data-selected] { background: transparent; }
 .menu-hint .truncate {
@@ -828,7 +886,7 @@
 .tuning-tabs button:hover:not(:disabled),
 .model-picker-side-end button:hover:not(:disabled),
 .model-picker-toolbar[data-rail] button:hover {
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 .tuning-tabs button[aria-selected="true"] {
@@ -836,7 +894,7 @@
 }
 .model-picker-side-end button[aria-pressed="true"],
 .model-picker-toolbar[data-rail] button[aria-pressed="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
   color: var(--text);
 }
 .model-picker-toolbar[data-rail] {
@@ -975,7 +1033,7 @@
   border-radius: var(--r-full);
 }
 .tuning-chips {
-  --selection-fill: var(--raised-2);
+  --selection-fill: var(--highlight);
   display: flex;
   gap: var(--space-2);
   padding: var(--space-4);
@@ -1090,7 +1148,7 @@
 }
 .composer-suggestion-list > button:hover,
 .composer-suggestion-list > button[aria-selected="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .composer-suggestion-list svg {
   flex: none;
@@ -1147,7 +1205,7 @@
 }
 .composer-queue-item:hover,
 .composer-queue-item:focus-within {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .composer-queue-position {
   color: var(--text-3);
@@ -1211,7 +1269,7 @@
   padding: var(--space-8) var(--space-32) 0;
 }
 .permission-card {
-  width: min(var(--reading), 100%);
+  width: min(var(--reading), 100% - var(--avatar-room, 0px));
   margin: 0 auto;
   border-radius: var(--r-md);
   background: var(--surface);
@@ -1237,7 +1295,7 @@
   transition: background var(--dur-instant) var(--ease-out);
 }
 .permission-toggle:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .permission-toggle > svg,
 .permission-toggle > strong {

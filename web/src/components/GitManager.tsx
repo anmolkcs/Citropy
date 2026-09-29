@@ -1,5 +1,5 @@
 import { AnimatePresence } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   CircleAlert,
@@ -28,13 +28,11 @@ export function GitManager({
   onCloseSidebar,
   onBack,
   navigation,
-  onBusyChange,
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
   onBack: () => void;
   navigation?: ReactNode;
-  onBusyChange: (busy: boolean) => void;
 }) {
   const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
@@ -78,10 +76,6 @@ export function GitManager({
       setFilter("");
     },
   });
-  useEffect(() => {
-    onBusyChange(Boolean(busy));
-    return () => onBusyChange(false);
-  }, [busy, onBusyChange]);
 
   const changeSection = (next: Section) => {
     if (viewportWidth() <= 720) onCloseSidebar();
@@ -301,7 +295,6 @@ export function GitManager({
                   projectId={projectId}
                   busy={busy}
                   disabled={disabled}
-                  feedback={feedback}
                   selection={selection}
                   revision={revision}
                   filter={filter}
@@ -345,7 +338,6 @@ export function GitManager({
               {section === "Branches" && (
                 <BranchesSection
                   data={data}
-                  busy={busy}
                   disabled={disabled}
                   filter={filter}
                   branch={branch}

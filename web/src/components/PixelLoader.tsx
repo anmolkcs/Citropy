@@ -16,7 +16,8 @@ export function PixelLoader({ size = 16, className, style, ...rest }: { size?: n
       className={className ? `pixel-loader ${className}` : "pixel-loader"}
       style={{ "--pixel-cell": `${cell}px`, "--pixel-gap": `${gap}px`, ...style } as CSSProperties}
     >
-      {RING.map(([row, column], step) => <i key={step} style={{ gridArea: `${row} / ${column}`, animationDelay: `${(step - 8) * 120}ms` }} />)}
+      {RING.map(([row, column], step) => <i key={step} style={{ gridArea: `${row} / ${column}` }} />)}
+      <i className="pixel-loader-head" />
     </span>
   );
 }

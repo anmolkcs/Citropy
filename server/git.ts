@@ -9,15 +9,19 @@ import { parseUnifiedDiff } from "./diff.ts";
 const run = promisify(execFile);
 
 /** Run Git with literal, case-sensitive UI selections and noninteractive authentication. */
-async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}): Promise<string> {
+export async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}, input?: string): Promise<string> {
   // UI selections are literal filenames, never Git globs or :(...) pathspecs.
   // Neutralize inherited pathspec modes as well as enabling literal matching.
   const gitEnv = {
     ...process.env, ...env, GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1",
     GIT_GLOB_PATHSPECS: "0", GIT_NOGLOB_PATHSPECS: "0", GIT_ICASE_PATHSPECS: "0",
   };
-  const { stdout } = await run("git", args, { cwd, timeout: 60_000, env: gitEnv, maxBuffer: 32 * 1024 * 1024 });
-  return stdout;
+  const command = run("git", args, { cwd, timeout: 60_000, env: gitEnv, maxBuffer: 128 * 1024 * 1024 });
+  if (input !== undefined) {
+    command.child.stdin!.on("error", () => {});
+    command.child.stdin!.end(input);
+  }
+  return (await command).stdout;
 }
 
 async function tryGit(cwd: string, args: string[]): Promise<string> {

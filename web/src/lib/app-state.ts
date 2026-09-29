@@ -30,7 +30,7 @@ import type {
   ShellProcess,
 } from "../../../shared/protocol.ts";
 
-export interface MessageShell {
+interface MessageShell {
   provider?: Message["provider"];
   id: string;
   role: Message["role"];
@@ -58,16 +58,15 @@ export interface Confirmation {
   resolve: (confirmed: boolean) => void;
 }
 
-export const COLOR_THEMES = ["pink", "red", "orange", "yellow", "green", "teal", "blue", "purple"] as const;
+const COLOR_THEMES = ["pink", "red", "orange", "yellow", "green", "teal", "blue", "purple"] as const;
 export type Theme = typeof COLOR_THEMES[number] | "neutral" | "custom";
 const half = Math.ceil(COLOR_THEMES.length / 2);
 export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutral", "custom", ...COLOR_THEMES.slice(half)];
 export const SCHEMES = ["dark", "light"] as const;
 export type Scheme = typeof SCHEMES[number];
-export type SidebarMode = "workspaces" | "global";
 export type AppMode = "code" | "chat";
 export type NavigationStyle = "strip" | "bar";
-export const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
+const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
 export type StageBackground = typeof STAGE_BACKGROUNDS[number];
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
 
@@ -77,6 +76,7 @@ export interface AppState {
   assistance: AssistanceSettings;
   activeView: "chat" | "git" | "github" | "settings" | "usage";
   newThreadProvider: import("../../../shared/protocol.ts").ProviderId | null;
+  whatsNew: import("../../../shared/app-update.ts").ReleaseNotes | null;
   creatingThread: boolean;
   threadDefaults: Pick<ThreadMeta, "provider" | "providerInstanceId" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
   favoriteModels: WritingModel[];
@@ -92,6 +92,7 @@ export interface AppState {
   searchShellId: string | null;
   connected: boolean;
   development: boolean;
+  usingAppData: boolean;
   logging: { enabled: boolean; file: string };
   resumeAfterLimits: boolean;
   githubAccount: GitHubUser | null;
@@ -132,7 +133,6 @@ export interface AppState {
   inspectorOpen: boolean;
   gitPanelOpen: boolean;
   sidebarOpen: boolean;
-  sidebarMode: SidebarMode;
   appMode: AppMode;
   otherModeSelection: { projectId: string | null; threadId: string | null } | null;
   navigationStyle: NavigationStyle;
@@ -142,8 +142,13 @@ export interface AppState {
   backgroundBlur: number;
   backgroundFocus: number;
   backgroundFocusSpread: number;
+  asciiDim: number;
+  asciiBlur: number;
+  asciiFocus: number;
   uiTransparency: number;
   opaquePopups: boolean;
+  backgroundEverywhere: boolean;
+  contentWidth: number;
   sidebarGroups: Record<string, boolean>;
   theme: Theme;
   scheme: Scheme;
@@ -195,7 +200,11 @@ const initialScale =
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 const storedDim = Number(readPref("citropy.backgroundDim", "68"));
+const DEFAULT_CONTENT_WIDTH = 780;
+export const MIN_CONTENT_WIDTH = 600;
+export const MAX_CONTENT_WIDTH = 1400;
 const storedFocusSpread = Number(readPref("citropy.backgroundFocusSpread", "140"));
+const storedContentWidth = Number(readPref("citropy.contentWidth", String(DEFAULT_CONTENT_WIDTH)));
 const storedCustomColor = readPref<string>("citropy.customColor", "");
 const storedTheme = readPref<string>("citropy.theme", "neutral");
 
@@ -256,6 +265,7 @@ function readFavoriteModels(): WritingModel[] {
 export const useApp = create<AppState>(() => ({
   shells: {},
   newThreadProvider: null,
+  whatsNew: null,
   creatingThread: false,
   threadDefaults: readThreadDefaults(),
   favoriteModels: readFavoriteModels(),
@@ -271,6 +281,7 @@ export const useApp = create<AppState>(() => ({
   searchShellId: null,
   connected: false,
   development: false,
+  usingAppData: false,
   logging: { enabled: false, file: "" },
   resumeAfterLimits: false,
   githubAccount: null,
@@ -318,7 +329,6 @@ export const useApp = create<AppState>(() => ({
     typeof window !== "undefined" &&
       window.innerWidth / (initialScale / 100) > 720,
   ),
-  sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "global") === "workspaces" ? "workspaces" : "global",
   appMode: readPref<AppMode>("citropy.appMode", "code") === "chat" ? "chat" : "code",
   otherModeSelection: null,
   navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "bar") === "strip" ? "strip" : "bar",
@@ -328,8 +338,13 @@ export const useApp = create<AppState>(() => ({
   backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, { on: 14, off: 0 }, 0),
   backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, { on: 70, off: 0 }, 70),
   backgroundFocusSpread: Number.isFinite(storedFocusSpread) ? Math.max(0, Math.min(400, storedFocusSpread)) : 140,
+  asciiDim: readLevel("citropy.asciiDim", 0, 90, { on: 0, off: 0 }, 0),
+  asciiBlur: readLevel("citropy.asciiBlur", 0, 12, { on: 0, off: 0 }, 0),
+  asciiFocus: readLevel("citropy.asciiFocus", 0, 100, { on: 0, off: 0 }, 0),
   uiTransparency: readLevel("citropy.uiTransparency", 0, 60, { on: 20, off: 0 }, 20),
   opaquePopups: readFlag("citropy.opaquePopups", false),
+  backgroundEverywhere: readFlag("citropy.backgroundEverywhere", false),
+  contentWidth: Number.isFinite(storedContentWidth) ? Math.max(MIN_CONTENT_WIDTH, Math.min(MAX_CONTENT_WIDTH, storedContentWidth)) : DEFAULT_CONTENT_WIDTH,
   sidebarGroups: readSidebarGroups(),
   theme: oneOf(THEMES, storedTheme, "neutral"),
   scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),

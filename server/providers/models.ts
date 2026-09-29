@@ -33,7 +33,7 @@ interface ClaudeModel {
   contextWindow?: number;
 }
 
-export function codexModels(data: CodexModel[]): ModelOption[] {
+function codexModels(data: CodexModel[]): ModelOption[] {
   return data
     .filter((model) => !model.hidden)
     .map((model) => ({
@@ -72,11 +72,11 @@ function claudeSessionOnlyEfforts(data: ClaudeModel[], commands: ClaudeCommand[]
   const sessionModel = data.find((model) => model.value === "default");
   const base = sessionModel ? claudeEfforts(sessionModel) : [];
   const hint = commands.find((command) => command.name === "effort")?.argumentHint ?? "";
-  const offered = hint.replace(/[<>]/g, "").split("|").filter((level) => level && level !== "auto");
+  const offered = hint.replace(/^[<[]|[>\]]$/g, "").replace(/\s*\[[^\]]*\]/g, "").split("|").filter((level) => /^[a-z]+$/.test(level) && level !== "auto");
   return { base, extra: base.length ? offered.filter((level) => !base.includes(level)) : [] };
 }
 
-export function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): ModelOption[] {
+function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): ModelOption[] {
   const sessionOnly = claudeSessionOnlyEfforts(data, commands);
   const models = new Map<string, ModelOption>();
   for (const model of data) {
@@ -190,7 +190,7 @@ export function discoverModels(provider: "codex" | "claude", launch?: import("./
   });
 }
 
-export function openCodeModels(output: string): ModelOption[] {
+function openCodeModels(output: string): ModelOption[] {
   const models: ModelOption[] = [];
   for (const match of output.matchAll(/^([^\s]+\/[^\s]+)\r?\n(\{[\s\S]*?^\})/gm)) {
     const model = JSON.parse(match[2]!);

@@ -8,7 +8,7 @@
   grid-template-rows: auto minmax(0, 1fr);
   width: var(--inspector);
   background: var(--panel);
-  border-radius: 14px 0 0 0;
+  border-left: 1px solid var(--line-strong);
   min-height: 0;
 }
 
@@ -81,7 +81,7 @@
 }
 
 .change-head:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 
 .change-chevron {
@@ -269,7 +269,7 @@
 }
 
 .tree-row:hover {
-  background: var(--raised);
+  background: var(--highlight);
   color: var(--text);
 }
 

@@ -16,11 +16,13 @@ function visibleBounds(host: HTMLElement, selected: HTMLElement): Bounds {
     bottom = Math.min(bottom, clip.bottom);
     left = Math.max(left, clip.left);
   }
+  const scaleX = host.offsetWidth ? origin.width / host.offsetWidth : 1;
+  const scaleY = host.offsetHeight ? origin.height / host.offsetHeight : 1;
   return [
-    left - origin.left - host.clientLeft + host.scrollLeft,
-    top - origin.top - host.clientTop + host.scrollTop,
-    Math.max(0, right - left),
-    Math.max(0, bottom - top),
+    (left - origin.left) / scaleX - host.clientLeft + host.scrollLeft,
+    (top - origin.top) / scaleY - host.clientTop + host.scrollTop,
+    Math.max(0, right - left) / scaleX,
+    Math.max(0, bottom - top) / scaleY,
   ];
 }
 

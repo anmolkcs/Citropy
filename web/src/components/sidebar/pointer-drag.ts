@@ -1,6 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 
-export interface PointerPosition {
+interface PointerPosition {
   x: number;
   y: number;
 }

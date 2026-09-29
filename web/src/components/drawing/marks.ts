@@ -26,7 +26,7 @@ const boxes = new WeakMap<Mark, Box>();
 export type Pattern = "blank" | "grid" | "dots" | "lines";
 export type Tone = "light" | "dark";
 export type FrameKind = "browser" | "phone";
-export interface Frame { kind: FrameKind; x: number; y: number; width: number; height: number }
+interface Frame { kind: FrameKind; x: number; y: number; width: number; height: number }
 export interface Paper { pattern: Pattern; tone: Tone; frame?: Frame }
 
 export const BLANK_PAPER: Paper = { pattern: "blank", tone: "light" };
@@ -50,7 +50,7 @@ export function textFontSize(size: number): number {
   return 12 + size * 2;
 }
 
-export function frameFor(kind: FrameKind, width: number, height: number): Frame {
+function frameFor(kind: FrameKind, width: number, height: number): Frame {
   const room = { width: width - FRAME_MARGIN * 2, height: height - FRAME_MARGIN * 2 };
   if (kind === "browser") return { kind, x: FRAME_MARGIN, y: FRAME_MARGIN, ...room };
   const phoneHeight = Math.min(room.height, room.width / 0.48, 760);

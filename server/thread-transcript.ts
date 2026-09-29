@@ -162,10 +162,8 @@ export class ThreadTranscript {
     if (event.images?.length) {
       void saveToolImages(this.#thread.id, event.images, () => store.threads.has(this.#thread.id)).then((images) => {
         if (!images.length) return;
-        try {
-          store.patchPart(this.#thread.id, ref.messageId, ref.partId, { images });
-        } catch {}
-      }).catch(() => {});
+        store.patchPart(this.#thread.id, ref.messageId, ref.partId, { images });
+      }).catch((error) => console.error("Saving tool images failed:", this.#thread.id, error));
     }
     this.#tools.delete(event.callId);
   }

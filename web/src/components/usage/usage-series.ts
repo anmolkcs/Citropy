@@ -7,31 +7,31 @@ export type UsageMeasure = "tokens" | "output" | "cost";
 
 export const PROVIDER_ORDER: ProviderId[] = ["codex", "claude", "opencode", "cursor", "pi"];
 
-export const BUCKET_COUNT: Record<UsagePeriod, number> = { daily: 30, weekly: 12, monthly: 12 };
+const BUCKET_COUNT: Record<UsagePeriod, number> = { daily: 30, weekly: 12, monthly: 12 };
 
 export interface UsageBucket {
   start: Date;
   byProvider: Partial<Record<ProviderId, UsageTotals>>;
 }
 
-export function periodStart(period: UsagePeriod, date: Date): Date {
+function periodStart(period: UsagePeriod, date: Date): Date {
   if (period === "monthly") return new Date(date.getFullYear(), date.getMonth(), 1);
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   if (period === "weekly") day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
   return day;
 }
 
-export function shiftPeriod(period: UsagePeriod, date: Date, count: number): Date {
+function shiftPeriod(period: UsagePeriod, date: Date, count: number): Date {
   if (period === "monthly") return new Date(date.getFullYear(), date.getMonth() + count, 1);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + count * (period === "weekly" ? 7 : 1));
 }
 
-export function parseDay(day: string): Date {
+function parseDay(day: string): Date {
   const [year, month, date] = day.split("-").map(Number);
   return new Date(year!, month! - 1, date);
 }
 
-export function addTotals(target: UsageTotals, source: UsageTotals): UsageTotals {
+function addTotals(target: UsageTotals, source: UsageTotals): UsageTotals {
   for (const key of USAGE_TOTAL_KEYS) target[key] += source[key];
   return target;
 }

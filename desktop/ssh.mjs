@@ -20,7 +20,7 @@ function nodePath(output) {
   return path;
 }
 
-export function validateConnection(input) {
+function validateConnection(input) {
   if (input?.kind === "container") return validateContainer(input);
   const name = String(input?.name || "").trim();
   const target = String(input?.target || "").trim();

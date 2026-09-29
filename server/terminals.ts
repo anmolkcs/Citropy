@@ -16,7 +16,7 @@ const directory = join(tmpdir(), `citropy-terminals-${process.getuid?.() ?? "use
 const address = process.platform === "win32" ? `\\\\.\\pipe\\citropy-terminals-${key}` : join(directory, "service.sock");
 const sessions = new Map<string, TerminalSession>();
 const blocked = new Map<string, Set<string>>();
-const pending = new Map<string, { resolve: (value: any) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
+const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
 let connection: Socket | null = null;
 let connecting: Promise<void> | null = null;
 let reconnect: NodeJS.Timeout | undefined;
@@ -95,7 +95,7 @@ function request<T>(op: string, input: Record<string, unknown> = {}): Promise<T>
   const id = randomUUID();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => { pending.delete(id); reject(new Error("The terminal service did not respond.")); }, 10_000);
-    pending.set(id, { resolve, reject, timer });
+    pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
     connection!.write(JSON.stringify({ id, op, ...input }) + "\n");
   });
 }

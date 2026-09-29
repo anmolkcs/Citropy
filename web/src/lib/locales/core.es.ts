@@ -77,6 +77,8 @@ export const coreEs: Record<string, string> = {
   "Click to download. Citropy will wait for another click before restarting.": "Haz clic para descargar. Citropy esperará a que vuelvas a hacer clic antes de reiniciarse.",
   "Close {name}": "Cerrar {name}",
   "Close dialog": "Cerrar diálogo",
+  "What's new in Citropy {version}": "Novedades de Citropy {version}",
+  "Got it": "Entendido",
   "Close navigation": "Cerrar navegación",
   "Close notifications": "Cerrar notificaciones",
   "Close preview": "Cerrar vista previa",

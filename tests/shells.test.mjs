@@ -8,7 +8,7 @@ const directory = mkdtempSync(join(tmpdir(), "citropy-shells-"));
 process.env.CITROPY_DATA_DIR = directory;
 const { bus } = await import("../server/bus.ts");
 const { eventJournal } = await import("../server/event-journal.ts");
-const { shellList, watchShellOutput, shellActivity, readShellOutput, startShell, shellOutput, endShell, endThreadShells, stopShell } = await import("../server/shells.ts");
+const { shellList, shellActivity, startShell, shellOutput, endShell, endThreadShells, stopShell } = await import("../server/shells.ts");
 test.after(() => { eventJournal.close(); rmSync(directory, { recursive: true, force: true }); });
 
 test("shell registry tracks independent owners, bounded output and background lifetime", async (t) => {
@@ -20,18 +20,10 @@ test("shell registry tracks independent owners, bounded output and background li
   let shellStops = 0;
   startShell(input, () => { taskStops++; });
   startShell({ ...input, id: "unrelated", threadId: "other" }, () => { throw new Error("Wrong owner"); });
-  const unwatch = watchShellOutput("shell");
-  t.after(unwatch);
   const original = shellList().find(shell => shell.id === "shell");
   for (let i = 0; i < 100; i++) shellOutput("shell", `\x1b[32mline ${i}\x1b[0m\n`, true);
   assert.equal(events.filter(event => event.t === "shell.upsert").length, 2);
-  await new Promise(resolve => setTimeout(resolve, 130));
-  assert.equal(events.filter(event => event.t === "shell.upsert").length, 2);
-  assert.equal(events.filter(event => event.t === "shell.output").length, 1);
-  assert.match(events.find(event => event.t === "shell.output").output, /line 99/);
-  assert.equal(events.find(event => event.t === "shell.output").sequence, undefined);
   assert.equal(shellList(false)[0].output, "");
-  assert.match(readShellOutput("shell"), /line 99/);
   shellActivity("shell", true, "node");
   shellActivity("shell", true, "node");
   assert.equal(events.filter(event => event.t === "shell.upsert").length, 3);

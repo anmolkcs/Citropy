@@ -24,6 +24,7 @@ import { Conversation } from "./components/Conversation.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { Inspector } from "./components/Inspector.tsx";
 import { DevTriggers } from "./components/DevTriggers.tsx";
+import { WhatsNew } from "./components/WhatsNew.tsx";
 import { SlidingPanel } from "./components/SlidingPanel.tsx";
 import { StageBackdrop } from "./components/StageBackdrop.tsx";
 import { Toasts } from "./components/Toasts.tsx";
@@ -86,7 +87,6 @@ export function App() {
   const view = useDeferredValue(requestedView);
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
   const [settingsSection, setSettingsSection] = useState("General");
-  const [gitBusy, setGitBusy] = useState(false);
   const [sectionSidebarOpen, setSectionSidebarOpen] = useState(
     viewportWidth() > 720,
   );
@@ -101,6 +101,8 @@ export function App() {
   const uiScale = useApp((state) => state.uiScale);
   const uiTransparency = useApp((state) => state.uiTransparency);
   const opaquePopups = useApp((state) => state.opaquePopups);
+  const backgroundEverywhere = useApp((state) => state.backgroundEverywhere);
+  const contentWidth = useApp((state) => state.contentWidth);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const githubStatus = useGitHub("status", {
@@ -303,7 +305,7 @@ export function App() {
       data-navigation={navigationStyle}
       data-inspector={inspectorOpen && panelsShown}
       data-composer={view === "chat" && hasProject && hasActiveThread}
-      data-section={view !== "chat" || undefined}
+      data-section={view !== "chat" && !backgroundEverywhere || undefined}
       data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
       style={{
         ...Object.fromEntries(
@@ -313,6 +315,7 @@ export function App() {
           ]),
         ),
         "--ui-alpha": 1 - uiTransparency / 100,
+        "--reading": `${contentWidth}px`,
         "--popup-floor": opaquePopups ? 1 : 0.95,
       } as CSSProperties}
     >
@@ -329,7 +332,7 @@ export function App() {
         onNotification={openNotification}
         view={view}
         sidebarOpen={navigationOpen}
-        workspaceDisabled={view === "git" && gitBusy}
+        sidebarToggle={narrow || navigationStyle !== "strip"}
         onToggleSidebar={toggleNavigation}
       />
       <RemoteConnectionBanner />
@@ -367,7 +370,6 @@ export function App() {
             ) : view === "git" ? (
               <GitManager
                 navigation={footer}
-                onBusyChange={setGitBusy}
                 key={`${environment}:${activeProjectId}:${activeThreadId}`}
                 sidebarOpen={sectionSidebarOpen}
                 onCloseSidebar={() => setSectionSidebarOpen(false)}
@@ -419,6 +421,7 @@ export function App() {
       <RemoteFolderDialog />
       <LinkActions />
       <Toasts onOpen={openNotification} />
+      <WhatsNew />
       <DevTriggers />
     </div>
   );

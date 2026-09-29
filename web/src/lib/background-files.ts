@@ -7,7 +7,7 @@ export type BackgroundFileKind = "image";
 const files = fileStore("citropy-backgrounds");
 const listeners = new Set<(kind: BackgroundFileKind) => void>();
 
-export function loadBackgroundFile(kind: BackgroundFileKind): Promise<Blob | undefined> {
+function loadBackgroundFile(kind: BackgroundFileKind): Promise<Blob | undefined> {
   return files.load(kind);
 }
 
@@ -17,7 +17,7 @@ export async function saveBackgroundFile(kind: BackgroundFileKind, file: Blob): 
   for (const listener of listeners) listener(kind);
 }
 
-export function onBackgroundFileChange(listener: (kind: BackgroundFileKind) => void): () => void {
+function onBackgroundFileChange(listener: (kind: BackgroundFileKind) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }

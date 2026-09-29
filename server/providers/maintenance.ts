@@ -258,7 +258,7 @@ function versionNumber(value?: string): string | undefined {
   );
 }
 
-export function cursorVersionNewer(
+function cursorVersionNewer(
   installed: string | undefined,
   latest: string | undefined,
 ): boolean | undefined {
@@ -408,7 +408,9 @@ export function startProviderUpdateChecks(): () => void {
     checking = true;
     try {
       await providerMaintenance(true, false);
-    } catch {} finally {
+    } catch (error) {
+      console.error("Provider update check failed:", error);
+    } finally {
       checking = false;
     }
   };

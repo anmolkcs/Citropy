@@ -83,10 +83,10 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 16%, transparent);
 }
 .drawing-swatch:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .drawing-swatch[aria-pressed="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .drawing-swatch-custom::before {
   background: var(--swatch, conic-gradient(#e5484d, #f5b400, #30a46c, #0090ff, #8e4ec6, #e5484d));
@@ -110,7 +110,7 @@
   border-radius: 50%;
 }
 .drawing-fill[aria-pressed="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
   color: var(--text);
 }
 .drawing-stage {
@@ -175,7 +175,7 @@
   box-shadow: none;
 }
 .drawing-pane .panel-footer .btn[aria-pressed="true"] {
-  background: var(--raised-2);
+  background: var(--highlight);
   color: var(--text);
 }
 .drawing-layers {
@@ -201,10 +201,10 @@
   box-shadow: 0 0 0 transparent;
 }
 .drawing-layer-row:hover {
-  background: var(--raised);
+  background: var(--highlight);
 }
 .drawing-layer-row[data-selected] {
-  background: var(--raised-2);
+  background: var(--highlight);
 }
 .drawing-layer-row[data-drop="above"] {
   box-shadow: inset 0 2px 0 var(--accent);

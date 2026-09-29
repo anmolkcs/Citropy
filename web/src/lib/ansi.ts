@@ -116,9 +116,3 @@ export function ansiToHtml(input: string): string {
   }
   return out;
 }
-
-export function stripAnsi(input: string): string {
-  SGR.lastIndex = 0;
-  OTHER.lastIndex = 0;
-  return input.replace(SGR, "").replace(OTHER, "");
-}

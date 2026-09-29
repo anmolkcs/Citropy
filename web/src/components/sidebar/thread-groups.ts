@@ -40,7 +40,7 @@ const CATEGORIES: { id: Category; label: string; icon: ThreadGroup["icon"] }[] =
 
 type Sortable = Pick<ThreadMeta, "position" | "updatedAt">;
 
-export const sortThreads = (a: Sortable, b: Sortable) =>
+const sortThreads = (a: Sortable, b: Sortable) =>
   (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.updatedAt - a.updatedAt;
 
 export const threadKey = (environment: string, id: string) => `thread:${environment}:${id}`;

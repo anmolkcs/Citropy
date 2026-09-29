@@ -17,7 +17,7 @@ const usageKeys = new Set(["input", "output", "cacheRead", "cacheWrite", "costUs
 
 export function protocolLog(): ProtocolEntry[] { return [...entries]; }
 
-export function validateAgentEvent(raw: unknown): AgentEvent {
+function validateAgentEvent(raw: unknown): AgentEvent {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Expected an event object.");
   const event = raw as Record<string, unknown>;
   const text = (key: string, optional = false) => {

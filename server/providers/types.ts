@@ -32,7 +32,7 @@ export type AgentEvent =
   | { type: "notice"; level: "info" | "warn" | "error"; text: string }
   | { type: "exit"; code: number };
 
-export type Emit = (event: AgentEvent) => void;
+type Emit = (event: AgentEvent) => void;
 
 export interface ProviderLaunch {
   binary?: string;

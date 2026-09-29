@@ -11,7 +11,7 @@ import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
 import type { MenuItem } from "../Menu.tsx";
-import { Check, Folder, RotateCcw, Trash2 } from "../icons.ts";
+import { Check, RotateCcw, Trash2 } from "../icons.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { ThreadChildren } from "../ThreadChildren.tsx";
 import { ThreadPulse } from "../ThreadPulse.tsx";
@@ -25,13 +25,12 @@ function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMode, query, match, projectName, categoryEnd, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
+export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMode, query, match, categoryEnd, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
   thread: ThreadMeta;
   environment: string;
   globalMode: boolean;
   query: string;
   match?: SearchMatch;
-  projectName?: string;
   categoryEnd: boolean;
   drag: ThreadDrag;
   preview: ThreadPreviewControls;
@@ -145,9 +144,6 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
                 </span>
               )}
             </span>
-            {projectName !== undefined && (
-              <span className="thread-row-meta"><Folder size={12} />{projectName}</span>
-            )}
             {!globalMode && thread.snoozedUntil && (
               <span className="thread-row-meta">
                 <Clock size={12} />

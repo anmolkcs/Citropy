@@ -424,7 +424,10 @@ class ClaudeSession implements AgentSession {
     }
 
     if (type === "system" && message.subtype === "status") {
-      if (message.status === "requesting") this.#emit({ type: "status", status: "thinking" });
+      if (message.status === "requesting") {
+        this.#active = true;
+        this.#emit({ type: "status", status: "thinking" });
+      }
       return;
     }
 
