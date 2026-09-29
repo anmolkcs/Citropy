@@ -39,6 +39,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   const [direction, setDirection] = useState(1);
   const olderArrow = useRef<HTMLButtonElement>(null);
   const newerArrow = useRef<HTMLButtonElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
   const id = useId();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const alive = useRef(true);
@@ -125,6 +126,8 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
     const from = releases.findIndex((release) => release.version === notes?.version);
     const next = from + step;
     if (from < 0 || next < 0 || next >= releases.length) return;
+    const frame = popover.current;
+    if (frame && !frame.style.height) frame.style.height = `${frame.offsetHeight}px`;
     setDirection(step);
     setBrowsed(next);
     const last = step === 1 ? next === releases.length - 1 : next === 0;
@@ -209,7 +212,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
         ) : face}
       </button>
       <AnimatePresence>{open && (
-        <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={t(title)}>
+        <motion.div ref={popover} initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={t(title)}>
           <div className="app-update-heading">
             {state.status === "current" ? <Check size={16} /> : <Icon size={16} />}
             <strong>{t(title)}</strong>

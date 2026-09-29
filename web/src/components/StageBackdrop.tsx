@@ -95,12 +95,16 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
   const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (!colors) return;
-    return startAsciiNoise(canvas.current!, {
-      color: colors.color,
-      starColor: colors.star,
-      animate: !reducedMotion,
-      visibleFrom: () => metrics.current.left,
-    });
+    try {
+      return startAsciiNoise(canvas.current!, {
+        color: colors.color,
+        starColor: colors.star,
+        animate: !reducedMotion,
+        visibleFrom: () => metrics.current.left,
+      });
+    } catch (error) {
+      reportError(error);
+    }
   }, [colors, reducedMotion, metrics]);
   const dim = useApp((state) => state.asciiDim);
   const blur = useApp((state) => state.asciiBlur);
