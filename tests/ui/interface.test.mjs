@@ -101,16 +101,25 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.evaluate(() => {
       window.stageWidths = [];
       new ResizeObserver(([entry]) => window.stageWidths.push(entry.contentRect.width)).observe(document.querySelector('.stage'));
+      window.originalAnimate = Element.prototype.animate;
+      Element.prototype.animate = function (...options) {
+        const animation = window.originalAnimate.apply(this, options);
+        if (this.matches('.canvas-inner, .composer-shell')) {
+          animation.pause();
+          window.panelAnimations.push(animation);
+        }
+        return animation;
+      };
     });
     let movements = 0;
     for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j"]) {
-      await page.evaluate(() => { window.stageWidths = []; });
+      await page.evaluate(() => { window.stageWidths = []; window.panelAnimations = []; });
       await page.keyboard.press(shortcut);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const samples = await page.evaluate(() => {
         const stage = document.querySelector(".stage");
         const targets = [...document.querySelectorAll('.canvas-inner, .composer-shell')];
-        const animations = targets.flatMap(target => target.getAnimations());
+        const animations = window.panelAnimations;
         const samples = [0, 70, 140, 280].map(time => {
           for (const animation of animations) { animation.pause(); animation.currentTime = time; }
           const rect = stage.getBoundingClientRect();
@@ -137,6 +146,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     }
     if (width > 720) assert.ok(movements >= 2);
     else assert.equal(movements, 0);
+    await page.evaluate(() => { Element.prototype.animate = window.originalAnimate; });
     await page.keyboard.press('Control+j');
     await page.waitForTimeout(80);
     await page.keyboard.press('Control+j');
