@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { providers } from "./providers/index.ts";
 import { generateOpenCodeText } from "./providers/opencode.ts";
+import { generateCustomText } from "./providers/custom.ts";
 import { assertProviderReady } from "./providers/maintenance.ts";
 import { stopProcess } from "./providers/process.ts";
 import { assertApplicationReady } from "./update-lock.ts";
@@ -135,6 +136,9 @@ export async function generateText(selection: WritingModel, instruction: string,
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     } else if (selection.provider === "cursor") {
       const raw = await generateCursorText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);
+      result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
+    } else if (selection.provider === "custom") {
+      const raw = await generateCustomText(cwd, selection.model, prompt, controller.signal, launch);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     } else {
       const raw = await generateOpenCodeText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);

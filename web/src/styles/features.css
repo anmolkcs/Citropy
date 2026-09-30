@@ -574,6 +574,7 @@
   --series-opencode: #199e70;
   --series-cursor: #c98500;
   --series-pi: #d55181;
+  --series-custom: #8b5cf6;
 }
 :root[data-scheme="light"] .usage-view {
   --series-codex: #2a78d6;
@@ -581,12 +582,14 @@
   --series-opencode: #1baf7a;
   --series-cursor: #eda100;
   --series-pi: #e87ba4;
+  --series-custom: #7c3aed;
 }
 .usage-view [data-series="codex"] { --series: var(--series-codex); }
 .usage-view [data-series="claude"] { --series: var(--series-claude); }
 .usage-view [data-series="opencode"] { --series: var(--series-opencode); }
 .usage-view [data-series="cursor"] { --series: var(--series-cursor); }
 .usage-view [data-series="pi"] { --series: var(--series-pi); }
+.usage-view [data-series="custom"] { --series: var(--series-custom); }
 .usage-sections[data-busy] {
   opacity: 0.6;
   transition: opacity var(--dur-fast) var(--ease-out);

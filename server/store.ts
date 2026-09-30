@@ -194,7 +194,7 @@ export class Store {
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
-          if (model && ["claude", "codex", "opencode", "cursor", "pi"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
+          if (model && ["claude", "codex", "opencode", "cursor", "pi", "custom"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
             this.assistance[key] = { provider: model.provider, model: model.model, ...(typeof model.providerInstanceId === "string" ? { providerInstanceId: model.providerInstanceId } : {}), ...(typeof model.effort === "string" ? { effort: model.effort } : {}) };
         }
         for (const key of ["toasts", "desktop", "sound", "subagents"] as const) {
@@ -203,12 +203,12 @@ export class Store {
         }
         if (Array.isArray(settings.disabledProviders)) {
           for (const id of settings.disabledProviders) {
-            if (["claude", "codex", "opencode", "cursor", "pi"].includes(id)) this.disabledProviders.add(id);
+            if (["claude", "codex", "opencode", "cursor", "pi", "custom"].includes(id)) this.disabledProviders.add(id);
           }
         }
         if (Array.isArray(settings.providerInstances)) {
           for (const instance of settings.providerInstances) {
-            if (typeof instance?.id === "string" && typeof instance?.name === "string" && ["claude", "codex", "opencode", "cursor", "pi"].includes(instance.provider) && (instance.binary === undefined || typeof instance.binary === "string") && instance.environment && typeof instance.environment === "object" && !Array.isArray(instance.environment) && Object.entries(instance.environment).every(([key, value]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof value === "string"))
+            if (typeof instance?.id === "string" && typeof instance?.name === "string" && ["claude", "codex", "opencode", "cursor", "pi", "custom"].includes(instance.provider) && (instance.binary === undefined || typeof instance.binary === "string") && instance.environment && typeof instance.environment === "object" && !Array.isArray(instance.environment) && Object.entries(instance.environment).every(([key, value]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof value === "string"))
               this.providerInstances.set(instance.id, instance);
           }
         }
@@ -275,7 +275,7 @@ export class Store {
   }
 
   setProviderEnabled(id: ProviderId, enabled: boolean): void {
-    if (!["claude", "codex", "opencode", "cursor", "pi"].includes(id) || typeof enabled !== "boolean") throw new Error("Invalid provider setting");
+    if (!["claude", "codex", "opencode", "cursor", "pi", "custom"].includes(id) || typeof enabled !== "boolean") throw new Error("Invalid provider setting");
     const disabled = new Set(this.disabledProviders);
     if (enabled) disabled.delete(id);
     else disabled.add(id);
@@ -370,7 +370,7 @@ export class Store {
 
   saveProviderInstance(input: Omit<ProviderInstance, "id"> & { id?: string }): ProviderInstance {
     if (
-      !["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider) ||
+      !["claude", "codex", "opencode", "cursor", "pi", "custom"].includes(input.provider) ||
       typeof input.name !== "string" || !input.name.trim() || input.name.length > 80 ||
       (input.binary !== undefined && (typeof input.binary !== "string" || !input.binary.trim() || input.binary.length > 1024)) ||
       !input.environment || typeof input.environment !== "object" || Array.isArray(input.environment) ||

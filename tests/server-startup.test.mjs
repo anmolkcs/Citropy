@@ -73,7 +73,7 @@ test("backend readiness and saved-workspace access do not wait for provider disc
   await new Promise((resolve, reject) => {
     const deadline = Date.now() + 5000;
     const check = () => {
-      if (messages.some(event => event.t === "providers.update" && event.providers.length === 5)) return resolve();
+      if (messages.some(event => event.t === "providers.update" && event.providers.length === 6)) return resolve();
       if (Date.now() > deadline) return reject(new Error(`Provider discovery did not publish: ${log}`));
       setTimeout(check, 10);
     };

@@ -63,6 +63,15 @@ export function globalInstructionLocation(
     path = join(homedir(), ".cursor", "rules", "citropy.mdc");
     note =
       "Cursor applies machine-local user rules from this folder to every project under your home directory. Citropy manages the frontmatter that makes this rule always apply.";
+  } else if (provider === "custom") {
+    path = join(
+      process.env.XDG_CONFIG_HOME || join(homedir(), ".config"),
+      "citropy",
+      "custom",
+      "AGENTS.md",
+    );
+    note =
+      "Custom endpoints use this file for global rules. It is prepended as system context when supported.";
   } else {
     throw new Error("Unknown provider.");
   }

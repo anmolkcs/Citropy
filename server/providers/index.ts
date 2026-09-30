@@ -1,6 +1,7 @@
 import { claudeProvider } from "./claude.ts";
 import { codexProvider } from "./codex.ts";
 import { cursorProvider } from "./cursor.ts";
+import { customProvider } from "./custom.ts";
 import { openCodeVersionInfo, opencodeProvider } from "./opencode.ts";
 import { piProvider } from "./pi.ts";
 import { commandIdentity } from "./binary.ts";
@@ -13,6 +14,7 @@ export const providers: Record<ProviderId, Provider> = {
   cursor: cursorProvider,
   opencode: opencodeProvider,
   pi: piProvider,
+  custom: customProvider,
 };
 
 import { store } from "../store.ts";

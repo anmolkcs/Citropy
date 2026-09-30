@@ -50,6 +50,7 @@ export function listCommands(
   const cached = catalogs.get(key);
   if (cached && Date.now() - cached.time < 60000) return cached.value;
   const value = (async () => {
+    if (provider === "custom") return [];
     if (provider === "codex")
       return [
         {

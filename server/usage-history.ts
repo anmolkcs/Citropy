@@ -5,7 +5,7 @@ import type { UsageDay } from "../shared/features.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 
 const SAVE_DELAY_MS = 5000;
-const PROVIDERS: ProviderId[] = ["claude", "codex", "opencode", "cursor", "pi"];
+const PROVIDERS: ProviderId[] = ["claude", "codex", "opencode", "cursor", "pi", "custom"];
 
 export interface UsageSession {
   provider: ProviderId;

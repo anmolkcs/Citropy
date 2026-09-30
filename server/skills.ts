@@ -77,7 +77,7 @@ async function roots(
       scope: "personal",
     },
   ];
-  for (const provider of ["claude", "codex", "opencode", "pi"] as const) {
+  for (const provider of ["claude", "codex", "opencode", "pi", "custom"] as const) {
     if (provider !== "pi") locations.push({ path: builtinSkillRoot(), provider, scope: "builtin" });
     locations.push({
       path: join(home, ".agents/skills"),

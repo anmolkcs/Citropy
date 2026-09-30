@@ -91,6 +91,8 @@ async function nativeUpdaterHelp(binaryPath: string, args: string[]): Promise<st
 }
 
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
+  if (provider === "custom")
+    return { reason: "Custom endpoints are configured via Settings > Providers > Accounts. There is no CLI to install or update." };
   const binaryPath = await executablePath(provider === "opencode" ? openCodeBinary() : providers[provider].binary);
   if (!binaryPath) {
     const packageName = packageFor(provider);

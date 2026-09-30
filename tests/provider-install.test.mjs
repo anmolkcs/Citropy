@@ -57,6 +57,10 @@ fs.writeFileSync(path.join(dir, name), ${JSON.stringify(cli)}, { mode: 0o755 });
   let refreshed = 0;
   const missing = await providerMaintenance(true);
   for (const state of missing) {
+    if (state.provider === "custom") {
+      assert.equal(state.install, false);
+      continue;
+    }
     assert.equal(state.install, true);
     assert.equal(state.available, true);
   }

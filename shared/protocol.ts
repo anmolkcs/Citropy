@@ -3,7 +3,7 @@ import type { GitHubRequest, GitHubResponse } from "./github.ts";
 import type { ComputerState } from "./computer.ts";
 import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
 
-export type ProviderId = "claude" | "codex" | "opencode" | "cursor" | "pi";
+export type ProviderId = "claude" | "codex" | "opencode" | "cursor" | "pi" | "custom";
 
 export type ThreadStatus =
   | "idle"

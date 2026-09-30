@@ -14,6 +14,7 @@ export const providerLabels: Record<ProviderId, string> = {
   cursor: "Cursor",
   opencode: "OpenCode",
   pi: "Pi",
+  custom: "Custom",
 };
 
 export function modelLabel(models: ModelOption[], modelId?: string): string {

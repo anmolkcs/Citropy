@@ -276,7 +276,8 @@ async function readSession(path: string, root: string, provider: ImportProvider,
 }
 
 export async function listImportableSessions(provider: ImportProvider): Promise<ImportableSession[]> {
-  if (provider !== "claude" && provider !== "codex" && provider !== "cursor" && provider !== "opencode" && provider !== "pi") throw new Error("Choose a provider.");
+  if (provider !== "claude" && provider !== "codex" && provider !== "cursor" && provider !== "opencode" && provider !== "pi" && provider !== "custom") throw new Error("Choose a provider.");
+  if (provider === "custom") return [];
   for (const [id, candidate] of candidates) if (candidate.provider === provider) candidates.delete(id);
   if (provider === "opencode") return listOpenCodeSessions();
   if (provider === "cursor") return listCursorSessions();

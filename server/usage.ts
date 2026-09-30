@@ -116,6 +116,13 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
           updatedAt: Date.now(),
           error: "Pi uses multiple model services. Check the connected service for its allowance.",
         };
+      if (provider === "custom")
+        return {
+          provider,
+          windows: [],
+          updatedAt: Date.now(),
+          error: "Custom endpoints do not report a subscription allowance. Check your endpoint provider for usage.",
+        };
       return parseProviderLimits(
         provider,
         await providerControl(

@@ -6,7 +6,7 @@ import { providerUpdating } from "./providers/maintenance.ts";
 import { providerBusy } from "./runtime.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 
-const PROVIDERS: readonly ProviderId[] = ["claude", "codex", "opencode", "cursor", "pi"];
+const PROVIDERS: readonly ProviderId[] = ["claude", "codex", "opencode", "cursor", "pi", "custom"];
 
 let commands = 0;
 const requests = new Set<IncomingMessage>();
