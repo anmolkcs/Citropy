@@ -17,11 +17,11 @@ mkdirSync(icons, { recursive: true });
 const quote = (value) =>
   `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("`", "\\`").replaceAll("$", "\\$").replaceAll("%", "%%")}"`;
 const development = process.argv.includes("--dev");
-const name = development ? "Citropy Dev" : "Citropy";
+const name = development ? "Citropy Custom Dev" : "Citropy Custom";
 const mode = development ? " --dev" : "";
 const icon = development ? "citropy-dev" : "citropy";
 copyFileSync(join(root, "desktop/assets", `${icon}.png`), join(icons, `${icon}.png`));
-const path = join(directory, development ? "citropy-dev.desktop" : "citropy.desktop");
+const path = join(directory, development ? "citropy-custom-dev.desktop" : "citropy-custom.desktop");
 writeFileSync(
   path,
   `[Desktop Entry]\nType=Application\nName=${name}\nComment=Your workspace for AI conversations and code\nExec=${quote(process.execPath)} ${quote(join(root, "desktop/start.mjs"))}${mode}\nPath=${root}\nIcon=${icon}\nTerminal=false\nCategories=Development;IDE;\nStartupWMClass=${name}\n`,

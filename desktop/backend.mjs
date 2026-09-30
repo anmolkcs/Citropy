@@ -28,7 +28,7 @@ export function packagedBackend(env, diagnose = () => {}) {
     await new Promise((resolve, reject) => {
       const probe = createServer();
       probe.once("error", () => reject(new Error("Another server is using Citropy's port. Close it before opening this release.")));
-      probe.listen(Number(env.CITROPY_PORT || 4177), "127.0.0.1", () => probe.close(resolve));
+      probe.listen(Number(env.CITROPY_PORT || 4277), "127.0.0.1", () => probe.close(resolve));
     });
     worker = new Worker(new URL("../server/main.ts", import.meta.url), {
       argv: ["--packaged"],

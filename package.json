@@ -74,7 +74,7 @@
     "node-pty@1.1.0": true
   },
   "main": "desktop/entry.mjs",
-  "desktopName": "citropy.desktop",
+  "desktopName": "citropy-custom.desktop",
   "overrides": {
     "monaco-editor": {
       "dompurify": "3.4.16"

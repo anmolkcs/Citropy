@@ -39,7 +39,7 @@ const development = !app.isPackaged && process.env.CITROPY_DEVELOPMENT === "1";
 const { version } = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 );
-const appName = development ? "Citropy Dev" : "Citropy";
+const appName = development ? "Citropy Custom Dev" : "Citropy Custom";
 app.setName(appName);
 app.setPath(
   "userData",
@@ -67,10 +67,10 @@ process.on("SIGTERM", () => {
 let focusDesktopWindow;
 const secondInstance = createSecondInstanceFocus(() => focusDesktopWindow);
 app.on("second-instance", () => secondInstance.focus());
-if (process.platform === "linux") app.setDesktopName(development ? "citropy-dev.desktop" : "citropy.desktop");
+if (process.platform === "linux") app.setDesktopName(development ? "citropy-custom-dev.desktop" : "citropy-custom.desktop");
 if (app.isPackaged) {
   process.env.CITROPY_DEVELOPMENT = "0";
-  process.env.CITROPY_PORT ||= "4177";
+  process.env.CITROPY_PORT ||= "4277";
   process.env.CITROPY_HOST = "127.0.0.1";
   process.env.CITROPY_URL = `http://127.0.0.1:${process.env.CITROPY_PORT}`;
   process.env.CITROPY_UI_URL = process.env.CITROPY_URL;
@@ -86,7 +86,7 @@ let environments;
 let folderChoice;
 let applyingUpdate = false;
 let connectDesktop;
-const base = new URL(process.env.CITROPY_URL ?? "http://127.0.0.1:4177");
+const base = new URL(process.env.CITROPY_URL ?? "http://127.0.0.1:4277");
 const ui = new URL(process.env.CITROPY_UI_URL ?? base.href);
 if (
   ![base, ui].every(

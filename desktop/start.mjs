@@ -7,8 +7,8 @@ const serverOnly = process.argv.includes("--server-only");
 const previous = Number(process.argv.find((arg) => arg.startsWith("--after="))?.slice(8));
 const explicitPort = process.env.CITROPY_PORT !== undefined;
 const explicitUiPort = process.env.CITROPY_UI_PORT !== undefined;
-let port = Number(process.env.CITROPY_PORT ?? (development ? 4178 : 4177));
-let uiPort = Number(process.env.CITROPY_UI_PORT ?? 5177);
+let port = Number(process.env.CITROPY_PORT ?? (development ? 4278 : 4277));
+let uiPort = Number(process.env.CITROPY_UI_PORT ?? 5277);
 const origin = () => `http://127.0.0.1:${port}`;
 if (process.platform === "darwin" && !serverOnly) {
   const { ensureComputerHelper } = await import("./computer-mac-build.mjs");

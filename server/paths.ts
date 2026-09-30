@@ -4,9 +4,9 @@ import { homedir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import { dev } from "./config.ts";
 
-export const appDataSwitch = join(homedir(), ".citropy-dev", "use-app-data");
+export const appDataSwitch = join(homedir(), ".citropy-custom-dev", "use-app-data");
 export const usingAppData = dev && !process.env.CITROPY_DATA_DIR && existsSync(appDataSwitch) && readFileSync(appDataSwitch, "utf8").trim() === "1";
-export const dataRoot = process.env.CITROPY_DATA_DIR || join(homedir(), dev && !usingAppData ? ".citropy-dev" : ".citropy");
+export const dataRoot = process.env.CITROPY_DATA_DIR || join(homedir(), dev && !usingAppData ? ".citropy-custom-dev" : ".citropy-custom");
 
 const augmented = new WeakSet<object>();
 
