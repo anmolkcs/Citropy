@@ -2,6 +2,18 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.6
+
+### Added
+- A Custom provider for any OpenAI-compatible chat completions endpoint, configured per account with base URL, API key, and model list. Defaults to the HackClub AI proxy.
+- Custom provider sessions stream text and reasoning, support steering and usage tracking, and work with titles, commit messages, and reviews.
+
+### Changed
+- This branch runs alongside main Citropy without conflicts: backend ports 4277/4278, interface port 5277, data in `~/.citropy-custom` (`~/.citropy-custom-dev` for development), and a separate Citropy Custom desktop profile and installers.
+
+### Fixed
+- Patched vulnerable transitive dependencies (`brace-expansion`, `fast-uri`); `npm audit --audit-level=high` is clean.
+
 ## 0.5.5
 
 ### Added
