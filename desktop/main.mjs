@@ -43,7 +43,7 @@ const appName = development ? "Citropy Custom Dev" : "Citropy Custom";
 app.setName(appName);
 app.setPath(
   "userData",
-  migrateDesktopData(app.getPath("appData"), process.env.CITROPY_DESKTOP_DATA || (development ? join(app.getPath("appData"), appName) : undefined)),
+  migrateDesktopData(app.getPath("appData"), process.env.CITROPY_DESKTOP_DATA || join(app.getPath("appData"), appName)),
 );
 if (!app.requestSingleInstanceLock()) app.exit(0);
 const diagnose = desktopDiagnostics(app.getPath("userData"));
