@@ -1,5 +1,5 @@
-appId: com.citropy.custom-desktop
-productName: Citropy Custom
+appId: com.citropy.desktop
+productName: Citropy
 directories:
   app: .desktop-build
   output: release
@@ -29,9 +29,9 @@ linux:
   target: AppImage
   category: Development
   icon: desktop/assets/citropy.png
-  executableName: citropy-custom
+  executableName: citropy
   syncDesktopName: true
-  artifactName: Citropy-Custom-${version}-${arch}.AppImage
+  artifactName: Citropy-${version}-${arch}.AppImage
 mac:
   target:
     - target: zip
@@ -42,14 +42,14 @@ mac:
   icon: desktop/assets/citropy.png
   identity: '-'
   hardenedRuntime: false
-  artifactName: Citropy-Custom-${version}-${arch}.zip
+  artifactName: Citropy-${version}-${arch}.zip
 win:
   target:
     - target: nsis
       arch:
         - x64
   icon: desktop/assets/citropy.png
-  artifactName: Citropy-Custom-${version}-${arch}-Setup.exe
+  artifactName: Citropy-${version}-${arch}-Setup.exe
 nsis:
   oneClick: true
   perMachine: false
