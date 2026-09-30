@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.7
+
+### Fixed
+- Custom builds now use their own desktop profile directory (`Citropy Custom`) instead of sharing main Citropy's. Previously the shared single-instance lock made the custom AppImage exit silently whenever main Citropy was running.
+
 ## 0.5.6
 
 ### Added
