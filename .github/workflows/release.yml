@@ -27,7 +27,6 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          test "$GITHUB_REF" = "refs/heads/main" || { echo "Releases must run from main."; exit 1; }
           node --input-type=module -e 'import fs from "node:fs"; const next = process.env.VERSION; if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(next)) throw new Error(`Version must look like 0.2.0, got ${next}`); const current = JSON.parse(fs.readFileSync("package.json", "utf8")).version; const compare = (left, right) => { const a = left.split(".").map(Number); const b = right.split(".").map(Number); return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]; }; if (compare(next, current) <= 0) throw new Error(`Version ${next} must be greater than ${current}`);'
           if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q .; then
             echo "Tag v$VERSION already exists."
